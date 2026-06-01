@@ -1,13 +1,12 @@
 import { type Locator, type Page } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { env } from '../utils/env';
+import { env } from '@/utils/env';
 
 /**
  * Domain: Auth
  * Page: / (root)
  *
- * Page Object Model untuk Halaman Login ERPku.
- * Port dari Python login_page.py.
+ * Page Object Model (POM) untuk mempresentasikan interaksi dengan Halaman Login ERPku.
  */
 export class LoginPage extends BasePage {
   // ── FORM INPUT ─────────────────────────────────────────────────────────────
@@ -39,22 +38,22 @@ export class LoginPage extends BasePage {
   /** Aksi utama login: isi formulir lalu submit */
   async doLogin(username?: string, password?: string, rememberMe = false): Promise<void> {
     if (username !== undefined && username !== '') {
-      await this.fillInput(this.inputUsername, username);
+      await this.inputUsername.first().fill(username);
     } else if (username === '') {
       // Intentional clear untuk testing input kosong
       await this.inputUsername.first().fill('');
     }
 
     if (password !== undefined && password !== '') {
-      await this.fillInput(this.inputPassword, password);
+      await this.inputPassword.first().fill(password);
     } else if (password === '') {
       // Intentional clear untuk testing input kosong
       await this.inputPassword.first().fill('');
     }
 
     if (rememberMe) {
-      await this.checkCheckbox(this.inputRemember);
+      await this.inputRemember.first().check();
     }
-    await this.clickElement(this.btnLogin);
+    await this.btnLogin.click();
   }
 }

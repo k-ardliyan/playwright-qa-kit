@@ -5,8 +5,7 @@ import { BasePage } from './BasePage';
  * Domain: Global
  * Page: /dashboard
  *
- * Page Object Model untuk Halaman Dashboard ERPku.
- * Port dari Python dashboard_page.py.
+ * Page Object Model (POM) untuk mempresentasikan interaksi dengan Halaman Dashboard ERPku.
  */
 export class DashboardPage extends BasePage {
   // ── HEADER / VISUALS ───────────────────────────────────────────────────────
@@ -38,7 +37,7 @@ export class DashboardPage extends BasePage {
 
   /** Aksi keluar log out dari profile saat ini */
   async doLogout(): Promise<void> {
-    await this.clickElement(this.btnProfile);
-    await this.clickElement(this.btnLogout);
+    await this.btnProfile.click();
+    await this.btnLogout.click();
   }
 }

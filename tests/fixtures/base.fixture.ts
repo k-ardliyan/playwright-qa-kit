@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test';
-import { LoginPage } from '../pages/LoginPage';
-import { DashboardPage } from '../pages/DashboardPage';
+import { LoginPage } from '@/pages/LoginPage';
+import { DashboardPage } from '@/pages/DashboardPage';
 
 /**
  * Extended MyFixtures type untuk Page Object Models

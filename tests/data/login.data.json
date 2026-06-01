@@ -1,0 +1,37 @@
+{
+  "failureScenarios": [
+    {
+      "caseId": "TC-LOGIN-002",
+      "description": "kata sandi salah",
+      "usernameSource": "TEST_USER_EMAIL",
+      "password": "WrongPassword123!",
+      "expectedErrors": [
+        "Nama akun atau kata sandi salah|Nama pengguna atau kata sandi salah|Invalid credentials|Wrong email or password|Kata sandi salah"
+      ]
+    },
+    {
+      "caseId": "TC-LOGIN-003",
+      "description": "username kosong",
+      "username": "",
+      "password": "WrongPassword123!",
+      "expectedErrors": ["username harus diisi|email is required|username is required"]
+    },
+    {
+      "caseId": "TC-LOGIN-004",
+      "description": "password kosong",
+      "usernameSource": "TEST_USER_EMAIL",
+      "password": "",
+      "expectedErrors": ["password harus diisi|password is required"]
+    },
+    {
+      "caseId": "TC-LOGIN-005",
+      "description": "username dan password kosong",
+      "username": "",
+      "password": "",
+      "expectedErrors": [
+        "username harus diisi|email is required|username is required",
+        "password harus diisi|password is required"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 /**
- * Typed environment variable reader with validation.
- *
- * Port dari Python config/settings.py — semua env vars diakses melalui
- * module ini untuk konsistensi dan fail-fast jika config tidak lengkap.
+ * Modul pembaca dan validator Environment Variable secara type-safe.
+ * 
+ * Menyediakan akses terpusat ke semua konfigurasi lingkungan (.env)
+ * dengan validasi fail-fast untuk mendeteksi variabel yang hilang atau salah konfigurasi.
  */
 
 // ── Private Helpers ────────────────────────────────────────────────────────
@@ -53,9 +53,19 @@ export const env = {
     return requireEnv('ENV_NAME', 'dev');
   },
 
-  /** Email/username akun QA test — validated as non-placeholder */
+  /** Email akun QA test — validated as non-placeholder */
   get USER_EMAIL(): string {
     return requireSecretEnv('TEST_USER_EMAIL');
+  },
+
+  /** Username akun QA test — validated as non-placeholder */
+  get USER_USERNAME(): string {
+    return requireSecretEnv('TEST_USER_USERNAME');
+  },
+
+  /** Nomor Telepon akun QA test — validated as non-placeholder */
+  get USER_PHONE(): string {
+    return requireSecretEnv('TEST_USER_PHONE');
   },
 
   /** Password akun QA test — validated as non-placeholder */

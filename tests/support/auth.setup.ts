@@ -1,18 +1,16 @@
 import { test as setup, expect } from '@playwright/test';
-import { env } from '../utils/env';
+import { env } from '@/utils/env';
 import fs from 'fs';
 
 const authFile = '.auth/user.json';
 
 /**
- * Auth Setup — login sekali, simpan state untuk seluruh test suite.
+ * Auth Setup — Autentikasi satu kali dan simpan status untuk seluruh test suite.
  *
- * Port dari Python conftest.py:
- * - _do_fresh_login() → login via form UI
- * - _save_auth_state() → storageState ke file
- *
- * Playwright akan skip setup jika authFile sudah ada dan valid.
- * Hapus .auth/ folder untuk force re-login.
+ * Alur Kerja:
+ * - Mengecek keaktifan sesi lokal via headles request API.
+ * - Jika tidak aktif/belum ada: melakukan login baru via UI form.
+ * - Menyimpan storageState (cookies dan localStorage) ke file untuk digunakan project pengujian lainnya.
  */
 setup('authenticate', async ({ page, playwright }) => {
   // ── Pengecekan Sesi Aktif via Request Context ──────────────
@@ -50,7 +48,7 @@ setup('authenticate', async ({ page, playwright }) => {
   await page.waitForLoadState('domcontentloaded');
 
   // ── Isi form login ─────────────────────────────────────────────────
-  // Multi-fallback locator sesuai Python LoginPage
+  // Mencari input field dengan locator multi-fallback untuk kompatibilitas environment
   const usernameInput = page
     .locator("input[name='username'], input[name='email'], input[type='email']")
     .first();
@@ -73,10 +71,7 @@ setup('authenticate', async ({ page, playwright }) => {
   await expect(page).toHaveURL(/dashboard/i, { timeout: 20_000 });
 
   // ── Verify login berhasil ──────────────────────────────────────────
-  // Sesuai Python DashboardPage.expect_to_be_loaded():
-  // - URL contains "dashboard"
-  // - Toast "Berhasil Login" visible
-  // - Heading "Dashboard" visible
+  // Memastikan elemen-elemen sukses login terdeteksi pada Dashboard:
   await expect(page.getByText('Berhasil Login')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('Dashboard').first()).toBeVisible();
 

@@ -1,38 +1,37 @@
 import { type Locator, type Page, expect } from '@playwright/test';
 
 /**
- * BasePage — fondasi untuk semua Page Object.
- *
- * Port dari Python BasePage dengan subset essential:
- * - Navigasi: navigate, waitForLoad, reload, goBack
- * - Interaksi: clickElement, fillInput, clearAndFill, typeSlowly,
- *              selectOption, checkCheckbox, uncheckCheckbox, hover
- * - Baca: getText, getAttribute, getInputValue, isVisible, isEnabled
- * - Menunggu: waitForElement, waitForElementHidden, waitForSpinnerGone
- * - Verifikasi: expectUrlContains, expectTitleContains
- * - Keyboard: pressKey, pressShortcut
- *
- * Methods MUI-specific (select_mui_option, fill_and_select_autocomplete, dll.)
- * ditambahkan di phase selanjutnya sesuai kebutuhan domain page.
+ * BasePage — Fondasi tangguh untuk semua Page Object.
+ * 
+ * Sesuai dengan Playwright Best Practices:
+ * 1. Tidak membungkus API native sederhana (click, fill, dll) secara redundan.
+ * 2. Memfokuskan diri pada utilities tingkat tinggi yang menyelesaikan gotchas nyata di Playwright:
+ *    - Navigasi & Load State (networkidle, domcontentloaded)
+ *    - Penanganan Dynamic Dialogs (alert, confirm, prompt)
+ *    - Penanganan Skenario Multi-Tab / New Windows
+ *    - File Upload & Download dengan penanganan event-promise
+ *    - Penanganan elemen async global (loading spinner)
  */
 export class BasePage {
   constructor(public readonly page: Page) {}
 
-  // ── NAVIGASI ───────────────────────────────────────────────────────────────
+  // ── NAVIGASI & LOAD STATE ──────────────────────────────────────────────────
 
-  /** Buka URL dan tunggu network idle. */
+  /** Buka URL dan tunggu DOM konten ter-load penuh. */
   async navigate(url: string): Promise<void> {
     await this.page.goto(url);
     await this.waitForLoad();
   }
 
-  /** Tunggu sampai tidak ada network call selama 500ms. Fallback jika timeout. */
+  /** Tunggu halaman visual-ready secara tangguh. */
   async waitForLoad(timeout = 10_000): Promise<void> {
     try {
-      await this.page.waitForLoadState('networkidle', { timeout });
+      // Prioritaskan domcontentloaded untuk kecepatan, lalu coba networkidle secara aman
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+      await this.page.waitForLoadState('networkidle', { timeout: timeout - 5000 });
     } catch {
-      // Long-polling atau SSE bisa bikin networkidle tidak pernah tercapai
-      // — lanjut saja, halaman sudah visual-ready.
+      // Long-polling/SSE sering menahan status networkidle — abaikan jika timeout
+      // karena halaman sudah visual-ready bagi pengguna.
     }
   }
 
@@ -48,104 +47,60 @@ export class BasePage {
     await this.waitForLoad();
   }
 
-  // ── INTERAKSI ELEMEN ───────────────────────────────────────────────────────
+  // ── DIALOGS (JS ALERT/CONFIRM/PROMPT) ──────────────────────────────────────
 
-  /** Klik dengan smart wait bawaan Playwright. */
-  async clickElement(locator: Locator): Promise<void> {
+  /** 
+   * Menyiapkan handler untuk Dialog browser berikutnya.
+   * @param action 'accept' | 'dismiss'
+   * @param expectedText Teks pesan opsional yang ingin diverifikasi di dalam dialog
+   */
+  async handleNextDialog(action: 'accept' | 'dismiss', expectedText?: string): Promise<void> {
+    this.page.once('dialog', async (dialog) => {
+      if (expectedText) {
+        expect(dialog.message()).toContain(expectedText);
+      }
+      if (action === 'accept') {
+        await dialog.accept();
+      } else {
+        await dialog.dismiss();
+      }
+    });
+  }
+
+  // ── MULTI-TAB / NEW WINDOWS ────────────────────────────────────────────────
+
+  /** 
+   * Mengeksekusi aksi yang membuka tab baru dan mengembalikan Page dari tab baru tersebut.
+   * @param triggerAction Aksi (seperti klik tombol) yang memicu pembukaan tab baru.
+   */
+  async waitForNewTab(triggerAction: () => Promise<void>): Promise<Page> {
+    const pagePromise = this.page.context().waitForEvent('page');
+    await triggerAction();
+    const newPage = await pagePromise;
+    await newPage.waitForLoadState('domcontentloaded');
+    return newPage;
+  }
+
+  // ── ADVANCED INTERACTION: UPLOAD & DOWNLOAD ───────────────────────────────
+
+  /** Menangani download file dan mengembalikan absolute path file yang terunduh. */
+  async downloadFile(locator: Locator): Promise<string> {
+    const downloadPromise = this.page.waitForEvent('download');
     await locator.click();
+    const download = await downloadPromise;
+    
+    // Simpan di folder sementara di dalam workspace
+    const path = `./test-results/downloads/${download.suggestedFilename()}`;
+    await download.saveAs(path);
+    return path;
   }
 
-  /** Isi input field. */
-  async fillInput(locator: Locator, text: string): Promise<void> {
-    await locator.fill(text);
+  /** Mengunggah file ke input secara aman. */
+  async uploadFile(locator: Locator, filePath: string): Promise<void> {
+    await locator.setInputFiles(filePath);
   }
 
-  /** Kosongkan input lalu isi ulang — untuk edit field yang sudah ada value. */
-  async clearAndFill(locator: Locator, text: string): Promise<void> {
-    await locator.fill('');
-    await locator.fill(text);
-  }
-
-  /** Ketik karakter per karakter (bypass fill guard, trigger autocomplete). */
-  async typeSlowly(locator: Locator, text: string, delay = 50): Promise<void> {
-    await locator.pressSequentially(text, { delay });
-  }
-
-  /** Pilih opsi pada <select> HTML standar. */
-  async selectOption(locator: Locator, value: string): Promise<void> {
-    await locator.selectOption(value);
-  }
-
-  /** Centang checkbox (idempotent). */
-  async checkCheckbox(locator: Locator): Promise<void> {
-    await locator.check();
-  }
-
-  /** Hapus centang checkbox (idempotent). */
-  async uncheckCheckbox(locator: Locator): Promise<void> {
-    await locator.uncheck();
-  }
-
-  /** Hover elemen untuk trigger dropdown/tooltip. */
-  async hover(locator: Locator): Promise<void> {
-    await locator.hover();
-  }
-
-  // ── KEYBOARD ───────────────────────────────────────────────────────────────
-
-  /** Tekan satu tombol keyboard (e.g. "Enter", "Escape", "Tab"). */
-  async pressKey(key: string): Promise<void> {
-    await this.page.keyboard.press(key);
-  }
-
-  /** Tekan kombinasi tombol (e.g. pressShortcut("Control", "a")). */
-  async pressShortcut(...keys: string[]): Promise<void> {
-    await this.page.keyboard.press(keys.join('+'));
-  }
-
-  // ── BACA ELEMEN ────────────────────────────────────────────────────────────
-
-  /** Ambil inner text dari elemen. */
-  async getText(locator: Locator): Promise<string> {
-    await expect(locator).toBeVisible();
-    const text = await locator.innerText();
-    return text.trim();
-  }
-
-  /** Ambil nilai attribute HTML dari elemen. */
-  async getAttribute(locator: Locator, attribute: string): Promise<string> {
-    await expect(locator).toBeVisible();
-    return (await locator.getAttribute(attribute)) ?? '';
-  }
-
-  /** Ambil value dari input/textarea. */
-  async getInputValue(locator: Locator): Promise<string> {
-    await expect(locator).toBeVisible();
-    const value = await locator.inputValue();
-    return value.trim();
-  }
-
-  /** Cek visibilitas tanpa assertion — return boolean. */
-  async isVisible(locator: Locator): Promise<boolean> {
-    return locator.isVisible();
-  }
-
-  /** Cek apakah elemen enabled (bukan disabled). */
-  async isEnabled(locator: Locator): Promise<boolean> {
-    return locator.isEnabled();
-  }
-
-  // ── MENUNGGU ───────────────────────────────────────────────────────────────
-
-  /** Tunggu elemen muncul dan visible. */
-  async waitForElement(locator: Locator, timeout = 10_000): Promise<void> {
-    await locator.waitFor({ state: 'visible', timeout });
-  }
-
-  /** Tunggu elemen menghilang (hidden). */
-  async waitForElementHidden(locator: Locator, timeout = 10_000): Promise<void> {
-    await locator.waitFor({ state: 'hidden', timeout });
-  }
+  // ── MENUNGGU ELEMEN ASYNC GLOBAL ───────────────────────────────────────────
 
   /** Tunggu MUI CircularProgress spinner hilang. */
   async waitForSpinnerGone(timeout = 15_000): Promise<void> {
@@ -155,7 +110,7 @@ export class BasePage {
     }
   }
 
-  // ── VERIFIKASI HALAMAN ─────────────────────────────────────────────────────
+  // ── BACA & VERIFIKASI HALAMAN ──────────────────────────────────────────────
 
   /** Assert URL saat ini mengandung teks tertentu. */
   async expectUrlContains(partial: string): Promise<void> {

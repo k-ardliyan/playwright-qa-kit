@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/base.fixture';
+import { test, expect } from '@/fixtures/base.fixture';
 
 test.describe('Dashboard Page Suite', { tag: ['@dashboard'] }, () => {
   // Test ini secara default mewarisi storageState ter-autentikasi dari setup project

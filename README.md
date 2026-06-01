@@ -59,7 +59,7 @@ npm run test:debug
 
 ### 5. Running via VS Code Extension (Recommended for Dev)
 
-Proyek ini telah dilengkapi dengan konfigurasi [`.vscode/settings.json`](file:///c:/laragon/www/erpku-testing/erpku-automation-nodejs/.vscode/settings.json) bawaan. Anda dapat menjalankan tes secara visual:
+Proyek ini telah dilengkapi dengan konfigurasi `.vscode/settings.json` bawaan. Anda dapat menjalankan tes secara visual:
 1. Instal ekstensi **Playwright Test for VSCode** (`ms-playwright.playwright`).
 2. Buka sidebar **Testing** di VS Code.
 3. Klik tombol **Run** (ikon play hijau) di sebelah skenario tes untuk mengeksekusinya secara langsung dari editor.

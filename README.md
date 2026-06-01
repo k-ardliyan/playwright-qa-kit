@@ -4,7 +4,7 @@ Standalone Playwright E2E test repository for ERPku application.
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 20
 - npm >= 9
 
 ## Quick Start
@@ -32,8 +32,10 @@ Edit `.env` dan isi kredensial test:
 ```dotenv
 BASE_URL=https://erp.dev.example.com/
 ENV_NAME=dev
-TEST_USER_EMAIL=your_qa_email@example.com
-TEST_USER_PASSWORD=your_password
+TEST_USER_EMAIL=email_qa@example.com
+TEST_USER_USERNAME=username_qa
+TEST_USER_PHONE=081234567890
+TEST_USER_PASSWORD=password_rahasia
 ```
 
 ### 4. Run tests
@@ -55,9 +57,14 @@ npm run test:ui
 npm run test:debug
 ```
 
-### 5. View reports
+### 5. Running via VS Code Extension (Recommended for Dev)
 
-Setelah test selesai, buka HTML report:
+Proyek ini telah dilengkapi dengan konfigurasi [`.vscode/settings.json`](file:///c:/laragon/www/erpku-testing/erpku-automation-nodejs/.vscode/settings.json) bawaan. Anda dapat menjalankan tes secara visual:
+1. Instal ekstensi **Playwright Test for VSCode** (`ms-playwright.playwright`).
+2. Buka sidebar **Testing** di VS Code.
+3. Klik tombol **Run** (ikon play hijau) di sebelah skenario tes untuk mengeksekusinya secara langsung dari editor.
+
+### 6. View reports
 
 ```bash
 npx playwright show-report ./reports/html
@@ -67,15 +74,22 @@ npx playwright show-report ./reports/html
 
 ```
 tests/
+├── data/           # Static test data files (*.data.json)
+│   └── login.data.json
+├── fixtures/       # Custom test fixtures (Dependency Injection)
+│   └── base.fixture.ts
+├── pages/          # Page Object Models (extended from BasePage)
+│   ├── BasePage.ts # Induk POM dengan utilitas Dialogs, Tab, Download/Upload
+│   ├── DashboardPage.ts
+│   └── LoginPage.ts
 ├── specs/          # Test scenario files (*.spec.ts)
-│   ├── smoke/      # Smoke tests (@smoke tag)
-│   ├── auth/       # Authentication tests (Phase 4)
-│   └── dashboard/  # Dashboard tests (Phase 4)
-├── pages/          # Page Object Models (Phase 3)
-├── fixtures/       # Custom test fixtures (Phase 3)
-├── utils/          # Helper utilities (Phase 3)
-├── data/           # Static test data (Phase 3)
-└── support/        # Global setup/teardown (Phase 3)
+│   ├── auth/       # Authentication tests (DDT-driven)
+│   ├── dashboard/  # Dashboard tests
+│   └── smoke/      # Smoke tests (@smoke tag)
+├── support/        # Global setup/teardown & reused auth state
+│   └── auth.setup.ts
+└── utils/          # Helper utilities
+    └── env.ts      # Type-safe environment variable reader & validator
 ```
 
 ## Environment Variables
@@ -85,14 +99,17 @@ tests/
 | `BASE_URL`           | ✅       | Full URL aplikasi yang akan ditest    |
 | `ENV_NAME`           | ❌       | Environment identifier (dev/stg/prod) |
 | `TEST_USER_EMAIL`    | ✅       | Email akun QA test                    |
+| `TEST_USER_USERNAME` | ✅       | Username akun QA test                 |
+| `TEST_USER_PHONE`    | ✅       | Nomor telepon akun QA test            |
 | `TEST_USER_PASSWORD` | ✅       | Password akun QA test                 |
 
 ## Architecture Notes
 
-- Repo ini **standalone** — tidak ada dependency ke frontend source code.
-- Dirancang untuk bisa di-merge ke frontend repo nanti (`/e2e` atau `/packages/e2e-tests`).
-- Semua konfigurasi driven by environment variables.
-- Menggunakan TypeScript + strict mode untuk type safety.
+- **Path Aliases (`@/*`)**: Seluruh import di dalam `tests/` menggunakan alias `@/` yang merujuk langsung ke direktori `tests/` untuk kebersihan dan kemudahan pemeliharaan kode (dikonfigurasi via `tsconfig.json`).
+- **Data-Driven Testing (DDT)**: Skenario tes dirancang berbasis data (DDT) secara dinamis menggunakan berkas data pendukung seperti `login.data.json`.
+- **Custom Fixtures**: Menghilangkan instansiasi manual dengan meng-extend test runner Playwright untuk menyuntikkan Page Objects secara otomatis.
+- **Robust BasePage**: Dilengkapi utilitas mutakhir untuk menangani Dynamic JS Dialogs, pembukaan tab browser baru, serta pelacakan unggah/unduh file secara mandiri.
+- **Global Auth Setup**: Login dijalankan satu kali di awal suite pengujian via `auth.setup.ts` dan disimpan di `.auth/user.json` untuk meningkatkan kecepatan eksekusi tes (hanya 300ms untuk pengecekan sesi berikutnya).
 
 ## Development Workflow
 
@@ -142,9 +159,9 @@ npm run test:smoke
 | ------------- | ------------------------------- | ------------------------------------ |
 | Test file     | `kebab-case.spec.ts`            | `login.spec.ts`, `dashboard.spec.ts` |
 | Page Object   | `PascalCase.ts`                 | `LoginPage.ts`, `DashboardPage.ts`   |
-| Fixture file  | `kebab-case.fixture.ts`         | `auth.fixture.ts`                    |
-| Utility file  | `camelCase.ts`                  | `waitHelpers.ts`, `env.ts`           |
-| Test data     | `kebab-case.json`               | `users.json`, `test-data.json`       |
+| Fixture file  | `kebab-case.fixture.ts`         | `base.fixture.ts`                    |
+| Utility file  | `camelCase.ts`                  | `env.ts`                             |
+| Test data     | `kebab-case.data.json`          | `login.data.json`                    |
 | Test describe | Nama feature / halaman          | `'Login Page'`, `'Dashboard'`        |
 | Test case     | `should ...`                    | `'should display login form'`        |
 | Tag           | `@kebab-case` di describe title | `'Smoke Tests @smoke'`               |

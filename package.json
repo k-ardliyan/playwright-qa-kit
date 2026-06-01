@@ -1,0 +1,33 @@
+{
+  "name": "erpku-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Playwright E2E test suite for ERPku",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run lint && npm run typecheck",
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:ui": "npx playwright test --ui",
+    "test:debug": "npx playwright test --debug",
+    "test:smoke": "npx playwright test --grep @smoke"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^25.9.1",
+    "dotenv": "^16.5.0",
+    "eslint": "^9.28.0",
+    "eslint-plugin-playwright": "^2.2.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.33.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

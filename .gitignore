@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Playwright artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# Reports (generated)
+reports/
+!reports/.gitkeep
+
+# Auth state cache (login cookies/localStorage)
+.auth/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+*.swp
+*.swo
+.vscode/settings.json

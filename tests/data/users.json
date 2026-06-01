@@ -1,0 +1,17 @@
+{
+  "validUser": {
+    "description": "Akun QA utama — credentials dari env vars",
+    "emailSource": "TEST_USER_EMAIL",
+    "passwordSource": "TEST_USER_PASSWORD"
+  },
+  "invalidPassword": {
+    "description": "Akun dengan password salah untuk test login fail",
+    "email": "kaautomation",
+    "password": "WrongPassword123!"
+  },
+  "emptyCredentials": {
+    "description": "Skenario semua field kosong",
+    "email": "",
+    "password": ""
+  }
+}

@@ -1,0 +1,44 @@
+import { type Locator, type Page, expect } from '@playwright/test';
+import { BasePage } from './BasePage';
+
+/**
+ * Domain: Global
+ * Page: /dashboard
+ *
+ * Page Object Model untuk Halaman Dashboard ERPku.
+ * Port dari Python dashboard_page.py.
+ */
+export class DashboardPage extends BasePage {
+  // ── HEADER / VISUALS ───────────────────────────────────────────────────────
+  public readonly heading: Locator;
+  public readonly textSapaan: Locator;
+
+  // ── TOMBOL AKSI ────────────────────────────────────────────────────────────
+  public readonly btnProfile: Locator;
+  public readonly btnLogout: Locator;
+
+  constructor(page: Page) {
+    super(page);
+
+    this.heading = page.getByText(/Anda Login sebagai|Dashboard/i).first();
+    this.textSapaan = page.getByText(/Anda Login sebagai|h[ae]lo/i);
+    this.btnProfile = page.getByRole('button', { name: 'open profile' });
+    // .last() mengambil opsi logout dari dropdown list profile karena ada logout button lain di sidebar
+    this.btnLogout = page.getByRole('button', { name: 'Logout' }).last();
+  }
+
+  /** Verifikasi halaman Dashboard berhasil dimuat seutuhnya */
+  async expectToBeLoaded(): Promise<void> {
+    await this.expectUrlContains('dashboard');
+    const toastSuccess = this.page.getByText('Berhasil Login', { exact: false });
+    await expect(toastSuccess).toBeVisible({ timeout: 10_000 });
+    await expect(this.textSapaan).toBeVisible();
+    await expect(this.heading).toBeVisible();
+  }
+
+  /** Aksi keluar log out dari profile saat ini */
+  async doLogout(): Promise<void> {
+    await this.clickElement(this.btnProfile);
+    await this.clickElement(this.btnLogout);
+  }
+}

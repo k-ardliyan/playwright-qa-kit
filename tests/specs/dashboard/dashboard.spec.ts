@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/base.fixture';
 
-test.describe('Dashboard Page Suite @dashboard', () => {
+test.describe('Dashboard Page Suite', { tag: ['@dashboard'] }, () => {
   // Test ini secara default mewarisi storageState ter-autentikasi dari setup project
 
   test('TC-DASH-001: should display dashboard main elements successfully', async ({

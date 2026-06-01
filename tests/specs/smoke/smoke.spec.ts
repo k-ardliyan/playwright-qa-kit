@@ -1,13 +1,13 @@
 import { test, expect } from '../../fixtures/base.fixture';
 
-test.describe('Smoke Tests @smoke', () => {
+test.describe('Smoke Tests', { tag: ['@smoke'] }, () => {
   // Reset storageState agar smoke tests berjalan unauthenticated dan tidak redirect ke dashboard
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('should return valid HTTP response from server', async ({ request }) => {
     // Verify server is reachable and responds with success status
     const response = await request.get('/');
-    expect(response.ok()).toBeTruthy();
+    await expect(response).toBeOK();
     expect(response.status()).toBeLessThan(400);
   });
 

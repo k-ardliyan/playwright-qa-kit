@@ -11,7 +11,7 @@ import { BasePage } from './BasePage';
 export class DashboardPage extends BasePage {
   // ── HEADER / VISUALS ───────────────────────────────────────────────────────
   public readonly heading: Locator;
-  public readonly textSapaan: Locator;
+  public readonly greetingText: Locator;
 
   // ── TOMBOL AKSI ────────────────────────────────────────────────────────────
   public readonly btnProfile: Locator;
@@ -21,7 +21,7 @@ export class DashboardPage extends BasePage {
     super(page);
 
     this.heading = page.getByText(/Anda Login sebagai|Dashboard/i).first();
-    this.textSapaan = page.getByText(/Anda Login sebagai|h[ae]lo/i);
+    this.greetingText = page.getByText(/Anda Login sebagai|h[ae]lo/i);
     this.btnProfile = page.getByRole('button', { name: 'open profile' });
     // .last() mengambil opsi logout dari dropdown list profile karena ada logout button lain di sidebar
     this.btnLogout = page.getByRole('button', { name: 'Logout' }).last();
@@ -32,7 +32,7 @@ export class DashboardPage extends BasePage {
     await this.expectUrlContains('dashboard');
     const toastSuccess = this.page.getByText('Berhasil Login', { exact: false });
     await expect(toastSuccess).toBeVisible({ timeout: 10_000 });
-    await expect(this.textSapaan).toBeVisible();
+    await expect(this.greetingText).toBeVisible();
     await expect(this.heading).toBeVisible();
   }
 

@@ -50,64 +50,44 @@ export class BasePage {
 
   // ── INTERAKSI ELEMEN ───────────────────────────────────────────────────────
 
-  /** Klik dengan smart wait: visible + enabled + scroll into view. */
+  /** Klik dengan smart wait bawaan Playwright. */
   async clickElement(locator: Locator): Promise<void> {
-    await expect(locator).toBeVisible();
-    await expect(locator).toBeEnabled();
-    await locator.scrollIntoViewIfNeeded();
     await locator.click();
   }
 
-  /** Isi input field (clear dulu, lalu isi). */
+  /** Isi input field. */
   async fillInput(locator: Locator, text: string): Promise<void> {
-    await expect(locator).toBeVisible();
-    await expect(locator).toBeEditable();
-    await locator.scrollIntoViewIfNeeded();
     await locator.fill(text);
   }
 
   /** Kosongkan input lalu isi ulang — untuk edit field yang sudah ada value. */
   async clearAndFill(locator: Locator, text: string): Promise<void> {
-    await expect(locator).toBeVisible();
-    await expect(locator).toBeEditable();
-    await locator.scrollIntoViewIfNeeded();
     await locator.fill('');
     await locator.fill(text);
   }
 
   /** Ketik karakter per karakter (bypass fill guard, trigger autocomplete). */
   async typeSlowly(locator: Locator, text: string, delay = 50): Promise<void> {
-    await expect(locator).toBeVisible();
-    await expect(locator).toBeEditable();
-    await locator.scrollIntoViewIfNeeded();
     await locator.pressSequentially(text, { delay });
   }
 
   /** Pilih opsi pada <select> HTML standar. */
   async selectOption(locator: Locator, value: string): Promise<void> {
-    await expect(locator).toBeVisible();
-    await locator.scrollIntoViewIfNeeded();
     await locator.selectOption(value);
   }
 
   /** Centang checkbox (idempotent). */
   async checkCheckbox(locator: Locator): Promise<void> {
-    await expect(locator).toBeVisible();
-    await locator.scrollIntoViewIfNeeded();
     await locator.check();
   }
 
   /** Hapus centang checkbox (idempotent). */
   async uncheckCheckbox(locator: Locator): Promise<void> {
-    await expect(locator).toBeVisible();
-    await locator.scrollIntoViewIfNeeded();
     await locator.uncheck();
   }
 
   /** Hover elemen untuk trigger dropdown/tooltip. */
   async hover(locator: Locator): Promise<void> {
-    await expect(locator).toBeVisible();
-    await locator.scrollIntoViewIfNeeded();
     await locator.hover();
   }
 

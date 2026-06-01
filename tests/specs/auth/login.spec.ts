@@ -2,7 +2,7 @@ import { test, expect } from '../../fixtures/base.fixture';
 import { env } from '../../utils/env';
 import users from '../../data/users.json';
 
-test.describe('Login Scenario Suite @auth @login', () => {
+test.describe('Login Scenario Suite', { tag: ['@auth', '@login'] }, () => {
   // Reset storageState agar pengetesan login selalu berjalan dalam state unauthenticated
   test.use({ storageState: { cookies: [], origins: [] } });
 

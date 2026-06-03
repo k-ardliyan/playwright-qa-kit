@@ -1,9 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-import dotenv from 'dotenv';
-import path from 'path';
+import { loadEnvironment } from './src/utils/env-loader';
 
-// Load .env file (satu file, default dev)
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+// Muat environment dari environments/{APP_ENV}.env via env-loader.
+// Set APP_ENV ke 'local' | 'dev' | 'qa' | 'staging' | 'production' (default: 'local').
+loadEnvironment();
 
 export default defineConfig({
   // ── Test Discovery ──────────────────────────────────────────────

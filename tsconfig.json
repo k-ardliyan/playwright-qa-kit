@@ -10,10 +10,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "types": ["node"],
     "paths": {
-      "@/*": ["./tests/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["playwright.config.ts", "tests/**/*.ts"],
+  "include": ["playwright.config.ts", "playwright.config.monorepo.ts", "src/**/*.ts"],
   "exclude": ["node_modules"]
 }

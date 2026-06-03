@@ -9,8 +9,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "pretest": "npm run lint && npm run typecheck",
+    "validate": "tsx validate-generated-tests.ts",
+    "setup:check": "tsx setup-check.ts",
+    "prepare": "husky install",
+    "pretest": "npm run setup:check && npm run lint && npm run typecheck",
     "test": "npx playwright test",
+    "test:custom": "tsx src/shared/utils/cli-runner.ts",
     "test:headed": "npx playwright test --headed",
     "test:ui": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
@@ -18,14 +22,30 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/mcp": "^0.0.75",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
+    "@types/prompts": "^2.4.9",
     "dotenv": "^17.4.2",
     "eslint": "^10.4.1",
     "eslint-plugin-playwright": "^2.10.4",
+    "fast-check": "^4.8.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "prettier": "^3.8.3",
+    "prompts": "^2.4.2",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.60.0"
+    "typescript-eslint": "^8.60.1"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=20.0.0"

@@ -1,13 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
-import dotenv from 'dotenv';
-import path from 'path';
+import { loadEnvironment } from './src/utils/env-loader';
 
-// Load .env file (satu file, default dev)
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+loadEnvironment();
 
 export default defineConfig({
   // ── Test Discovery ──────────────────────────────────────────────
-  testDir: './tests',
+  testDir: './src/tests',
 
   // ── Execution ───────────────────────────────────────────────────
   fullyParallel: true,
@@ -21,7 +19,11 @@ export default defineConfig({
   },
 
   // ── Reporters ───────────────────────────────────────────────────
-  reporter: [['list'], ['html', { outputFolder: './reports/html', open: 'never' }]],
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: './reports/html', open: 'never' }],
+    ['./src/support/custom-reporter.ts'],
+  ],
 
   // ── Shared Settings ─────────────────────────────────────────────
   use: {
@@ -36,7 +38,7 @@ export default defineConfig({
     // Auth setup — login sekali, simpan state
     {
       name: 'setup',
-      testDir: './tests/support',
+      testDir: './src/support',
       testMatch: /.*\.setup\.ts/,
     },
 
@@ -47,7 +49,7 @@ export default defineConfig({
         // Pakai auth state dari setup project
         storageState: '.auth/user.json',
       },
-      testDir: './tests/specs',
+      testDir: './src/tests',
       testMatch: '**/*.spec.ts',
       dependencies: ['setup'],
     },
@@ -58,7 +60,7 @@ export default defineConfig({
     //     ...devices['Desktop Firefox'],
     //     storageState: '.auth/user.json',
     //   },
-    //   testDir: './tests/specs',
+    //   testDir: './src/tests',
     //   testMatch: '**/*.spec.ts',
     //   dependencies: ['setup'],
     // },

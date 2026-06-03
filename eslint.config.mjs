@@ -6,7 +6,14 @@ import playwright from 'eslint-plugin-playwright';
 export default tseslint.config(
   // ── Global ignores ────────────────────────────────────────────────
   {
-    ignores: ['node_modules/', 'test-results/', 'playwright-report/', 'reports/', '.auth/'],
+    ignores: [
+      'node_modules/',
+      'test-results/',
+      'playwright-report/',
+      'reports/',
+      '.auth/',
+      'mcp-server/dist/',
+    ],
   },
 
   // ── Base: ESLint + TypeScript recommended ─────────────────────────

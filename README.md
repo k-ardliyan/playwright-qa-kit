@@ -1,169 +1,190 @@
-# 🎭 ERPku E2E Test Suite (Playwright + TypeScript)
+# Playwright AI Agent Framework
 
-Standalone Playwright E2E test repository for ERPku application.
+Open-source-ready Playwright + TypeScript framework for AI-assisted test planning, generation, execution, healing, and reporting.
 
 ## Prerequisites
 
-- Node.js >= 20
-- npm >= 9
+- Node.js `>=20`
+- npm `>=9`
+- Playwright `^1.60.0` (managed via `package.json`)
+- Local MCP tooling:
+  - `@playwright/mcp`
+  - `run-test-mcp-server`
+  - custom server in `mcp-server/`
 
-## Quick Start
+See `CUSTOM-MCP.md` for full MCP setup and tool schemas.
 
-### 1. Install dependencies
+---
+
+## Architecture Overview
+
+The framework is organized in layers:
+
+1. **Agents** (`.github/agents/`)
+   - `orchestrator`, `planner`, `generator`, `healer`
+2. **MCP Servers**
+   - `playwright`, `playwright-test`, `playwright-qa`
+3. **Framework Core**
+   - configuration, environment loader, logger
+4. **Test Infrastructure**
+   - fixtures, pages, reporter
+5. **Tests**
+   - UI/API/E2E test directories under `src/tests/`
+
+MCP registration is defined in `.vscode/mcp.json`.
+
+---
+
+## `src/` Directory Layout
+
+```text
+src/
+├── fixtures/
+├── pages/
+│   ├── ui/
+│   └── api/
+├── shared/
+│   ├── mock-data/
+│   ├── types/
+│   └── utils/
+├── support/
+├── tests/
+│   ├── ui/
+│   ├── api/
+│   └── e2e/
+└── utils/
+```
+
+Additional top-level folders:
+
+- `requirements/` → versioned requirement inputs for planner
+- `specs/` → generated test-plan outputs
+- `example/erpku/` → ERPku-specific sample implementation
+
+---
+
+## Installation
 
 ```bash
 npm install
-```
-
-### 2. Install Playwright browsers
-
-```bash
 npx playwright install --with-deps chromium
 ```
 
-### 3. Configure environment
+---
+
+## Multi-Environment Setup
+
+Environment files are loaded from `environments/` through `src/utils/env-loader.ts`.
+
+Set active environment with `APP_ENV` (defaults to `local` if not specified):
+
+**POSIX (macOS/Linux):**
 
 ```bash
-cp .env.example .env
+APP_ENV=local npm test
+APP_ENV=staging npm test
 ```
 
-Edit `.env` dan isi kredensial test:
+**Windows PowerShell:**
 
-```dotenv
-BASE_URL=https://erp.dev.example.com/
-ENV_NAME=dev
-TEST_USER_EMAIL=email_qa@example.com
-TEST_USER_USERNAME=username_qa
-TEST_USER_PHONE=081234567890
-TEST_USER_PASSWORD=password_rahasia
+```powershell
+$env:APP_ENV="local"; npm test
+$env:APP_ENV="staging"; npm test
 ```
 
-### 4. Run tests
+**Windows Command Prompt (CMD):**
+
+```cmd
+set APP_ENV=local&& npm test
+set APP_ENV=staging&& npm test
+```
+
+If `APP_ENV` is missing or unknown, loader falls back to `local` with warning.
+
+---
+
+## Running Tests
 
 ```bash
-# Run all tests
+# Full suite
 npm test
 
-# Run smoke tests only
+# Smoke only
 npm run test:smoke
 
-# Run with browser visible
+# Headed
 npm run test:headed
 
-# Run with Playwright UI mode
+# UI mode
 npm run test:ui
 
 # Debug mode
 npm run test:debug
 ```
 
-### 5. Running via VS Code Extension (Recommended for Dev)
+Reports:
 
-Proyek ini telah dilengkapi dengan konfigurasi `.vscode/settings.json` bawaan. Anda dapat menjalankan tes secara visual:
-1. Instal ekstensi **Playwright Test for VSCode** (`ms-playwright.playwright`).
-2. Buka sidebar **Testing** di VS Code.
-3. Klik tombol **Run** (ikon play hijau) di sebelah skenario tes untuk mengeksekusinya secara langsung dari editor.
+- Native Playwright: `reports/html`
+- Custom dashboard: `reports/custom-dashboard.html`
+- Summary JSON: `reports/test-summary.json`
 
-### 6. View reports
+---
+
+## Orchestrator Pipeline Usage
+
+The orchestrator agent runs:
+
+**Plan → Generate → Execute → Heal → Report**
+
+Typical flow:
+
+1. Create requirement file in `requirements/` (for example `requirements/customer-export.md`).
+2. Invoke orchestrator agent with:
+
+```json
+{
+  "requirementPath": "requirements/customer-export.md"
+}
+```
+
+3. Planner writes `specs/<feature>-test-plan.md`.
+4. Generator produces tests in `src/tests/`.
+5. Execution + healing + report summary are returned by orchestrator.
+
+Agent governance is documented in `.github/AGENTS.md`.
+
+---
+
+## Getting Started for New Projects
+
+To adapt this framework to another application:
+
+1. **Update environment files** in `environments/` with your app URLs and credentials.
+2. **Set JIRA constants** in `src/utils/configuration.ts`:
+   - `JIRA_CONSTANTS.domain`
+   - `JIRA_CONSTANTS.projectKey`
+   - `JIRA_CONSTANTS.bugIssueTypeId`
+3. **Add requirement files** under `requirements/`.
+4. Run planner/generator pipeline to create test plans and tests.
+5. Move app-specific examples from `example/` into your own target domain structure.
+
+---
+
+## Quality Gates
 
 ```bash
-npx playwright show-report ./reports/html
-```
-
-## Project Structure
-
-```
-tests/
-├── data/           # Static test data files (*.data.json)
-│   └── login.data.json
-├── fixtures/       # Custom test fixtures (Dependency Injection)
-│   └── base.fixture.ts
-├── pages/          # Page Object Models (extended from BasePage)
-│   ├── BasePage.ts # Induk POM dengan utilitas Dialogs, Tab, Download/Upload
-│   ├── DashboardPage.ts
-│   └── LoginPage.ts
-├── specs/          # Test scenario files (*.spec.ts)
-│   ├── auth/       # Authentication tests (DDT-driven)
-│   ├── dashboard/  # Dashboard tests
-│   └── smoke/      # Smoke tests (@smoke tag)
-├── support/        # Global setup/teardown & reused auth state
-│   └── auth.setup.ts
-└── utils/          # Helper utilities
-    └── env.ts      # Type-safe environment variable reader & validator
-```
-
-## Environment Variables
-
-| Variable             | Required | Description                           |
-| -------------------- | -------- | ------------------------------------- |
-| `BASE_URL`           | ✅       | Full URL aplikasi yang akan ditest    |
-| `ENV_NAME`           | ❌       | Environment identifier (dev/stg/prod) |
-| `TEST_USER_EMAIL`    | ✅       | Email akun QA test                    |
-| `TEST_USER_USERNAME` | ✅       | Username akun QA test                 |
-| `TEST_USER_PHONE`    | ✅       | Nomor telepon akun QA test            |
-| `TEST_USER_PASSWORD` | ✅       | Password akun QA test                 |
-
-## Architecture Notes
-
-- **Path Aliases (`@/*`)**: Seluruh import di dalam `tests/` menggunakan alias `@/` yang merujuk langsung ke direktori `tests/` untuk kebersihan dan kemudahan pemeliharaan kode (dikonfigurasi via `tsconfig.json`).
-- **Data-Driven Testing (DDT)**: Skenario tes dirancang berbasis data (DDT) secara dinamis menggunakan berkas data pendukung seperti `login.data.json`.
-- **Custom Fixtures**: Menghilangkan instansiasi manual dengan meng-extend test runner Playwright untuk menyuntikkan Page Objects secara otomatis.
-- **Robust BasePage**: Dilengkapi utilitas mutakhir untuk menangani Dynamic JS Dialogs, pembukaan tab browser baru, serta pelacakan unggah/unduh file secara mandiri.
-- **Global Auth Setup**: Login dijalankan satu kali di awal suite pengujian via `auth.setup.ts` dan disimpan di `.auth/user.json` untuk meningkatkan kecepatan eksekusi tes (hanya 300ms untuk pengecekan sesi berikutnya).
-
-## Development Workflow
-
-### Linting
-
-```bash
-# Check lint errors
 npm run lint
-
-# Auto-fix lint errors
-npm run lint:fix
-```
-
-### Formatting
-
-```bash
-# Format all files
-npm run format
-
-# Check formatting (CI-friendly, no auto-fix)
-npm run format:check
-```
-
-### Type Checking
-
-```bash
 npm run typecheck
+npm run validate
 ```
 
-### Full Quality Gate
+Pre-commit hooks (Husky + lint-staged) run formatting/linting and validator checks before commit.
 
-`npm test` otomatis jalankan `lint → typecheck → playwright test`:
+---
 
-```bash
-npm test
-```
+## Useful Documents
 
-Or run smoke tests only (directly, without lint/typecheck):
-
-```bash
-npm run test:smoke
-```
-
-## Naming Conventions
-
-| Item          | Convention                      | Example                              |
-| ------------- | ------------------------------- | ------------------------------------ |
-| Test file     | `kebab-case.spec.ts`            | `login.spec.ts`, `dashboard.spec.ts` |
-| Page Object   | `PascalCase.ts`                 | `LoginPage.ts`, `DashboardPage.ts`   |
-| Fixture file  | `kebab-case.fixture.ts`         | `base.fixture.ts`                    |
-| Utility file  | `camelCase.ts`                  | `env.ts`                             |
-| Test data     | `kebab-case.data.json`          | `login.data.json`                    |
-| Test describe | Nama feature / halaman          | `'Login Page'`, `'Dashboard'`        |
-| Test case     | `should ...`                    | `'should display login form'`        |
-| Tag           | `@kebab-case` di describe title | `'Smoke Tests @smoke'`               |
-| Variable      | `camelCase`                     | `loginButton`, `usernameInput`       |
-| Const / enum  | `UPPER_SNAKE` atau `PascalCase` | `BASE_URL`, `UserRole`               |
+- `.github/AGENTS.md` → agent governance
+- `CUSTOM-MCP.md` → MCP server/tool contracts
+- `MAINTENANCE.md` → maintenance playbook
+- `.kiro/specs/playwright-ai-agent-framework/` → requirement/design/tasks trace

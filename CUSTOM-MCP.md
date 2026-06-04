@@ -4,28 +4,30 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 
 ## MCP Server Installation
 
-Register and use these three servers:
+Register and use these two servers (configured in `.vscode/mcp.json`):
 
 1. **Playwright MCP** (`playwright`)
    - Command: `npx @playwright/mcp`
    - Optional local install: `npm install --save-dev @playwright/mcp`
 
-2. **Playwright Test MCP** (`playwright-test`)
-   - Command: `npx run-test-mcp-server`
-   - Optional local install: `npm install --save-dev run-test-mcp-server`
+2. **Custom QA MCP** (`playwright-qa`)
+   - Build: `npm run mcp:build` (from root) or `npm run build` (inside `mcp-server/`)
+   - Run: `node mcp-server/dist/index-mcp.js` (for standard stdio transport) or `npm run mcp:dev` (for dev mode)
 
-3. **Custom QA MCP** (`playwright-qa`)
-   - Build: `npx tsc -p mcp-server/tsconfig.json`
-   - Run: `node mcp-server/dist/index.js`
+## Running the Custom QA MCP Server
 
-## Start Custom QA MCP Server
+The server supports two transports:
 
-```bash
-npx tsc -p mcp-server/tsconfig.json
-node mcp-server/dist/index.js
-```
+- **Stdio Transport (Standard)**: Used by IDE/extension configurations (e.g. `.vscode/mcp.json`).
+  ```bash
+  node mcp-server/dist/index-mcp.js
+  ```
+- **HTTP Transport (Legacy/Testing)**: Listens on port `3100`.
+  ```bash
+  node mcp-server/dist/index.js
+  ```
 
-Default endpoint: `http://localhost:3100`
+Default HTTP endpoint (if running HTTP transport): `http://localhost:3100`
 
 ---
 
@@ -38,7 +40,12 @@ Reads the most recent Playwright JSON result from `test-results/` and returns st
 ```json
 {
   "type": "object",
-  "properties": {},
+  "properties": {
+    "resultsDir": {
+      "type": "string",
+      "description": "Path to Playwright test-results directory. Defaults to cwd/test-results."
+    }
+  },
   "additionalProperties": false
 }
 ```
@@ -74,7 +81,7 @@ Reads the most recent Playwright JSON result from `test-results/` and returns st
 }
 ```
 
-### Example Invocation (cURL)
+### Example HTTP Invocation (cURL)
 
 ```bash
 curl -X POST http://localhost:3100/tools/get_test_failures
@@ -145,21 +152,21 @@ Normalizes free-text requirements into a canonical contract object.
 }
 ```
 
-### Example Invocation (cURL)
+### Example HTTP Invocation (cURL)
 
 ```bash
 curl -X POST http://localhost:3100/tools/normalize_requirements \
   -H "Content-Type: application/json" \
-  -d "{\"requirementsText\":\"# Login\n- User shall login with valid credentials\n- System shall show dashboard\"}"
+  -d "{\"requirementsText\":\"# Login\\n- User shall login with valid credentials\\n- System shall show dashboard\"}"
 ```
 
 ---
 
-## MCP Client Invocation Example
+## MCP Client Invocation Example (Stdio/SSE)
 
 ```json
 {
-  "tool": "normalize_requirements",
+  "name": "normalize_requirements",
   "arguments": {
     "requirementsText": "# Login\n- User shall login with valid credentials"
   }

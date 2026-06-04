@@ -1,6 +1,6 @@
 /**
  * Test Data Factory — Generate realistic test data without hardcoded dummies or external dependencies.
- * Specially tailored for Indonesian locale to match existing ERPku QA data standards.
+ * Tailored for Indonesian locale and common QA automation scenarios.
  */
 
 // Helper: Get random element from array
@@ -176,6 +176,6 @@ export function uniqueName(prefix: string): string {
 /**
  * Generates a unique email with a timestamp.
  */
-export function uniqueEmail(domain = 'test.erpku.com'): string {
+export function uniqueEmail(domain = 'test.example.com'): string {
   return `qa_${Math.floor(Date.now() / 1000)}@${domain}`;
 }

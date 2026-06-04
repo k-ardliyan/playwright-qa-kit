@@ -5,7 +5,7 @@ import { BasePage } from './BasePage';
  * Domain: Global
  * Page: /dashboard
  *
- * Page Object Model (POM) untuk mempresentasikan interaksi dengan Halaman Dashboard ERPku.
+ * Page Object Model (POM) untuk interaksi dengan halaman dashboard.
  */
 export class DashboardPage extends BasePage {
   // ── HEADER / VISUALS ───────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export class DashboardPage extends BasePage {
     this.btnLogout = page.getByRole('button', { name: 'Logout' }).last();
   }
 
-  /** Verifikasi halaman Dashboard berhasil dimuat seutuhnya */
+  /** Verifikasi halaman dashboard berhasil dimuat seutuhnya */
   async expectToBeLoaded(): Promise<void> {
     await this.expectUrlContains('dashboard');
     const toastSuccess = this.page.getByText('Berhasil Login', { exact: false });

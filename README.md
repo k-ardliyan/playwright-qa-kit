@@ -1,4 +1,4 @@
-# Playwright AI Agent Framework
+# Playwright QA Kit
 
 Open-source-ready Playwright + TypeScript framework for AI-assisted test planning, generation, execution, healing, and reporting.
 
@@ -69,6 +69,15 @@ Additional top-level folders:
 npm install
 npx playwright install --with-deps chromium
 ```
+
+### Branding & Customization Quickstart
+
+After cloning this framework for your own project:
+
+1. Update `package.json` metadata (`name`, `description`, `keywords`) to match your organization.
+2. Update environment values in `environments/*.env` and set `APP_ENV` per target.
+3. Replace sample app references under `example/erpku/` with your own app-specific implementation.
+4. Override sample data helpers when needed (for example `uniqueEmail()` default domain in `src/shared/utils/factories.ts`).
 
 ---
 

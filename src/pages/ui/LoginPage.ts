@@ -6,7 +6,7 @@ import { env } from '@/shared/utils/env';
  * Domain: Auth
  * Page: / (root)
  *
- * Page Object Model (POM) untuk mempresentasikan interaksi dengan Halaman Login ERPku.
+ * Page Object Model (POM) untuk interaksi dengan halaman login.
  */
 export class LoginPage extends BasePage {
   // ── FORM INPUT ─────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ export class LoginPage extends BasePage {
     this.btnLogin = page.getByRole('button', { name: /Login|Masuk|Sign In/i });
   }
 
-  /** Buka halaman login ERPku */
+  /** Buka halaman login */
   async goto(): Promise<void> {
     await this.navigate(env.BASE_URL);
   }

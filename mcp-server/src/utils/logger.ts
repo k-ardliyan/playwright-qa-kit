@@ -13,6 +13,8 @@ function appendToFile(line: string): void {
     }
     fs.appendFileSync(LOG_FILE, `${line}\n`, 'utf8');
   } catch (error) {
+    // MCP stdio transport: stdout reserved for protocol messages only.
+    // Log file write failures go to stderr.
     process.stderr.write(`[Logger] Failed to write to log file: ${String(error)}\n`);
   }
 }
@@ -22,9 +24,8 @@ function write(level: LogLevel, message: string, metadata?: Record<string, unkno
   const metaPart = metadata ? ` ${JSON.stringify(metadata)}` : '';
   const line = `[${timestamp}] [${level}] ${message}${metaPart}`;
 
-  if (level === 'INFO' || level === 'DEBUG') {
-    process.stdout.write(`${line}\n`);
-  } else {
+  // All log output goes to stderr + file. Never stdout (breaks MCP stdio).
+  if (level === 'ERROR' || level === 'WARN') {
     process.stderr.write(`${line}\n`);
   }
 

@@ -6,14 +6,9 @@
       "args": ["@playwright/mcp"]
     },
     {
-      "name": "playwright-test",
-      "command": "npx",
-      "args": ["run-test-mcp-server"]
-    },
-    {
       "name": "playwright-qa",
       "command": "node",
-      "args": ["mcp-server/dist/index.js"]
+      "args": ["mcp-server/dist/index-mcp.js"]
     }
   ]
 }

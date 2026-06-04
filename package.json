@@ -27,7 +27,9 @@
     "test:headed": "npx playwright test --headed",
     "test:ui": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
-    "test:smoke": "npx playwright test --grep @smoke"
+    "test:smoke": "npx playwright test --grep @smoke",
+    "mcp:build": "cd mcp-server && npm install && npm run build",
+    "mcp:dev": "cd mcp-server && npx tsx src/index-mcp.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

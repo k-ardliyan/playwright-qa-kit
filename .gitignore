@@ -24,6 +24,7 @@ logs/
 
 # TypeScript
 *.tsbuildinfo
+mcp-server/dist/
 
 # OS
 .DS_Store

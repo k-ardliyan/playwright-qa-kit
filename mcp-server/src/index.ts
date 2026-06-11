@@ -1,13 +1,8 @@
 import * as http from 'node:http';
-import { getTestFailures } from './tools/get-test-failures';
-import { normalizeRequirements } from './tools/normalize-requirements';
+import { dispatchTool } from './tools/dispatch';
+import { TOOL_ROUTES } from './tools/registry';
 import { logger } from './utils/logger';
 
-/**
- * Port contract aligned with framework configuration:
- * - default: 3100
- * - override via environment variable MCP_SERVER_PORT
- */
 const DEFAULT_MCP_SERVER_PORT = 3100;
 const rawPort = process.env.MCP_SERVER_PORT ?? String(DEFAULT_MCP_SERVER_PORT);
 const MCP_SERVER_PORT = Number(rawPort);
@@ -60,30 +55,16 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       return;
     }
 
-    if (method === 'POST' && url === '/tools/get_test_failures') {
-      const output = getTestFailures();
-      sendJson(res, 200, output);
-      return;
-    }
-
-    if (method === 'POST' && url === '/tools/normalize_requirements') {
-      const body = await readJsonBody(req);
-      const requirementsText = body.requirementsText;
-
-      if (typeof requirementsText !== 'string') {
-        sendJson(res, 400, {
-          status: 'error',
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'Body must include requirementsText as a string.',
-          },
-        });
+    if (method === 'POST') {
+      const toolName = TOOL_ROUTES[url];
+      if (toolName) {
+        const body = await readJsonBody(req);
+        const result = dispatchTool(toolName, body);
+        const statusCode =
+          result.isError && (result.payload as { status?: string }).status === 'error' ? 400 : 200;
+        sendJson(res, statusCode, result.payload);
         return;
       }
-
-      const output = normalizeRequirements(requirementsText);
-      sendJson(res, output.status === 'success' ? 200 : 400, output);
-      return;
     }
 
     sendJson(res, 404, {

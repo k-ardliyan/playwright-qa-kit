@@ -24,6 +24,7 @@ const UNSAFE_VALUES = new Set([
   'change-me',
   'your_email',
   'your_password',
+  'your_password_here',
   'test@example.com',
   'qa@example.com',
   'invalid-password-placeholder',
@@ -36,6 +37,18 @@ function requireSecretEnv(key: string): string {
       `[Config Error] Environment variable '${key}' kosong atau masih placeholder.\n` +
         `Isi dengan credential QA yang valid di file .env lokal Anda.`,
     );
+  }
+  return value;
+}
+
+function optionalSecretEnv(key: string): string | undefined {
+  const raw = process.env[key];
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  const value = raw.trim();
+  if (value.length === 0 || UNSAFE_VALUES.has(value.toLowerCase())) {
+    return undefined;
   }
   return value;
 }
@@ -58,14 +71,16 @@ export const env = {
     return requireSecretEnv('TEST_USER_EMAIL');
   },
 
-  /** Username akun QA test — validated as non-placeholder */
-  get USER_USERNAME(): string {
-    return requireSecretEnv('TEST_USER_USERNAME');
+  /** Username akun QA test — optional; falls back to undefined for repos that
+   *  only carry the legacy EMAIL/PASSWORD secrets. */
+  get USER_USERNAME(): string | undefined {
+    return optionalSecretEnv('TEST_USER_USERNAME');
   },
 
-  /** Nomor Telepon akun QA test — validated as non-placeholder */
-  get USER_PHONE(): string {
-    return requireSecretEnv('TEST_USER_PHONE');
+  /** Nomor Telepon akun QA test — optional; falls back to undefined for repos
+   *  that only carry the legacy EMAIL/PASSWORD secrets. */
+  get USER_PHONE(): string | undefined {
+    return optionalSecretEnv('TEST_USER_PHONE');
   },
 
   /** Password akun QA test — validated as non-placeholder */

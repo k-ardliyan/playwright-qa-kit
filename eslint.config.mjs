@@ -37,7 +37,7 @@ export default tseslint.config(
 
   // ── Playwright test files ─────────────────────────────────────────
   {
-    files: ['tests/**/*.spec.ts'],
+    files: ['src/tests/**/*.spec.ts', 'example/**/*.spec.ts'],
     ...playwright.configs['flat/recommended'],
     rules: {
       ...playwright.configs['flat/recommended'].rules,

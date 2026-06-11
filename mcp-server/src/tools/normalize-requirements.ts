@@ -1,15 +1,30 @@
+import { assertRequirementsTextSize } from '../utils/safety';
 import { logger } from '../utils/logger';
+import {
+  parseRequirementScenariosFromText,
+  type RequirementScenario,
+} from './parse-requirement-scenarios';
 
 export interface AcceptanceCriterion {
   id: string;
   description: string;
 }
 
+export interface RequirementMetadata {
+  tags: string[];
+  priority?: string;
+  authState?: 'unauthenticated' | 'authenticated';
+  startPage?: string;
+  pomFixtures?: string[];
+}
+
 export interface RequirementsContract {
   id: string;
   title: string;
   acceptanceCriteria: AcceptanceCriterion[];
+  scenarios?: RequirementScenario[];
   tags: string[];
+  metadata?: RequirementMetadata;
 }
 
 export interface NormalizeRequirementsOutput {
@@ -32,7 +47,7 @@ function toStableId(input: string): string {
 }
 
 function parseTitle(lines: string[]): string | null {
-  const markdownHeading = lines.find((line) => /^\s*#\s+/.test(line));
+  const markdownHeading = lines.find((line) => /^\s*#\s+/.test(line) && !/^\s*##/.test(line));
   if (markdownHeading) {
     return markdownHeading.replace(/^\s*#\s+/, '').trim();
   }
@@ -42,7 +57,7 @@ function parseTitle(lines: string[]): string | null {
     return explicitTitle.replace(/^\s*title\s*:/i, '').trim();
   }
 
-  const firstSentence = lines.find((line) => line.trim().length > 0 && !/^\s*[-*\d]/.test(line));
+  const firstSentence = lines.find((line) => line.trim().length > 0 && !/^\s*[-*\d#]/.test(line));
   return firstSentence?.trim() ?? null;
 }
 
@@ -55,15 +70,28 @@ function parseId(lines: string[], title: string): string {
     }
   }
 
+  const reqHeading = lines.find((line) => /REQ-\d+/i.test(line));
+  if (reqHeading) {
+    const match = reqHeading.match(/REQ-\d+/i);
+    if (match) {
+      return match[0].toUpperCase();
+    }
+  }
+
   return toStableId(title);
 }
 
 function parseTags(text: string, lines: string[]): string[] {
   const tags = new Set<string>();
 
-  const tagLine = lines.find((line) => /^\s*tags?\s*:/i.test(line));
+  const tagLine = lines.find(
+    (line) => /^\s*tags?\s*:/i.test(line) || /^\s*-\s+\*\*Tags:\*\*/i.test(line),
+  );
   if (tagLine) {
-    const raw = tagLine.replace(/^\s*tags?\s*:/i, '').trim();
+    const raw = tagLine
+      .replace(/^\s*-\s+\*\*Tags:\*\*/i, '')
+      .replace(/^\s*tags?\s*:/i, '')
+      .trim();
     for (const token of raw.split(/[\s,]+/)) {
       const clean = token.replace(/^#/, '').trim().toLowerCase();
       if (clean) {
@@ -82,7 +110,97 @@ function parseTags(text: string, lines: string[]): string[] {
   return Array.from(tags);
 }
 
-function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
+function extractSectionLines(lines: string[], sectionPattern: RegExp): string[] {
+  let inSection = false;
+  const sectionLines: string[] = [];
+
+  for (const line of lines) {
+    if (/^##\s+/.test(line)) {
+      if (inSection && !sectionPattern.test(line)) {
+        break;
+      }
+      inSection = sectionPattern.test(line);
+      continue;
+    }
+
+    if (inSection) {
+      sectionLines.push(line);
+    }
+  }
+
+  return sectionLines;
+}
+
+function parseMetadataValue(line: string): { key: string; value: string } | null {
+  const bullet = line.match(/^\s*-\s+\*\*([^*]+):\*\*\s*(.+)$/);
+  if (bullet) {
+    return { key: bullet[1].trim().toLowerCase(), value: bullet[2].trim() };
+  }
+  const plain = line.match(/^\s*([a-zA-Z\s]+):\s*(.+)$/);
+  if (plain) {
+    return { key: plain[1].trim().toLowerCase(), value: plain[2].trim() };
+  }
+  return null;
+}
+
+function parseMetadata(lines: string[], text: string): RequirementMetadata | undefined {
+  const sectionLines = extractSectionLines(lines, /^##\s+metadata$/i);
+  if (sectionLines.length === 0) {
+    return undefined;
+  }
+
+  const metadata: RequirementMetadata = { tags: [] };
+
+  for (const line of sectionLines) {
+    const parsed = parseMetadataValue(line);
+    if (!parsed) {
+      continue;
+    }
+
+    const { key, value } = parsed;
+
+    if (key === 'tags') {
+      for (const token of value.split(/[\s,]+/)) {
+        const clean = token.replace(/^#/, '').trim().toLowerCase();
+        if (clean) {
+          metadata.tags.push(clean);
+        }
+      }
+    } else if (key === 'prioritas' || key === 'priority') {
+      metadata.priority = value.toLowerCase();
+    } else if (key === 'auth state') {
+      const normalized = value.toLowerCase();
+      if (normalized === 'unauthenticated' || normalized === 'authenticated') {
+        metadata.authState = normalized;
+      }
+    } else if (key === 'halaman awal' || key === 'start page' || key === 'target page') {
+      metadata.startPage = value;
+    } else if (key === 'pom yang dibutuhkan' || key === 'pom fixtures' || key === 'pom') {
+      metadata.pomFixtures = value
+        .split(/[\s,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+
+  const globalTags = parseTags(text, lines);
+  const mergedTags = new Set([...metadata.tags, ...globalTags]);
+  metadata.tags = Array.from(mergedTags);
+
+  if (
+    metadata.tags.length === 0 &&
+    !metadata.priority &&
+    !metadata.authState &&
+    !metadata.startPage &&
+    !metadata.pomFixtures
+  ) {
+    return undefined;
+  }
+
+  return metadata;
+}
+
+function parseAcceptanceCriteriaFromLines(lines: string[]): AcceptanceCriterion[] {
   const criteria: string[] = [];
 
   const bulletOrNumbered = lines
@@ -94,7 +212,7 @@ function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
   } else {
     const shallStyle = lines
       .map((line) => line.trim())
-      .filter((line) => /(shall|must|should)/i.test(line));
+      .filter((line) => /(shall|must|should|harus|wajib|bisa|dapat)/i.test(line));
 
     criteria.push(...shallStyle);
   }
@@ -105,6 +223,46 @@ function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
       id: `AC-${index + 1}`,
       description,
     }));
+}
+
+function findScenarioSectionIndex(lines: string[]): number {
+  return lines.findIndex((line) => /^##\s+.*(?:skenario|test\s+scenarios?)/i.test(line));
+}
+
+function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
+  const criteriaSection = extractSectionLines(
+    lines,
+    /(?:kriteria\s+penerimaan|acceptance\s+criteria)/i,
+  );
+  if (criteriaSection.length > 0) {
+    return parseAcceptanceCriteriaFromLines(criteriaSection);
+  }
+
+  // Fallback: take everything between the title and the first scenario/heading,
+  // but explicitly skip the Metadata section so its bullets don't get re-
+  // classified as acceptance criteria.
+  const scenarioIndex = findScenarioSectionIndex(lines);
+  const candidate =
+    scenarioIndex >= 0
+      ? lines.slice(0, scenarioIndex)
+      : lines.filter((line) => !/^###\s+/.test(line));
+
+  const preScenario: string[] = [];
+  let skippingMetadata = false;
+  for (const line of candidate) {
+    if (/^##\s+metadata\b/i.test(line)) {
+      skippingMetadata = true;
+      continue;
+    }
+    if (skippingMetadata && /^##\s+/.test(line)) {
+      skippingMetadata = false;
+    }
+    if (!skippingMetadata) {
+      preScenario.push(line);
+    }
+  }
+
+  return parseAcceptanceCriteriaFromLines(preScenario);
 }
 
 export function normalizeRequirements(requirementsText: string): NormalizeRequirementsOutput {
@@ -129,6 +287,14 @@ export function normalizeRequirements(requirementsText: string): NormalizeRequir
     };
   }
 
+  const sizeError = assertRequirementsTextSize(normalizedText);
+  if (sizeError) {
+    return {
+      status: 'error',
+      error: { code: sizeError.code, message: sizeError.message },
+    };
+  }
+
   const lines = normalizedText.split(/\r?\n/);
   const title = parseTitle(lines);
 
@@ -143,13 +309,17 @@ export function normalizeRequirements(requirementsText: string): NormalizeRequir
   }
 
   const acceptanceCriteria = parseAcceptanceCriteria(lines);
-  if (acceptanceCriteria.length === 0) {
+  const scenarios = parseRequirementScenariosFromText(normalizedText);
+  const metadata = parseMetadata(lines, normalizedText);
+  const tags = metadata?.tags?.length ? metadata.tags : parseTags(normalizedText, lines);
+
+  if (acceptanceCriteria.length === 0 && scenarios.length === 0) {
     return {
       status: 'error',
       error: {
         code: 'MALFORMED_INPUT',
         message:
-          'No acceptance criteria found. Provide bullet points or statements containing shall/must/should.',
+          'No acceptance criteria or test scenarios found. Use ## Kriteria Penerimaan bullets or ### scenario headings with Langkah/Hasil.',
       },
     };
   }
@@ -158,12 +328,21 @@ export function normalizeRequirements(requirementsText: string): NormalizeRequir
     id: parseId(lines, title),
     title,
     acceptanceCriteria,
-    tags: parseTags(normalizedText, lines),
+    tags,
   };
+
+  if (metadata) {
+    contract.metadata = metadata;
+  }
+
+  if (scenarios.length > 0) {
+    contract.scenarios = scenarios;
+  }
 
   logger.info('Requirements normalized successfully.', {
     id: contract.id,
     criteriaCount: contract.acceptanceCriteria.length,
+    scenarioCount: scenarios.length,
     tagCount: contract.tags.length,
   });
 

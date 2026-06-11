@@ -1,6 +1,8 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getLatestJsonResultFile, readTextFile } from '../utils/file-reader';
 import { safeJsonParse } from '../utils/json-parser';
+import { getRepoRoot } from '../utils/safety';
 import { logger } from '../utils/logger';
 
 export interface TestFailure {
@@ -10,12 +12,21 @@ export interface TestFailure {
   duration: number;
   lineNumber?: number;
   stackTrace?: string;
+  tracePath?: string;
+  screenshotPath?: string;
 }
 
 export interface GetTestFailuresOutput {
   failures: TestFailure[];
-  status: 'success' | 'no_results' | 'error';
+  status: 'success' | 'failure' | 'no_results' | 'partial' | 'error';
   message: string;
+  sourceFile?: string;
+}
+
+interface ParsedAttachment {
+  name?: string;
+  path?: string;
+  contentType?: string;
 }
 
 interface ParsedErrorLocation {
@@ -34,6 +45,7 @@ interface ParsedResult {
   duration?: number;
   error?: ParsedError;
   errors?: ParsedError[];
+  attachments?: ParsedAttachment[];
 }
 
 interface ParsedLocation {
@@ -60,6 +72,27 @@ interface ParsedSuite {
   file?: string;
 }
 
+const PRIORITY_RESULTS_FILE = 'test-results/results.json';
+const DEFAULT_RESULTS_DIR = path.resolve(getRepoRoot(), 'test-results');
+
+function resolveResultsFile(resultsDir: string): string | null {
+  // 1. Try the explicit results.json in the caller-supplied dir first.
+  const explicit = path.resolve(resultsDir, 'results.json');
+  if (fs.existsSync(explicit)) {
+    return explicit;
+  }
+
+  // 2. Fall back to the latest .json anywhere in the caller-supplied dir.
+  const latestInDir = getLatestJsonResultFile(resultsDir);
+  if (latestInDir) {
+    return latestInDir;
+  }
+
+  // 3. Last resort: the canonical repo-root priority file.
+  const priority = path.resolve(getRepoRoot(), PRIORITY_RESULTS_FILE);
+  return fs.existsSync(priority) ? priority : null;
+}
+
 function extractErrorMessage(result: ParsedResult): string {
   const firstError = result.errors?.[0];
   return (
@@ -74,6 +107,35 @@ function extractErrorMessage(result: ParsedResult): string {
 function extractStackTrace(result: ParsedResult): string | undefined {
   const firstError = result.errors?.[0];
   return result.error?.stack ?? firstError?.stack;
+}
+
+function extractAttachmentPaths(result: ParsedResult): {
+  tracePath?: string;
+  screenshotPath?: string;
+} {
+  const attachments = Array.isArray(result.attachments) ? result.attachments : [];
+  let tracePath: string | undefined;
+  let screenshotPath: string | undefined;
+
+  for (const attachment of attachments) {
+    const name = (attachment.name ?? '').toLowerCase();
+    const attachmentPath = attachment.path;
+    if (!attachmentPath) {
+      continue;
+    }
+
+    if (!tracePath && (name.includes('trace') || attachmentPath.endsWith('.zip'))) {
+      tracePath = attachmentPath;
+    }
+    if (
+      !screenshotPath &&
+      (name.includes('screenshot') || attachment.contentType?.startsWith('image/'))
+    ) {
+      screenshotPath = attachmentPath;
+    }
+  }
+
+  return { tracePath, screenshotPath };
 }
 
 function traverseSuites(
@@ -92,31 +154,42 @@ function traverseSuites(
       const testTitle = [specTitle, test.title].filter(Boolean).join(' > ');
       const results = Array.isArray(test.results) ? test.results : [];
 
-      for (const result of results) {
-        if (!['failed', 'timedOut', 'interrupted'].includes(result.status ?? '')) {
-          continue;
-        }
-
-        const lineNumber = result.error?.location?.line ?? test.location?.line;
-        const filePath = test.location?.file ?? spec.file ?? suiteNode.file ?? 'unknown';
-        const failure: TestFailure = {
-          testTitle: testTitle || 'Unnamed test',
-          filePath,
-          errorMessage: extractErrorMessage(result),
-          duration: Number(result.duration ?? 0),
-        };
-
-        if (typeof lineNumber === 'number') {
-          failure.lineNumber = lineNumber;
-        }
-
-        const stackTrace = extractStackTrace(result);
-        if (stackTrace) {
-          failure.stackTrace = stackTrace;
-        }
-
-        failures.push(failure);
+      // Only the LAST attempt per test is authoritative — earlier failed
+      // attempts that were retried-and-passed should not be reported.
+      const lastResult = results[results.length - 1];
+      if (!lastResult) continue;
+      if (!['failed', 'timedOut', 'interrupted'].includes(lastResult.status ?? '')) {
+        continue;
       }
+
+      const result = lastResult;
+      const lineNumber = result.error?.location?.line ?? test.location?.line;
+      const filePath = test.location?.file ?? spec.file ?? suiteNode.file ?? 'unknown';
+      const failure: TestFailure = {
+        testTitle: testTitle || 'Unnamed test',
+        filePath,
+        errorMessage: extractErrorMessage(result),
+        duration: Number(result.duration ?? 0),
+      };
+
+      if (typeof lineNumber === 'number') {
+        failure.lineNumber = lineNumber;
+      }
+
+      const stackTrace = extractStackTrace(result);
+      if (stackTrace) {
+        failure.stackTrace = stackTrace;
+      }
+
+      const { tracePath, screenshotPath } = extractAttachmentPaths(result);
+      if (tracePath) {
+        failure.tracePath = tracePath;
+      }
+      if (screenshotPath) {
+        failure.screenshotPath = screenshotPath;
+      }
+
+      failures.push(failure);
     }
   }
 
@@ -149,9 +222,14 @@ function parsePlaywrightResult(content: unknown): TestFailure[] {
         if (typeof row.lineNumber === 'number') {
           mapped.lineNumber = row.lineNumber;
         }
-
         if (typeof row.stackTrace === 'string') {
           mapped.stackTrace = row.stackTrace;
+        }
+        if (typeof row.tracePath === 'string') {
+          mapped.tracePath = row.tracePath;
+        }
+        if (typeof row.screenshotPath === 'string') {
+          mapped.screenshotPath = row.screenshotPath;
         }
 
         return mapped;
@@ -170,13 +248,16 @@ function parsePlaywrightResult(content: unknown): TestFailure[] {
   return failures;
 }
 
-export function getTestFailures(
-  resultsDir = path.resolve(process.cwd(), 'test-results'),
-): GetTestFailuresOutput {
+export function getTestFailures(resultsDir: string = DEFAULT_RESULTS_DIR): GetTestFailuresOutput {
+  // Path containment is enforced at the MCP dispatch boundary (see
+  // `mcp-server/src/tools/registry.ts` for the get_test_failures handler).
+  // Direct callers (property tests, scripts) pass repo-relative paths
+  // resolved against the cwd or absolute paths inside the temp dir; the
+  // function trusts its input here.
   try {
-    const latestResultFile = getLatestJsonResultFile(resultsDir);
-    if (!latestResultFile) {
-      const message = `No Playwright JSON results found in '${resultsDir}'.`;
+    const resultFile = resolveResultsFile(resultsDir);
+    if (!resultFile) {
+      const message = `No Playwright JSON results found. Expected '${PRIORITY_RESULTS_FILE}' or JSON under '${resultsDir}'.`;
       logger.info(message);
       return {
         failures: [],
@@ -185,26 +266,37 @@ export function getTestFailures(
       };
     }
 
-    const raw = readTextFile(latestResultFile);
+    const raw = readTextFile(resultFile);
     const parsed = safeJsonParse<unknown>(raw);
     if (!parsed.ok) {
       return {
         failures: [],
         status: 'error',
         message: parsed.error.message,
+        sourceFile: resultFile,
       };
     }
 
     const failures = parsePlaywrightResult(parsed.data);
+    const hasSuites =
+      typeof parsed.data === 'object' &&
+      parsed.data !== null &&
+      Array.isArray((parsed.data as { suites?: unknown }).suites);
+
+    const status: GetTestFailuresOutput['status'] =
+      failures.length > 0 ? 'failure' : hasSuites ? 'success' : 'partial';
+
     logger.info('Collected Playwright test failures.', {
-      latestResultFile,
+      resultFile,
       failureCount: failures.length,
+      status,
     });
 
     return {
       failures,
-      status: 'success',
-      message: `Parsed ${failures.length} failure(s) from ${latestResultFile}`,
+      status,
+      message: `Parsed ${failures.length} failure(s) from ${resultFile}`,
+      sourceFile: resultFile,
     };
   } catch (error) {
     const message =

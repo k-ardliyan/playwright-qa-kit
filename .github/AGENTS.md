@@ -7,12 +7,31 @@ This document defines governance for framework agents:
 - `generator`
 - `healer`
 
+## Requirement Template
+
+All requirement files must follow [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md).
+QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requirements.md`](../docs/writing-requirements.md), [`docs/prompt-external-ai.md`](../docs/prompt-external-ai.md).
+
+## MCP Servers (three-server hybrid)
+
+| Server            | Command                                                      | Role                                            |
+| ----------------- | ------------------------------------------------------------ | ----------------------------------------------- |
+| `playwright`      | `npx -y @playwright/mcp@latest`                              | Browser exploration (`browser_*` tools)         |
+| `playwright-test` | `npx playwright run-test-mcp-server -c playwright.config.ts` | Execute tests (`run_tests`, etc.)               |
+| `playwright-qa`   | `node mcp-server/dist/index-mcp.js`                          | Requirements, validation, failure/summary reads |
+
+Configure all three in [`.vscode/mcp.json`](../.vscode/mcp.json). Build custom QA server: `npm run mcp:build`.
+
+**Branch protection:** require CI workflow `Quality Gate` on PRs. E2E workflow runs on push to main / manual dispatch (needs GitHub Secrets).
+
+**Generated tests:** must include `@ui`, `@regression`, and traceability headers (`// spec:`, `// seed:`). Demo/healer specs use `@demo` and are excluded from default `npm test`.
+
 ## 1) Orchestrator Agent
 
 ### Role Description
 
 Coordinates the full pipeline:
-**Plan → Generate → Execute → Heal → Report**.
+**Pre-flight → Validate → Plan → Generate → Execute → Heal → Report**.
 
 ### Input Format
 
@@ -44,19 +63,13 @@ Coordinates the full pipeline:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`
-  - `normalize_requirements`
-  - `get_test_failures`
-- `playwright-test`
-  - `run_tests`
-- `playwright`
-  - `navigate_to_url`
-  - `get_page_content`
-  - `take_screenshot`
+- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`
+- `playwright-test`: `run_tests`
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`
 
 ### Example Prompt
 
-- "Run pipeline for `requirements/customer-onboarding-v2.md` and include unresolved failures."
+- "Run pipeline for `requirements/example-login-extension.md` and include unresolved failures."
 
 ---
 
@@ -76,26 +89,26 @@ Transforms requirement files into structured scenario plans.
 
 ### Output Format
 
-Markdown table written to:
+Hybrid Markdown test plan written to:
 `specs/<feature-name>-test-plan.md`
 
-Required columns:
+Includes Application Overview, per-scenario `### SC-XX` sections, **Seed:** `src/tests/seed.spec.ts`, and a table per scenario with columns:
 
 - `Scenario Name`
 - `Steps`
 - `Expected Result`
 
+Golden sample: [`specs/example-login-extension-test-plan.md`](../specs/example-login-extension-test-plan.md).
+
 ### MCP Tools Consumed
 
-- `playwright-qa`
-  - `normalize_requirements`
-- `playwright`
-  - `navigate_to_url`
-  - `get_page_content`
+- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`
+- `playwright-test`: `run_tests` (seed bootstrap: `src/tests/seed.spec.ts`)
+- `playwright`: `browser_navigate`, `browser_snapshot`
 
 ### Example Prompt
 
-- "Plan tests from `requirements/auth-session-timeout.md` and write `specs/auth-session-timeout-test-plan.md`."
+- "Plan tests from `requirements/example-login-extension.md` and write `specs/example-login-extension-test-plan.md`."
 
 ---
 
@@ -121,13 +134,19 @@ Planner table with columns:
 
 ### MCP Tools Consumed
 
-- `playwright`
-  - `navigate_to_url`
-  - `get_page_content`
+- `playwright-qa`: `validate_generated_tests`
+- `playwright-test`: `run_tests` (live verification loop, iterate until pass)
+- `playwright`: `browser_navigate`, `browser_snapshot`
+
+Generated files must include `// spec:` and `// seed:` traceability headers (see generator agent).
+
+### Metadata Mapping
+
+See [`.github/agents/generator.agent.md`](agents/generator.agent.md) for `metadata` → `test.describe` / `test.use` / `test.skip` mapping rules.
 
 ### Example Prompt
 
-- "Generate tests from `specs/customer-export-test-plan.md` into `src/tests/ui/customer-export.spec.ts`."
+- "Generate tests from `specs/example-login-extension-test-plan.md` into `src/tests/ui/auth/login-empty-fields.spec.ts`."
 
 ---
 
@@ -145,7 +164,9 @@ Diagnoses and repairs failing tests using structured failure payloads.
     {
       "file": "src/tests/ui/example.spec.ts",
       "lineNumber": 42,
-      "errorMessage": "Timeout 30000ms exceeded..."
+      "errorMessage": "Timeout 30000ms exceeded...",
+      "tracePath": "optional",
+      "screenshotPath": "optional"
     }
   ]
 }
@@ -172,11 +193,10 @@ Diagnoses and repairs failing tests using structured failure payloads.
 
 ### MCP Tools Consumed
 
-- `playwright`
-  - `navigate_to_url`
-  - `get_page_content`
-  - `take_screenshot`
+- `playwright-qa`: `get_test_failures`, `validate_generated_tests`
+- `playwright-test`: `run_tests`
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`
 
 ### Example Prompt
 
-- "Heal failures returned by `get_test_failures` and provide `fixes` and `cannotFix`."
+- "Heal failures from `get_test_failures`, validate, and re-run affected specs."

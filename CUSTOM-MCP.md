@@ -2,185 +2,295 @@
 
 Authoritative documentation for MCP servers and custom QA tools in this repository.
 
+**Tim QA:** mulai dari [docs/GUIDE.md](docs/GUIDE.md). Dokumen ini untuk maintainer framework dan referensi kontrak tool — jangan duplikasi schema di dokumen QA.
+
 ## MCP Server Installation
 
-Register and use these two servers (configured in `.vscode/mcp.json`):
+Register and use these **three** servers (configured in [`.vscode/mcp.json`](.vscode/mcp.json)):
 
-1. **Playwright MCP** (`playwright`)
-   - Command: `npx @playwright/mcp`
-   - Optional local install: `npm install --save-dev @playwright/mcp`
+1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
+   - Command: `npx -y @playwright/mcp@latest --headless`
 
-2. **Custom QA MCP** (`playwright-qa`)
-   - Build: `npm run mcp:build` (from root) or `npm run build` (inside `mcp-server/`)
-   - Run: `node mcp-server/dist/index-mcp.js` (for standard stdio transport) or `npm run mcp:dev` (for dev mode)
+2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
+   - Command: `npx playwright run-test-mcp-server -c playwright.config.ts`
+   - Requires `@playwright/test` >= 1.56
+
+3. **Custom QA MCP** (`playwright-qa`) — project-specific QA tools
+   - Build: `npm run mcp:build`
+   - Run: `node mcp-server/dist/index-mcp.js`
 
 ## Running the Custom QA MCP Server
 
-The server supports two transports:
-
-- **Stdio Transport (Standard)**: Used by IDE/extension configurations (e.g. `.vscode/mcp.json`).
-  ```bash
-  node mcp-server/dist/index-mcp.js
-  ```
-- **HTTP Transport (Legacy/Testing)**: Listens on port `3100`.
-  ```bash
-  node mcp-server/dist/index.js
-  ```
-
-Default HTTP endpoint (if running HTTP transport): `http://localhost:3100`
+- **Stdio (IDE)**: `node mcp-server/dist/index-mcp.js`
+- **HTTP (legacy/testing)**: `npm run mcp:dev` in `mcp-server/` or `node mcp-server/dist/index.js` on port `3100`
 
 ---
 
-## Tool: `get_test_failures`
+## Tool: `health_check`
 
-Reads the most recent Playwright JSON result from `test-results/` and returns structured failures.
+Verifies Node, Playwright packages, MCP build, environment files, and optional `test-results/results.json`.
 
-### Input JSON Schema
+### Input
+
+```json
+{}
+```
+
+### Output
 
 ```json
 {
-  "type": "object",
-  "properties": {
-    "resultsDir": {
-      "type": "string",
-      "description": "Path to Playwright test-results directory. Defaults to cwd/test-results."
-    }
-  },
-  "additionalProperties": false
+  "status": "success",
+  "checks": [{ "name": "node", "status": "ok", "message": "..." }],
+  "message": "All required health checks passed."
 }
-```
-
-### Output JSON Schema
-
-```json
-{
-  "type": "object",
-  "required": ["failures", "status", "message"],
-  "properties": {
-    "failures": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["testTitle", "filePath", "errorMessage", "duration"],
-        "properties": {
-          "testTitle": { "type": "string" },
-          "filePath": { "type": "string" },
-          "errorMessage": { "type": "string" },
-          "duration": { "type": "number" },
-          "lineNumber": { "type": "number" },
-          "stackTrace": { "type": "string" }
-        }
-      }
-    },
-    "status": {
-      "type": "string",
-      "enum": ["success", "no_results", "error"]
-    },
-    "message": { "type": "string" }
-  }
-}
-```
-
-### Example HTTP Invocation (cURL)
-
-```bash
-curl -X POST http://localhost:3100/tools/get_test_failures
 ```
 
 ---
 
 ## Tool: `normalize_requirements`
 
-Normalizes free-text requirements into a canonical contract object.
+Parses requirement markdown into a structured contract (acceptance criteria, metadata, optional scenarios, tags).
 
-### Input JSON Schema
+Template reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
+
+### Input
 
 ```json
 {
-  "type": "object",
-  "required": ["requirementsText"],
-  "properties": {
-    "requirementsText": { "type": "string" }
-  },
-  "additionalProperties": false
+  "requirementsText": "# Feature\n## Metadata\n- **Tags:** #auth\n## Kriteria Penerimaan\n- ..."
 }
 ```
 
-### Output JSON Schema
+### Output
 
 ```json
 {
-  "type": "object",
-  "required": ["status"],
-  "properties": {
-    "status": {
-      "type": "string",
-      "enum": ["success", "error"]
-    },
-    "contract": {
-      "type": "object",
-      "required": ["id", "title", "acceptanceCriteria", "tags"],
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "acceptanceCriteria": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["id", "description"],
-            "properties": {
-              "id": { "type": "string" },
-              "description": { "type": "string" }
-            }
-          }
-        },
-        "tags": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+  "status": "success",
+  "contract": {
+    "id": "REQ-01",
+    "title": "...",
+    "acceptanceCriteria": [{ "id": "AC-1", "description": "..." }],
+    "scenarios": [
+      {
+        "id": "SC-1",
+        "name": "...",
+        "steps": ["..."],
+        "expectedResult": "...",
+        "precondition": "optional",
+        "automatable": true
       }
-    },
-    "error": {
-      "type": "object",
-      "required": ["code", "message"],
-      "properties": {
-        "code": { "type": "string" },
-        "message": { "type": "string" }
-      }
+    ],
+    "tags": ["auth"],
+    "metadata": {
+      "tags": ["auth", "ui"],
+      "priority": "medium",
+      "authState": "unauthenticated",
+      "startPage": "/login",
+      "pomFixtures": ["loginPage"]
     }
   }
 }
 ```
 
-### Example HTTP Invocation (cURL)
-
-```bash
-curl -X POST http://localhost:3100/tools/normalize_requirements \
-  -H "Content-Type: application/json" \
-  -d "{\"requirementsText\":\"# Login\\n- User shall login with valid credentials\\n- System shall show dashboard\"}"
-```
-
 ---
 
-## MCP Client Invocation Example (Stdio/SSE)
+## Tool: `parse_requirement_scenarios`
+
+Extracts `###` scenarios with step/result sections from markdown.
+
+**Indonesian labels:** `**Langkah:**`, `**Hasil:**`, `**Prekondisi:**`
+
+**English aliases:** `**Steps:**`, `**Expected Result:**`, `**Precondition:**`, `**Given:**`
+
+Scenarios with `(@manual)` in the heading return `automatable: false`.
+
+### Input
 
 ```json
 {
-  "name": "normalize_requirements",
-  "arguments": {
-    "requirementsText": "# Login\n- User shall login with valid credentials"
-  }
+  "requirementPath": "requirements/example-login-extension.md"
+}
+```
+
+Or:
+
+```json
+{
+  "requirementsText": "### 1. Happy path\n**Langkah:**\n1. ..."
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "scenarios": [
+    {
+      "id": "SC-1",
+      "name": "Sukses Reset Password",
+      "steps": ["..."],
+      "expectedResult": "...",
+      "precondition": "optional",
+      "automatable": true
+    }
+  ],
+  "message": "Parsed N scenario(s)."
 }
 ```
 
 ---
 
+## Tool: `validate_requirement`
+
+Validates requirement markdown structure before the Planner runs. Returns a score and violation list.
+
+### Input
+
+```json
+{
+  "requirementPath": "requirements/example-login-extension.md"
+}
+```
+
+Or:
+
+```json
+{
+  "requirementsText": "# REQ-01: Feature\n..."
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "score": 95,
+  "violations": [
+    {
+      "ruleName": "observable_result",
+      "severity": "warn",
+      "message": "...",
+      "scenarioName": "optional"
+    }
+  ],
+  "message": "Passed with 1 warning(s). Score: 95/100."
+}
+```
+
+---
+
+## Tool: `list_artifacts`
+
+Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, `src/tests/**/*.spec.ts`.
+
+### Input
+
+```json
+{}
+```
+
+---
+
+## Tool: `validate_generated_tests`
+
+Validates `.spec.ts` files for `@/fixtures/base.fixture`, `test.describe`, `test.step`, and `// spec:` / `// seed:` traceability headers (exempt: seed, smoke, legacy manual specs).
+
+### Input
+
+```json
+{}
+```
+
+Or single file:
+
+```json
+{
+  "filePath": "src/tests/ui/auth/login.spec.ts"
+}
+```
+
+---
+
+## Tool: `get_test_failures`
+
+Reads failures from `test-results/results.json` (priority) or latest JSON under `test-results/`.
+
+### Input
+
+```json
+{
+  "resultsDir": "test-results"
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "failures": [
+    {
+      "testTitle": "...",
+      "filePath": "src/tests/...",
+      "errorMessage": "...",
+      "duration": 0,
+      "lineNumber": 42,
+      "tracePath": "optional",
+      "screenshotPath": "optional"
+    }
+  ],
+  "sourceFile": "test-results/results.json",
+  "message": "..."
+}
+```
+
+---
+
+## Tool: `get_test_summary`
+
+Reads `reports/test-summary.json` from the custom reporter.
+
+### Input
+
+```json
+{}
+```
+
+---
+
+## Agent pipeline checklist
+
+1. `health_check` (playwright-qa)
+2. `validate_requirement` — fix errors before planning
+3. `parse_requirement_scenarios` + `normalize_requirements` (Planner)
+4. Generate specs under `src/tests/` + `validate_generated_tests`
+5. `run_tests` (playwright-test) — writes `test-results/results.json` via JSON reporter
+6. `get_test_failures` → Healer → `validate_generated_tests` → `run_tests` (scoped)
+7. `get_test_summary` (Report)
+
+## CI tool matrix
+
+| Tool / script                                   | `quality.yml` (PR)   | `e2e.yml` (main/manual) | Agent pre-flight |
+| ----------------------------------------------- | -------------------- | ----------------------- | ---------------- |
+| `npm run health:check` / `health_check`         | yes                  | optional                | yes              |
+| `validate_requirement`                          | example file via CLI | no                      | yes              |
+| `validate_generated_tests` / `npm run validate` | yes                  | no                      | yes              |
+| `npm run test:property`                         | yes                  | no                      | no               |
+| `get_test_failures`                             | no                   | post-fail               | yes              |
+| `parse_requirement_scenarios`                   | via property tests   | no                      | planner          |
+| `run_tests`                                     | no                   | yes                     | yes              |
+
+CLI wrappers: `npm run validate`, `npm run validate:requirement`, `npm run health:check`.
+
 ## Governance Rule
 
-When any new MCP tool is added or an existing tool schema changes:
+When any MCP tool is added or changed:
 
 1. Update `mcp-server/src/` implementation.
-2. Update this `CUSTOM-MCP.md` (name, input schema, output schema, examples).
-3. Only then mark the tool work as complete.
+2. Update this `CUSTOM-MCP.md`.
+3. Update `.github/agents/*.agent.md` and `.github/AGENTS.md` if agents consume the tool.
 
-`CUSTOM-MCP.md` is the authoritative reference for MCP tool contracts in this repository.
+`CUSTOM-MCP.md` is the authoritative reference for **playwright-qa** tool contracts.

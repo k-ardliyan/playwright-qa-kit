@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fc from 'fast-check';
 import { getTestFailures, type TestFailure } from '../../../mcp-server/src/tools/get-test-failures';
+import { findRepoRoot, resolveAllowedPath } from '../../../mcp-server/src/utils/safety';
 
 function normalizeFailure(item: TestFailure): TestFailure {
   const normalized: TestFailure = {
@@ -62,7 +63,7 @@ async function property1DataRetrieval(): Promise<void> {
         writeFailureFile(resultsDir, failures);
 
         const output = getTestFailures(resultsDir);
-        assert.equal(output.status, 'success');
+        assert.equal(output.status, failures.length > 0 ? 'failure' : 'success');
         assert.equal(output.failures.length, failures.length);
 
         output.failures.forEach((item, index) => {
@@ -91,7 +92,7 @@ async function property11DataPreservation(): Promise<void> {
         writeFailureFile(resultsDir, failures);
         const output = getTestFailures(resultsDir);
 
-        assert.equal(output.status, 'success');
+        assert.equal(output.status, failures.length > 0 ? 'failure' : 'success');
         assert.deepEqual(output.failures, failures);
       } finally {
         cleanupDir(resultsDir);
@@ -103,7 +104,92 @@ async function property11DataPreservation(): Promise<void> {
   console.log('✓ Property 11 passed: get_test_failures data preservation');
 }
 
+function writePlaywrightRetryFixture(resultsDir: string): void {
+  const payload = {
+    suites: [
+      {
+        title: 'Retry Suite',
+        specs: [
+          {
+            title: 'flaky test',
+            file: 'src/tests/example.spec.ts',
+            tests: [
+              {
+                title: 'should pass on retry',
+                location: { file: 'src/tests/example.spec.ts', line: 10 },
+                results: [
+                  {
+                    status: 'failed',
+                    retry: 0,
+                    duration: 100,
+                    error: { message: 'First attempt failed' },
+                  },
+                  {
+                    status: 'passed',
+                    retry: 1,
+                    duration: 50,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  fs.writeFileSync(path.join(resultsDir, 'results.json'), JSON.stringify(payload, null, 2), 'utf8');
+}
+
+function runRetryRegression(): void {
+  const resultsDir = createTempResultsDir();
+  try {
+    writePlaywrightRetryFixture(resultsDir);
+    const output = getTestFailures(resultsDir);
+    assert.equal(output.status, 'success', 'retried-then-passed should not be a failure');
+    assert.equal(output.failures.length, 0, 'no failures when last attempt passed');
+  } finally {
+    cleanupDir(resultsDir);
+  }
+  console.log('✓ Retry regression passed: retried-then-passed tests are not reported as failures');
+}
+
+function runAbsolutePathFromMcpServerCwd(): void {
+  const repoRoot = findRepoRoot(__dirname);
+  const mcpServerDir = path.join(repoRoot, 'mcp-server');
+  const resultsDir = path.join(repoRoot, 'test-results', `property-cwd-${Date.now()}`);
+  const previousCwd = process.cwd();
+
+  fs.mkdirSync(resultsDir, { recursive: true });
+  writeFailureFile(resultsDir, [
+    {
+      testTitle: 'cwd isolation check',
+      filePath: 'src/tests/example.spec.ts',
+      errorMessage: 'expected failure',
+      duration: 42,
+    },
+  ]);
+
+  try {
+    process.chdir(mcpServerDir);
+    const relative = path.relative(repoRoot, resultsDir).replace(/\\/g, '/');
+    const resolved = resolveAllowedPath(relative, 'test-results', { mustExist: true });
+    assert.equal(resolved.ok, true, 'resolveAllowedPath must succeed from mcp-server cwd');
+    if (!resolved.ok) return;
+
+    const output = getTestFailures(resolved.absolutePath);
+    assert.equal(output.status, 'failure');
+    assert.equal(output.failures.length, 1);
+    assert.equal(output.failures[0].testTitle, 'cwd isolation check');
+  } finally {
+    process.chdir(previousCwd);
+    fs.rmSync(resultsDir, { recursive: true, force: true });
+  }
+  console.log('✓ CWD regression passed: absolutePath works when cwd is mcp-server/');
+}
+
 async function main(): Promise<void> {
+  runRetryRegression();
+  runAbsolutePathFromMcpServerCwd();
   await property1DataRetrieval();
   await property11DataPreservation();
 }

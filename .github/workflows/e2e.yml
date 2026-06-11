@@ -1,0 +1,91 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to run tests against
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - staging
+
+jobs:
+  e2e:
+    if: ${{ secrets.BASE_URL != '' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Materialize CI environment file
+        env:
+          TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_USERNAME: ${{ secrets.TEST_USER_USERNAME }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+        run: |
+          {
+            printf 'BASE_URL=%s\n' "${BASE_URL}"
+            printf 'ENV_NAME=%s\n' "${TARGET_ENV}"
+            [ -n "${TEST_USER_EMAIL}" ]    && printf 'TEST_USER_EMAIL=%s\n'    "${TEST_USER_EMAIL}"
+            [ -n "${TEST_USER_USERNAME}" ] && printf 'TEST_USER_USERNAME=%s\n' "${TEST_USER_USERNAME}"
+            [ -n "${TEST_USER_PASSWORD}" ] && printf 'TEST_USER_PASSWORD=%s\n' "${TEST_USER_PASSWORD}"
+            [ -n "${TEST_USER_PHONE}" ]    && printf 'TEST_USER_PHONE=%s\n'    "${TEST_USER_PHONE}"
+          } > "environments/${TARGET_ENV}.env"
+          echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
+
+      - name: Build playwright-qa MCP server
+        run: npm run mcp:build
+
+      - name: Install Playwright Chromium Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npx playwright test --project=smoke
+
+      - name: Run regression tests
+        run: npm run test:ci -- --project=chromium
+
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: reports/html/
+          retention-days: 30
+
+      - name: Upload test results JSON
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: |
+            test-results/results.json
+            reports/test-summary.json
+          retention-days: 30
+
+  e2e-skipped:
+    if: ${{ secrets.BASE_URL == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip E2E — BASE_URL secret not configured
+        run: |
+          echo "E2E job skipped: configure BASE_URL and credential secrets in repository settings."
+          echo "Required secrets: BASE_URL, TEST_USER_EMAIL, TEST_USER_USERNAME, TEST_USER_PASSWORD, TEST_USER_PHONE"

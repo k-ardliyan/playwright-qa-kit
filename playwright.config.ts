@@ -9,6 +9,7 @@ export default defineConfig({
 
   // ── Execution ───────────────────────────────────────────────────
   fullyParallel: true,
+  grepInvert: /@demo/,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   timeout: 30_000,
@@ -21,6 +22,7 @@ export default defineConfig({
   // ── Reporters ───────────────────────────────────────────────────
   reporter: [
     ['list'],
+    ['json', { outputFile: 'test-results/results.json' }],
     ['html', { outputFolder: './reports/html', open: 'never' }],
     ['./src/support/custom-reporter.ts'],
   ],
@@ -35,7 +37,6 @@ export default defineConfig({
 
   // ── Browser Projects ────────────────────────────────────────────
   projects: [
-    // Auth setup — login sekali, simpan state
     {
       name: 'setup',
       testDir: './src/support',
@@ -43,14 +44,24 @@ export default defineConfig({
     },
 
     {
+      name: 'smoke',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: { cookies: [], origins: [] },
+      },
+      testDir: './src/tests',
+      testMatch: '**/smoke/**/*.spec.ts',
+    },
+
+    {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Pakai auth state dari setup project
         storageState: '.auth/user.json',
       },
       testDir: './src/tests',
       testMatch: '**/*.spec.ts',
+      testIgnore: ['**/smoke/**', '**/demo/**'],
       dependencies: ['setup'],
     },
     // Uncomment untuk cross-browser testing:
@@ -62,6 +73,7 @@ export default defineConfig({
     //   },
     //   testDir: './src/tests',
     //   testMatch: '**/*.spec.ts',
+    //   testIgnore: ['**/smoke/**', '**/demo/**'],
     //   dependencies: ['setup'],
     // },
   ],

@@ -22,6 +22,9 @@ logs/
 # Auth state cache (login cookies/localStorage)
 .auth/
 
+# Property test transient artifacts
+src/tests/__property_validator__/
+
 # TypeScript
 *.tsbuildinfo
 mcp-server/dist/
@@ -35,3 +38,7 @@ Thumbs.db
 *.swp
 *.swo
 .vscode/settings.json
+
+# Local debug / temp artifacts
+debug-validator.ts
+*.diff

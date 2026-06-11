@@ -1,160 +1,28 @@
 /// <reference types="node" />
 
-import fs from 'fs';
-import path from 'path';
-
-interface Violation {
-  filePath: string;
-  lineNumber: number;
-  ruleName: string;
-}
-
-const TEST_ROOT = path.resolve(process.cwd(), 'src/tests');
-
-function warn(message: string, error?: unknown): void {
-  const details = error instanceof Error ? ` (${error.message})` : '';
-  console.warn(`[WARN] ${message}${details}`);
-}
-
-function toRelative(filePath: string): string {
-  return path.relative(process.cwd(), filePath).replace(/\\/g, '/');
-}
-
-function getLineNumberFromIndex(content: string, index: number): number {
-  if (index <= 0) {
-    return 1;
-  }
-  return content.slice(0, index).split(/\r?\n/).length;
-}
-
-function findSpecFiles(dirPath: string): string[] {
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    const files: string[] = [];
-
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-
-      if (entry.isDirectory()) {
-        files.push(...findSpecFiles(fullPath));
-        continue;
-      }
-
-      if (entry.isFile() && fullPath.endsWith('.spec.ts')) {
-        files.push(fullPath);
-      }
-    }
-
-    return files;
-  } catch (error) {
-    warn(`Unable to read directory: ${toRelative(dirPath)}`, error);
-    return [];
-  }
-}
-
-function validateImportRule(content: string, filePath: string): Violation | null {
-  const importRegex = /import\s*{([^}]*)}\s*from\s*['"]@\/fixtures\/base\.fixture['"]/g;
-  const match = importRegex.exec(content);
-
-  if (!match) {
-    return {
-      filePath,
-      lineNumber: 1,
-      ruleName: 'Import rule: must import test from @/fixtures/base.fixture',
-    };
-  }
-
-  const importClause = match[1] ?? '';
-  const hasTestImport = /\btest\b/.test(importClause);
-
-  if (!hasTestImport) {
-    return {
-      filePath,
-      lineNumber: getLineNumberFromIndex(content, match.index),
-      ruleName: 'Import rule: base fixture import must include test',
-    };
-  }
-
-  return null;
-}
-
-function validatePresenceRule(
-  content: string,
-  filePath: string,
-  regex: RegExp,
-  ruleName: string,
-): Violation | null {
-  const match = regex.exec(content);
-  if (match && typeof match.index === 'number') {
-    return null;
-  }
-
-  return {
-    filePath,
-    lineNumber: 1,
-    ruleName,
-  };
-}
-
-function validateFile(filePath: string): Violation[] {
-  let content: string;
-  try {
-    content = fs.readFileSync(filePath, 'utf-8');
-  } catch (error) {
-    warn(`Unable to read file: ${toRelative(filePath)}`, error);
-    return [];
-  }
-
-  const violations: Violation[] = [];
-
-  const importViolation = validateImportRule(content, filePath);
-  if (importViolation) {
-    violations.push(importViolation);
-  }
-
-  const describeViolation = validatePresenceRule(
-    content,
-    filePath,
-    /test\.describe\s*\(/,
-    'Describe rule: must contain at least one test.describe(...) block',
-  );
-  if (describeViolation) {
-    violations.push(describeViolation);
-  }
-
-  const stepViolation = validatePresenceRule(
-    content,
-    filePath,
-    /test\.step\s*\(/,
-    'Step rule: must contain at least one test.step(...) call',
-  );
-  if (stepViolation) {
-    violations.push(stepViolation);
-  }
-
-  return violations;
-}
+import { validateGeneratedTests } from './mcp-server/src/tools/validate-generated-tests';
+import { findRepoRoot } from './mcp-server/src/utils/safety';
 
 function main(): void {
-  const specFiles = findSpecFiles(TEST_ROOT).sort((a, b) => a.localeCompare(b));
-  const violations: Violation[] = [];
+  // Anchor cwd at the repo root so the validator scans the right tree even
+  // when invoked from a subdirectory.
+  process.chdir(findRepoRoot(__dirname));
+  const output = validateGeneratedTests();
 
-  for (const filePath of specFiles) {
-    violations.push(...validateFile(filePath));
-  }
-
-  if (violations.length > 0) {
-    for (const violation of violations) {
-      const relativePath = toRelative(violation.filePath);
+  if (output.status === 'error') {
+    for (const violation of output.violations) {
       console.error(
-        `✗ ${relativePath}:${violation.lineNumber}\n  Violation: ${violation.ruleName}`,
+        `✗ ${violation.filePath}:${violation.lineNumber}\n  Violation: ${violation.ruleName}`,
       );
+    }
+    if (output.violations.length === 0) {
+      console.error(`✗ ${output.message}`);
     }
     process.exitCode = 1;
     return;
   }
 
-  console.log(`✓ Validated ${specFiles.length} test files`);
+  console.log(`✓ Validated ${output.validatedCount} test files`);
   console.log('✓ All structural checks passed');
   process.exitCode = 0;
 }

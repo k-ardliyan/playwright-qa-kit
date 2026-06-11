@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironment } from './src/utils/env-loader';
 
 // Muat environment dari environments/{APP_ENV}.env via env-loader.
-// Set APP_ENV ke 'local' | 'dev' | 'qa' | 'staging' | 'production' (default: 'local').
+// Set APP_ENV ke 'local' | 'dev' | 'staging' | 'production' (default: 'local').
 loadEnvironment();
 
 export default defineConfig({

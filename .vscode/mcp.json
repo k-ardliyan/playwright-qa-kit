@@ -3,7 +3,12 @@
     {
       "name": "playwright",
       "command": "npx",
-      "args": ["@playwright/mcp"]
+      "args": ["-y", "@playwright/mcp@latest", "--headless"]
+    },
+    {
+      "name": "playwright-test",
+      "command": "npx",
+      "args": ["playwright", "run-test-mcp-server", "-c", "playwright.config.ts"]
     },
     {
       "name": "playwright-qa",

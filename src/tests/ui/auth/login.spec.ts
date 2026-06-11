@@ -14,13 +14,18 @@ test.describe('Login Scenario Suite', { tag: ['@auth', '@login'] }, () => {
   ];
 
   successScenarios.forEach((scenario) => {
+    const credential = scenario.getCredential();
+    if (!credential) {
+      return;
+    }
+
     test(`${scenario.id}: should login successfully with ${scenario.type}`, async ({
       loginPage,
       dashboardPage,
     }) => {
       await test.step(`Login using ${scenario.type} credential`, async () => {
         await loginPage.goto();
-        await loginPage.doLogin(scenario.getCredential(), env.USER_PASSWORD, true);
+        await loginPage.doLogin(credential, env.USER_PASSWORD, true);
 
         // Verify redirect dan elemen dashboard tampil
         await dashboardPage.expectToBeLoaded();

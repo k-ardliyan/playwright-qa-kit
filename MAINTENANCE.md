@@ -43,11 +43,12 @@ export enum TAGS {
 ## 3) Register a New MCP Tool
 
 1. Implement the tool in `mcp-server/src/tools/`.
-2. Wire tool routing in `mcp-server/src/index.ts`.
-3. Add/adjust helper utilities in `mcp-server/src/utils/` if needed.
-4. Rebuild and verify server:
+2. Register in **`mcp-server/src/tools/dispatch.ts`** (`dispatchTool` + `MCP_TOOL_DEFINITIONS`).
+3. HTTP route is wired automatically via `mcp-server/src/index.ts`; stdio via `index-mcp.ts`.
+4. Add/adjust helper utilities in `mcp-server/src/utils/` if needed.
+5. Rebuild and verify:
    - `npx tsc -p mcp-server/tsconfig.json --noEmit`
-5. Update documentation **before** marking complete:
+6. Update documentation **before** marking complete:
    - `CUSTOM-MCP.md` (tool name, input schema, output schema, example invocation)
    - `.github/agents/*.agent.md` if an agent uses the new tool
 
@@ -71,11 +72,81 @@ When a new reporting field is needed (for HTML or `reports/test-summary.json`):
 
 Recommended verification:
 
-```bash
+````bash
 npx tsc --noEmit
 npm run validate
-npx tsx custom-reporter.property.ts
-```
+```bash
+npx tsx src/tests/property/custom-reporter.property.ts
+````
+
+````
+
+---
+
+## 5) Add a Field to the Requirement Template
+
+When extending the QA requirement template (`requirements/_TEMPLATE.md`):
+
+1. Add the field to the template with a short comment explaining its purpose.
+2. Update parser in `mcp-server/src/tools/normalize-requirements.ts` (for `## Metadata` fields) or `parse-requirement-scenarios.ts` (for per-scenario fields).
+3. Update `mcp-server/src/tools/validate-requirement.ts` if the field should be enforced.
+4. Update `CUSTOM-MCP.md` output schema.
+5. Update `.github/agents/planner.agent.md` and `generator.agent.md` mapping rules if agents consume the field.
+6. Add a property test case in `src/tests/property/normalize-requirements.property.ts`.
+
+QA-facing docs: update [docs/GUIDE.md](docs/GUIDE.md) if workflow changes for tim QA.
+
+Checklist:
+
+- [ ] Template updated
+- [ ] Parser reads new field
+- [ ] Validation rule added (if required)
+- [ ] Agent docs updated
+- [ ] Property test passes
+
+---
+
+## 6) Sync Agent Definitions with Playwright `init-agents`
+
+Custom agents live in `.github/agents/` and extend the official [Playwright Test Agents](https://playwright.dev/docs/test-agents) with orchestrator + `playwright-qa` requirement pipeline. Do **not** replace them wholesale with `init-agents` output.
+
+When upgrading `@playwright/test`:
+
+1. Note the current version: `npx playwright --version`.
+2. Generate upstream reference into a temp folder (do not overwrite repo agents):
+
+   ```bash
+   mkdir -p .tmp/init-agents
+   cd .tmp/init-agents
+   npx playwright init-agents --loop=vscode
+````
+
+3. Diff upstream planner/generator/healer against:
+   - `.github/agents/planner.agent.md`
+   - `.github/agents/generator.agent.md`
+   - `.github/agents/healer.agent.md`
+4. Merge useful upstream changes only:
+   - new MCP tool names or browser interaction patterns,
+   - seed-run / live-verify / run-until-pass workflow hints,
+   - spec output structure improvements.
+5. Preserve framework-specific content:
+   - `orchestrator.agent.md` and `.github/AGENTS.md` governance,
+   - `playwright-qa` tools (`validate_requirement`, `parse_requirement_scenarios`, etc.),
+   - `requirements/` → `specs/` → `src/tests/` paths and Indonesian QA template.
+6. Update golden sample if planner format changes: `specs/example-login-extension-test-plan.md`.
+7. Rebuild MCP if validator rules changed: `npm run mcp:build`.
+8. Verify:
+
+   ```bash
+   npm run test:quality
+   ```
+
+Checklist:
+
+- [ ] Upstream `init-agents` diff reviewed
+- [ ] Custom orchestrator + playwright-qa sections unchanged
+- [ ] Golden test plan still valid
+- [ ] Property tests pass
 
 ---
 
@@ -84,8 +155,31 @@ npx tsx custom-reporter.property.ts
 Before merging maintenance changes:
 
 ```bash
-npx tsc --noEmit
-npx tsc -p mcp-server/tsconfig.json --noEmit
-npm run validate
-npm run lint
+npm run test:quality
 ```
+
+Optional E2E (requires live app + secrets):
+
+```bash
+npm run test:ci
+```
+
+---
+
+## Traceability Exempt Policy
+
+Generated tests (Generator output) **must** include:
+
+```ts
+// spec: specs/<feature>-test-plan.md
+// seed: src/tests/seed.spec.ts
+```
+
+Legacy manual specs are exempt via `TRACEABILITY_EXEMPT` in `mcp-server/src/tools/validate-generated-tests.ts`:
+
+- `src/tests/seed.spec.ts`
+- `src/tests/demo/healer-test.spec.ts`
+- `src/tests/ui/smoke/smoke.spec.ts`
+- `src/tests/ui/auth/login.spec.ts`
+
+Do not add new paths without maintainer review. Prefer `@legacy` tag automation in future.

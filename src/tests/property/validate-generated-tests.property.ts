@@ -19,6 +19,11 @@ function makeSpecContent(hasImport: boolean, hasDescribe: boolean, hasStep: bool
     lines.push("import { test, expect } from '@playwright/test';");
   }
 
+  if (hasImport && hasDescribe && hasStep) {
+    lines.push('// spec: specs/__property_validator__-test-plan.md');
+    lines.push('// seed: src/tests/seed.spec.ts');
+  }
+
   lines.push('');
 
   if (hasDescribe) {
@@ -102,6 +107,9 @@ function runProperty(): void {
   fc.assert(
     fc.property(fc.boolean(), fc.boolean(), fc.boolean(), (hasImport, hasDescribe, hasStep) => {
       fs.writeFileSync(propertySpecFile, makeSpecContent(hasImport, hasDescribe, hasStep), 'utf8');
+      if (!fs.existsSync(propertySpecFile)) {
+        console.error('File disappeared before spawn!');
+      }
 
       const { status, output } = runValidator();
       const shouldPass = hasImport && hasDescribe && hasStep;

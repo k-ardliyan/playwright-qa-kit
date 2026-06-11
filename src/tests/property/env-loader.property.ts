@@ -7,7 +7,7 @@ import fc from 'fast-check';
 import { loadEnvironment } from '../../utils/env-loader';
 import { logger } from '../../utils/logger';
 
-const KNOWN = new Set(['local', 'dev', 'qa', 'staging', 'production']);
+const KNOWN = new Set(['local', 'dev', 'staging', 'production']);
 
 type LoggerMethod = (message: string, metadata?: Record<string, unknown>) => void;
 

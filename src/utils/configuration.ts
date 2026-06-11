@@ -15,6 +15,12 @@ export enum TAGS {
   API = '@api',
   UI = '@ui',
   E2E = '@e2e',
+  AUTH = '@auth',
+  LOGIN = '@login',
+  SEED = '@seed',
+  DEMO = '@demo',
+  HEALER = '@healer',
+  FLAKY = '@flaky',
 }
 
 // ---------------------------------------------------------------------------

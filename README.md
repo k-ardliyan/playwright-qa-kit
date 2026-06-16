@@ -4,7 +4,7 @@
 > Solusi modern untuk merancang, menulis, menjalankan, memperbaiki, dan melaporkan pengujian otomatis (_End-to-End_) secara instan dengan bantuan kecerdasan buatan (AI).
 
 > **Status: Alpha (`v0.1.0-alpha.1`)** — uji coba internal dengan facilitator, bukan production.  
-> Workshop: [`docs/WORKSHOP.md`](docs/WORKSHOP.md) · Keterbatasan: [`docs/ALPHA-LIMITATIONS.md`](docs/ALPHA-LIMITATIONS.md)
+> Workshop (setup awal + Go/No-Go + script sesi): [`docs/WORKSHOP.md`](docs/WORKSHOP.md) · Keterbatasan: [`docs/ALPHA-LIMITATIONS.md`](docs/ALPHA-LIMITATIONS.md)
 
 ---
 
@@ -54,7 +54,7 @@ graph TD
 
 ## 📁 Struktur Folder yang Perlu Diketahui QA
 
-**Tim QA: mulai dari [`docs/GUIDE.md`](docs/GUIDE.md).**
+**Tim QA: mulai dari [`docs/GUIDE.md`](docs/GUIDE.md) atau [`docs/README.md`](docs/README.md) (indeks semua dokumen).**
 
 Berikut adalah folder penting yang akan sering Anda gunakan:
 
@@ -77,9 +77,19 @@ Berikut adalah folder penting yang akan sering Anda gunakan:
 
 Pastikan komputer Anda sudah terinstal **Node.js** (versi **>= 22.22.1**, LTS 22.x) dan **Git**.
 
-### 2. Instalasi Framework
+### 2. Clone Repository
 
-Buka terminal/command prompt di folder project ini, lalu jalankan perintah berikut:
+```bash
+git clone https://github.com/k-ardliyan/playwright-qa-kit.git
+cd playwright-qa-kit
+# workshop: pakai branch main (default) — tag v0.1.0-alpha.1 tidak di-update
+```
+
+Workshop multi-pod (BE/FE/QA via IP LAN): checklist hari-H → [`docs/WORKSHOP.md`](docs/WORKSHOP.md#go-no-go). Ringkas 1 halaman → [`docs/WORKSHOP-CHEATSHEET.md`](docs/WORKSHOP-CHEATSHEET.md).
+
+### 3. Instalasi Framework
+
+Di dalam folder repo, jalankan:
 
 ```bash
 # Menginstal semua pustaka & dependensi yang diperlukan
@@ -87,9 +97,12 @@ npm install
 
 # Mengunduh browser otomatis (Chromium) yang dibutuhkan untuk tes
 npx playwright install --with-deps chromium
+
+# Build MCP server custom (wajib sebelum Codex Agent)
+npm run mcp:build
 ```
 
-### 3. Konfigurasi Lingkungan (Credentials)
+### 4. Konfigurasi Lingkungan (Credentials)
 
 Buat file pengaturan untuk target pengujian Anda di folder `environments/`. Contoh:
 
@@ -213,7 +226,10 @@ Folder `example/erpku/` adalah **reference adapter** ERPKU — dijalankan CI E2E
 
 ## 📚 Dokumen Pendukung Lainnya
 
-- 📄 [docs/GUIDE.md](docs/GUIDE.md) — **Panduan utama tim QA** (setup lokal, pipeline, troubleshooting).
+- 📄 [docs/README.md](docs/README.md) — **Indeks dokumentasi** (semua link QA & workshop).
+- 📄 [docs/GUIDE.md](docs/GUIDE.md) — Panduan utama tim QA (setup, pipeline, troubleshooting).
+- 📄 [docs/WORKSHOP.md](docs/WORKSHOP.md) — Setup workshop + Go/No-Go hari-H.
+- 📄 [docs/WORKSHOP-CHEATSHEET.md](docs/WORKSHOP-CHEATSHEET.md) — Cheat-sheet 1 halaman (print).
 - 📄 [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md) — **Fork template** untuk proyek QA baru (upstream sync, day-one setup).
 - 📄 [docs/writing-requirements.md](docs/writing-requirements.md) — Format penulisan requirement.
 - 📄 [requirements/README.md](requirements/README.md) — Pointer singkat folder requirements.

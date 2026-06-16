@@ -2,7 +2,7 @@
 
 Copy-paste references for post-fork integration scenarios. These files are **not** part of template runtime — they are not included in root `tsconfig.json` and have no npm script.
 
-See [MIGRATION.md](../MIGRATION.md) and [ADR-0003](../adr/0003-template-fork-deployment-model.md) (Template Fork).
+See [MIGRATION.md](../../MIGRATION.md) and [ADR-0003](../adr/0003-template-fork-deployment-model.md) (Template Fork).
 
 | Recipe                                                                             | Use when                                                                                  |
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |

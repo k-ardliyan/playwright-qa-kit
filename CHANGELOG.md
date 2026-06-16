@@ -29,4 +29,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 See [docs/ALPHA-LIMITATIONS.md](docs/ALPHA-LIMITATIONS.md).
 
-[0.1.0-alpha.1]: https://github.com/your-org/playwright-qa-kit/releases/tag/v0.1.0-alpha.1
+[0.1.0-alpha.1]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.1.0-alpha.1

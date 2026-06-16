@@ -1,10 +1,13 @@
-# Prompt untuk Codex / Cursor Agent
+# Prompt Agent (Codex / Cursor)
 
-Salin prompt di bawah ke VS Code Codex (primary) atau Cursor (Agent mode). Ganti `requirements/nama-fitur.md` dengan path file Anda.
+Satu file untuk Codex (utama) dan Cursor Agent mode.
 
-Pipeline mengikuti [CUSTOM-MCP.md — Agent pipeline checklist](../CUSTOM-MCP.md) dan [Orchestrator agent](../AGENTS.md).
+Ganti path `requirements/nama-fitur.md` dengan file fitur Anda.
 
-**Output Generator:** selalu `src/tests/*.spec.ts` dengan import `@/fixtures/base.fixture`. Path B adapter (ERPKU) = smoke run saja — **jangan** generate ke `example/erpku/tests/`. Lihat [GUIDE § Framework core vs adapter](GUIDE.md#framework-core-vs-project-adapter).
+**Referensi**
+
+- [CUSTOM-MCP.md](../CUSTOM-MCP.md) — kontrak pipeline MCP
+- [Framework core vs adapter](GUIDE.md#framework-core-vs-adapter) — Generator menulis ke `src/tests/`, bukan ke folder adapter ERPKU
 
 ---
 

@@ -1,20 +1,32 @@
 # Panduan QA — Bekerja di Laptop Lokal
 
-Dokumen ini panduan utama tim QA. Untuk kontrak tool MCP, lihat [CUSTOM-MCP.md](../CUSTOM-MCP.md). Untuk diagram pipeline, lihat [README.md](../README.md).
+Panduan setup, pipeline, dan troubleshooting tim QA.
 
-**Status framework:** Alpha (`v0.1.0-alpha.1`) — bukan production. Sesi workshop: [WORKSHOP.md](WORKSHOP.md). Fork production setelah beta: [FORK-ONBOARDING.md](FORK-ONBOARDING.md).
+**Referensi**
+
+- [README.md](README.md) — indeks semua dokumen
+- [CUSTOM-MCP.md](../CUSTOM-MCP.md) — kontrak tool MCP
+- [README.md](../README.md) — diagram alur di root repo
+
+Alpha `v0.1.0-alpha.1` — bukan production.
+
+- [WORKSHOP.md](WORKSHOP.md) — sesi workshop
+- [FORK-ONBOARDING.md](FORK-ONBOARDING.md) — fork template (setelah beta)
 
 ## Mulai di Sini
 
-| Langkah                               | Dokumen                                                                                                          |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Workshop alpha (sesi facilitator)     | [WORKSHOP.md](WORKSHOP.md) + [ALPHA-LIMITATIONS.md](ALPHA-LIMITATIONS.md)                                        |
-| Tulis requirement                     | [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md) + [writing-requirements.md](writing-requirements.md) |
-| Rapikan dengan ChatGPT/Gemini         | [prompt-external-ai.md](prompt-external-ai.md)                                                                   |
-| Jalankan pipeline AI (Codex / Cursor) | [prompt-ai-agent.md](prompt-ai-agent.md)                                                                         |
-| Contoh valid                          | [`requirements/example-login-extension.md`](../requirements/example-login-extension.md)                          |
+| Langkah                          | Dokumen                                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Setup & Go/No-Go hari-H          | [WORKSHOP.md](WORKSHOP.md#go-no-go)<br>[WORKSHOP-CHEATSHEET.md](WORKSHOP-CHEATSHEET.md) (print)     |
+| Batasan alpha                    | [ALPHA-LIMITATIONS.md](ALPHA-LIMITATIONS.md)                                                        |
+| Tulis requirement                | [\_TEMPLATE.md](../requirements/_TEMPLATE.md)<br>[writing-requirements.md](writing-requirements.md) |
+| Rapikan catatan (ChatGPT/Gemini) | [prompt-external-ai.md](prompt-external-ai.md)                                                      |
+| Pipeline AI (Codex)              | [prompt-ai-agent.md](prompt-ai-agent.md)                                                            |
+| Contoh requirement valid         | [`example-login-extension.md`](../requirements/example-login-extension.md)                          |
 
 ---
+
+<a id="setup-lokal"></a>
 
 ## Setup Lokal (Sekali per Mesin)
 
@@ -42,7 +54,11 @@ copy environments\local.env.example environments\local.env   # Windows
 
 Isi `BASE_URL`, kredensial tes di `environments/local.env`. **Jangan commit** file `.env` berisi password.
 
+Workshop multi-pod (BE/FE/QA per meja via IP LAN): [Topologi LAN](WORKSHOP.md#topologi-lan) · [Go/No-Go](WORKSHOP.md#go-no-go).
+
 Untuk menjalankan suite ERPKU contoh, salin juga nilai dari [`example/erpku/environments/erpku.env.example`](../example/erpku/environments/erpku.env.example) ke `environments/local.env` (`AUTH_*`, `TEST_USER_PHONE`).
+
+<a id="framework-core-vs-adapter"></a>
 
 ### Framework core vs project adapter
 
@@ -67,7 +83,7 @@ Pipeline AI (Planner → Generator) **selalu** menulis ke `src/tests/` — terma
 | `npm test`                   | Template core | Seed + property; `@demo` di-exclude  |
 | `npm run test:erpku-example` | ERPKU adapter | Smoke + regression (butuh env + app) |
 
-Fork proyek baru: ikuti checklist lengkap di [`docs/FORK-ONBOARDING.md`](FORK-ONBOARDING.md) (remote upstream, `project.fixture.ts` day-one, verifikasi setup).
+Fork proyek baru: checklist di [FORK-ONBOARDING.md](FORK-ONBOARDING.md).
 
 ### 4. Verifikasi setup
 
@@ -195,6 +211,8 @@ Output yang diharapkan:
 
 ---
 
+<a id="troubleshooting-validate-requirement"></a>
+
 ## Troubleshooting `validate_requirement`
 
 | Rule                       | Severity | Perbaikan                                                               |
@@ -209,6 +227,8 @@ Output yang diharapkan:
 Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
 
 ---
+
+<a id="troubleshooting-health-check"></a>
 
 ## Troubleshooting `health_check` / `npm run health:check`
 

@@ -1,26 +1,15 @@
-import { test as base } from '@playwright/test';
-import { LoginPage } from '@/pages/ui/LoginPage';
-import { DashboardPage } from '@/pages/ui/DashboardPage';
+import { frameworkFixtureExtend } from './framework.fixture';
+import { projectTest } from './project.fixture';
 
 /**
- * Extended MyFixtures type untuk Page Object Models
+ * Core Framework Fixtures
+ *
+ * Assembly point between framework behaviour (logger, lifecycle trace) and
+ * project-specific POM registrations (projectTest).
+ * Generated tests import from here — register POMs in project.fixture.ts only.
  */
-type MyFixtures = {
-  loginPage: LoginPage;
-  dashboardPage: DashboardPage;
-};
 
-/**
- * Custom test fixture yang di-extend dari base Playwright test.
- * Menyediakan instance Page Object Models secara otomatis.
- */
-export const test = base.extend<MyFixtures>({
-  loginPage: async ({ page }, use) => {
-    await use(new LoginPage(page));
-  },
-  dashboardPage: async ({ page }, use) => {
-    await use(new DashboardPage(page));
-  },
-});
-
+export const test = projectTest.extend(frameworkFixtureExtend);
 export { expect } from '@playwright/test';
+
+export type { FrameworkFixtures } from './framework.fixture';

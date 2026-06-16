@@ -187,9 +187,76 @@ function runAbsolutePathFromMcpServerCwd(): void {
   console.log('✓ CWD regression passed: absolutePath works when cwd is mcp-server/');
 }
 
+function runConfigMappedJsonPriority(): void {
+  const repoRoot = findRepoRoot(__dirname);
+  const resultsDir = path.join(repoRoot, 'test-results');
+  const stalePath = path.join(resultsDir, 'results.json');
+  const adapterPath = path.join(resultsDir, 'erpku-results.json');
+  const previousConfig = process.env.PLAYWRIGHT_CONFIG;
+  const previousResultsJson = process.env.PLAYWRIGHT_RESULTS_JSON;
+
+  fs.mkdirSync(resultsDir, { recursive: true });
+
+  const stalePayload = {
+    failures: [
+      {
+        testTitle: 'stale template failure',
+        filePath: 'src/tests/stale.spec.ts',
+        errorMessage: 'from results.json',
+        duration: 1,
+      },
+    ],
+  };
+  const adapterPayload = {
+    failures: [
+      {
+        testTitle: 'adapter profile failure',
+        filePath: 'example/erpku/tests/ui/smoke/smoke.spec.ts',
+        errorMessage: 'from erpku-results.json',
+        duration: 2,
+      },
+    ],
+  };
+
+  fs.writeFileSync(stalePath, JSON.stringify(stalePayload, null, 2), 'utf8');
+  fs.writeFileSync(adapterPath, JSON.stringify(adapterPayload, null, 2), 'utf8');
+
+  process.env.PLAYWRIGHT_CONFIG = 'example/erpku/playwright.config.ts';
+  delete process.env.PLAYWRIGHT_RESULTS_JSON;
+
+  try {
+    const output = getTestFailures(resultsDir);
+    assert.equal(output.status, 'failure');
+    assert.equal(output.failures.length, 1);
+    assert.equal(output.failures[0].testTitle, 'adapter profile failure');
+    assert.ok(
+      output.sourceFile?.replace(/\\/g, '/').endsWith('test-results/erpku-results.json'),
+      `expected adapter JSON, got ${output.sourceFile}`,
+    );
+  } finally {
+    if (previousConfig === undefined) {
+      delete process.env.PLAYWRIGHT_CONFIG;
+    } else {
+      process.env.PLAYWRIGHT_CONFIG = previousConfig;
+    }
+    if (previousResultsJson === undefined) {
+      delete process.env.PLAYWRIGHT_RESULTS_JSON;
+    } else {
+      process.env.PLAYWRIGHT_RESULTS_JSON = previousResultsJson;
+    }
+    fs.rmSync(stalePath, { force: true });
+    fs.rmSync(adapterPath, { force: true });
+  }
+
+  console.log(
+    '✓ Config-mapped JSON priority: adapter profile picks erpku-results.json over stale results.json',
+  );
+}
+
 async function main(): Promise<void> {
   runRetryRegression();
   runAbsolutePathFromMcpServerCwd();
+  runConfigMappedJsonPriority();
   await property1DataRetrieval();
   await property11DataPreservation();
 }

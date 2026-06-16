@@ -115,24 +115,47 @@ When upgrading `@playwright/test`:
 1. Note the current version: `npx playwright --version`.
 2. Generate upstream reference into a temp folder (do not overwrite repo agents):
 
+   **Codex (primary):**
+
    ```bash
-   mkdir -p .tmp/init-agents
-   cd .tmp/init-agents
+   # Bash
+   ./scripts/sync-init-agents.sh
+
+   # Windows PowerShell
+   ./scripts/sync-init-agents.ps1
+   ```
+
+   Or manually:
+
+   ```bash
+   mkdir -p .tmp/init-agents-codex
+   cd .tmp/init-agents-codex
+   npx playwright init-agents --loop=codex
+   ```
+
+   **Optional cross-check (VS Code loop):**
+
+   ```bash
+   mkdir -p .tmp/init-agents-vscode
+   cd .tmp/init-agents-vscode
    npx playwright init-agents --loop=vscode
-````
+   ```
 
 3. Diff upstream planner/generator/healer against:
    - `.github/agents/planner.agent.md`
    - `.github/agents/generator.agent.md`
    - `.github/agents/healer.agent.md`
+   - `.github/agents/orchestrator.agent.md` (stub → root `AGENTS.md`)
+   - root `AGENTS.md` (Orchestrator canonical — merge selectively, do not replace)
 4. Merge useful upstream changes only:
    - new MCP tool names or browser interaction patterns,
    - seed-run / live-verify / run-until-pass workflow hints,
    - spec output structure improvements.
 5. Preserve framework-specific content:
-   - `orchestrator.agent.md` and `.github/AGENTS.md` governance,
+   - root [`AGENTS.md`](AGENTS.md) (Orchestrator canonical) and [`.github/agents/orchestrator.agent.md`](.github/agents/orchestrator.agent.md) (stub pointer), [`.github/AGENTS.md`](.github/AGENTS.md) governance,
    - `playwright-qa` tools (`validate_requirement`, `parse_requirement_scenarios`, etc.),
-   - `requirements/` → `specs/` → `src/tests/` paths and Indonesian QA template.
+   - `requirements/` → `specs/` → `src/tests/` paths and Indonesian QA template,
+   - hybrid `playwright-cli` + MCP live verification in Generator.
 6. Update golden sample if planner format changes: `specs/example-login-extension-test-plan.md`.
 7. Rebuild MCP if validator rules changed: `npm run mcp:build`.
 8. Verify:
@@ -143,7 +166,7 @@ When upgrading `@playwright/test`:
 
 Checklist:
 
-- [ ] Upstream `init-agents` diff reviewed
+- [ ] Upstream `init-agents --loop=codex` diff reviewed
 - [ ] Custom orchestrator + playwright-qa sections unchanged
 - [ ] Golden test plan still valid
 - [ ] Property tests pass
@@ -179,7 +202,7 @@ Legacy manual specs are exempt via `TRACEABILITY_EXEMPT` in `mcp-server/src/tool
 
 - `src/tests/seed.spec.ts`
 - `src/tests/demo/healer-test.spec.ts`
-- `src/tests/ui/smoke/smoke.spec.ts`
-- `src/tests/ui/auth/login.spec.ts`
+- `example/erpku/tests/` (reference adapter — not Generator output)
 
 Do not add new paths without maintainer review. Prefer `@legacy` tag automation in future.
+````

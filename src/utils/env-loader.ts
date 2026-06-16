@@ -13,6 +13,7 @@
  *    b. environments/{APP_ENV}.env.example (fallback — template, warn to fill values)
  * 5. If no candidate exists → throw descriptive Error listing all paths tried
  * 6. Log success at info level
+ * 7. Optionally overlay adapter-specific env files (non-overriding)
  *
  * Supported environments: local | dev | staging | production
  *
@@ -31,6 +32,16 @@ import { logger } from './logger';
 const KNOWN_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'] as const;
 type KnownEnvironment = (typeof KNOWN_ENVIRONMENTS)[number];
 
+export interface AdapterEnvRef {
+  dir: string;
+  name: string;
+}
+
+export interface LoadEnvironmentOptions {
+  /** Overlay adapter-specific defaults after core load (non-overriding). */
+  adapterEnv?: AdapterEnvRef;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -43,11 +54,14 @@ type KnownEnvironment = (typeof KNOWN_ENVIRONMENTS)[number];
  * 1. `environments/{APP_ENV}.env`          — primary (real credentials)
  * 2. `environments/{APP_ENV}.env.example`  — template fallback (warn to fill values)
  *
+ * When `options.adapterEnv` is set, overlays `{dir}/{name}.env` then
+ * `{dir}/{name}.env.example` without overwriting keys already set by core load.
+ *
  * Defaults to `local` when `APP_ENV` is undefined or unrecognised.
  *
  * @throws {Error} If no candidate file is found, with a list of all paths tried.
  */
-export function loadEnvironment(): void {
+export function loadEnvironment(options?: LoadEnvironmentOptions): void {
   const rawEnv = process.env['APP_ENV'];
 
   let appEnv: KnownEnvironment;
@@ -103,4 +117,36 @@ export function loadEnvironment(): void {
 
   // Requirement 5.6: log success at info level
   logger.info(`Loaded environment '${appEnv}' from ${loaded.label}`);
+
+  if (options?.adapterEnv) {
+    loadAdapterEnvOverlay(options.adapterEnv, cwd);
+  }
+}
+
+function loadAdapterEnvOverlay(adapterEnv: AdapterEnvRef, cwd: string): void {
+  const overlayCandidates = [
+    {
+      resolvedPath: path.resolve(cwd, adapterEnv.dir, `${adapterEnv.name}.env`),
+      label: `${adapterEnv.dir}/${adapterEnv.name}.env`,
+    },
+    {
+      resolvedPath: path.resolve(cwd, adapterEnv.dir, `${adapterEnv.name}.env.example`),
+      label: `${adapterEnv.dir}/${adapterEnv.name}.env.example`,
+    },
+  ];
+
+  for (const candidate of overlayCandidates) {
+    if (!fs.existsSync(candidate.resolvedPath)) {
+      continue;
+    }
+
+    dotenv.config({ path: candidate.resolvedPath, override: false });
+    logger.info(`Loaded adapter env overlay from ${candidate.label}`);
+    return;
+  }
+
+  logger.warn(
+    `Adapter env overlay not found for '${adapterEnv.name}'. Tried:\n` +
+      overlayCandidates.map((c) => `  - ${c.label}`).join('\n'),
+  );
 }

@@ -1,6 +1,6 @@
-import { test, expect } from '@/fixtures/base.fixture';
-import { CustomersNewPage } from '@/pages/ui/customers/CustomersNewPage';
-import { CustomersAllPage } from '@/pages/ui/customers/CustomersAllPage';
+import { test, expect } from '@erpku/fixtures/base.fixture';
+import { CustomersNewPage } from '@erpku/pages/customers/CustomersNewPage';
+import { CustomersAllPage } from '@erpku/pages/customers/CustomersAllPage';
 import { uniqueEmail, uniqueName } from '@/shared/utils/factories';
 import type { Page } from '@playwright/test';
 

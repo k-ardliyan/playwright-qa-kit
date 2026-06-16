@@ -1,6 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot, resolveAllowedPath } from '../utils/safety';
+import {
+  getAdapterFixtureImport,
+  getAdapterTraceabilityExemptPrefix,
+  getPlaywrightTestRoot,
+  isAdapterSpecPath,
+} from '../utils/playwright-paths';
 
 export interface ValidationViolation {
   filePath: string;
@@ -15,20 +21,22 @@ export interface ValidateGeneratedTestsOutput {
   message: string;
 }
 
-const DEFAULT_TEST_ROOT = 'src/tests';
-
 /**
  * Pre-existing or utility specs are exempt from the `// spec:` and `// seed:`
  * traceability header rules. Exemption is directory-scoped (not exact-path)
  * so adding a new utility spec in an exempt directory doesn't require a code
  * change here.
  */
-const TRACEABILITY_EXEMPT_PREFIXES: ReadonlyArray<string> = [
-  'src/tests/demo/',
-  'src/tests/ui/smoke/',
-  'src/tests/ui/auth/',
-];
+const TRACEABILITY_EXEMPT_PREFIXES_STATIC: ReadonlyArray<string> = ['src/tests/demo/'];
 const TRACEABILITY_EXEMPT_FILES: ReadonlyArray<string> = ['src/tests/seed.spec.ts'];
+
+function getTraceabilityExemptPrefixes(): string[] {
+  return [...TRACEABILITY_EXEMPT_PREFIXES_STATIC, getAdapterTraceabilityExemptPrefix()];
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function normalizeRelativePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
@@ -42,7 +50,7 @@ function isTraceabilityExempt(relativePath: string): boolean {
   if (TRACEABILITY_EXEMPT_FILES.includes(normalized)) {
     return true;
   }
-  return TRACEABILITY_EXEMPT_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  return getTraceabilityExemptPrefixes().some((prefix) => normalized.startsWith(prefix));
 }
 
 function getLineNumberFromIndex(content: string, index: number): number {
@@ -74,15 +82,24 @@ function findSpecFiles(dirPath: string): string[] {
   return files;
 }
 
-function validateImportRule(content: string, filePath: string): ValidationViolation | null {
-  const importRegex = /import\s*{([^}]*)}\s*from\s*['"]@\/fixtures\/base\.fixture['"]/g;
+function validateImportRule(
+  content: string,
+  filePath: string,
+  relativePath: string,
+): ValidationViolation | null {
+  const isAdapterSpec = isAdapterSpecPath(relativePath);
+  const adapterImport = getAdapterFixtureImport();
+  const importRegex = isAdapterSpec
+    ? new RegExp(`import\\s*{([^}]*)}\\s*from\\s*['"]${escapeRegExp(adapterImport)}['"]`, 'g')
+    : /import\s*{([^}]*)}\s*from\s*['"]@\/fixtures\/base\.fixture['"]/g;
   const match = importRegex.exec(content);
 
   if (!match) {
+    const expected = isAdapterSpec ? adapterImport : '@/fixtures/base.fixture';
     return {
       filePath,
       lineNumber: 1,
-      ruleName: 'Import rule: must import test from @/fixtures/base.fixture',
+      ruleName: `Import rule: must import test from ${expected}`,
     };
   }
 
@@ -146,7 +163,7 @@ export function validateSpecFile(filePath: string, relativePath?: string): Valid
   const violations: ValidationViolation[] = [];
   const rel = relativePath ?? normalizeRelativePath(filePath);
 
-  const importViolation = validateImportRule(content, filePath);
+  const importViolation = validateImportRule(content, filePath, rel);
   if (importViolation) {
     violations.push(importViolation);
   }
@@ -203,7 +220,7 @@ export function validateGeneratedTests(filePath?: string): ValidateGeneratedTest
 
     specFiles = [resolved.absolutePath];
   } else {
-    specFiles = findSpecFiles(path.join(repoRoot, DEFAULT_TEST_ROOT)).sort((a, b) =>
+    specFiles = findSpecFiles(path.join(repoRoot, getPlaywrightTestRoot())).sort((a, b) =>
       a.localeCompare(b),
     );
   }

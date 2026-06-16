@@ -14,11 +14,11 @@ QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requiremen
 
 ## MCP Servers (three-server hybrid)
 
-| Server            | Command                                                      | Role                                            |
-| ----------------- | ------------------------------------------------------------ | ----------------------------------------------- |
-| `playwright`      | `npx -y @playwright/mcp@latest`                              | Browser exploration (`browser_*` tools)         |
-| `playwright-test` | `npx playwright run-test-mcp-server -c playwright.config.ts` | Execute tests (`run_tests`, etc.)               |
-| `playwright-qa`   | `node mcp-server/dist/index-mcp.js`                          | Requirements, validation, failure/summary reads |
+| Server            | Command                                                        | Role                                            |
+| ----------------- | -------------------------------------------------------------- | ----------------------------------------------- |
+| `playwright`      | `npx -y @playwright/mcp@0.0.76 --headless`                     | Browser exploration (`browser_*` tools)         |
+| `playwright-test` | `npx tsx scripts/playwright-test-mcp-launch.ts`                | Execute tests (`run_tests`, etc.)               |
+| `playwright-qa`   | `node mcp-server/dist/index-mcp.js` (env bootstrap at startup) | Requirements, validation, failure/summary reads |
 
 Configure all three in [`.vscode/mcp.json`](../.vscode/mcp.json). Build custom QA server: `npm run mcp:build`.
 
@@ -65,7 +65,7 @@ Coordinates the full pipeline:
 
 - `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`
 - `playwright-test`: `run_tests`
-- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
 
 ### Example Prompt
 
@@ -146,7 +146,7 @@ See [`.github/agents/generator.agent.md`](agents/generator.agent.md) for `metada
 
 ### Example Prompt
 
-- "Generate tests from `specs/example-login-extension-test-plan.md` into `src/tests/ui/auth/login-empty-fields.spec.ts`."
+- "Generate tests from `specs/example-login-extension-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
 
 ---
 
@@ -162,7 +162,7 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "failures": [
     {
-      "file": "src/tests/ui/example.spec.ts",
+      "file": "src/tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
       "tracePath": "optional",
@@ -178,13 +178,13 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "fixes": [
     {
-      "file": "src/tests/ui/example.spec.ts",
+      "file": "src/tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],
   "cannotFix": [
     {
-      "file": "src/tests/ui/other.spec.ts",
+      "file": "src/tests/other.spec.ts",
       "reason": "Missing reproducible selector context"
     }
   ]
@@ -195,7 +195,7 @@ Diagnoses and repairs failing tests using structured failure payloads.
 
 - `playwright-qa`: `get_test_failures`, `validate_generated_tests`
 - `playwright-test`: `run_tests`
-- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
 
 ### Example Prompt
 

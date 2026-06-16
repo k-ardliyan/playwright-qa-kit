@@ -1,6 +1,6 @@
-import { test, expect } from '@/fixtures/base.fixture';
+import { test, expect } from '@erpku/fixtures/base.fixture';
 import { env } from '@/shared/utils/env';
-import users from '@/shared/mock-data/login.data.json';
+import users from '@erpku/mock-data/login.data.json';
 
 test.describe('Login Scenario Suite', { tag: ['@auth', '@login'] }, () => {
   // Reset storageState agar pengetesan login selalu berjalan dalam state unauthenticated

@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getLatestJsonResultFile, readTextFile } from '../utils/file-reader';
 import { safeJsonParse } from '../utils/json-parser';
+import { getJsonResultsPath } from '../utils/playwright-paths';
 import { getRepoRoot } from '../utils/safety';
 import { logger } from '../utils/logger';
 
@@ -72,25 +73,31 @@ interface ParsedSuite {
   file?: string;
 }
 
-const PRIORITY_RESULTS_FILE = 'test-results/results.json';
 const DEFAULT_RESULTS_DIR = path.resolve(getRepoRoot(), 'test-results');
 
 function resolveResultsFile(resultsDir: string): string | null {
-  // 1. Try the explicit results.json in the caller-supplied dir first.
-  const explicit = path.resolve(resultsDir, 'results.json');
-  if (fs.existsSync(explicit)) {
-    return explicit;
+  const repoRoot = getRepoRoot();
+  const normalizedDir = path.resolve(resultsDir);
+  const defaultResultsDir = path.resolve(repoRoot, 'test-results');
+
+  // Config-mapped JSON applies only when browsing the default test-results root.
+  // Explicit subdirs (property fixtures, scoped Healer runs) must not pick stale global JSON.
+  if (normalizedDir === defaultResultsDir) {
+    const configMapped = path.resolve(repoRoot, getJsonResultsPath());
+    if (fs.existsSync(configMapped)) {
+      return configMapped;
+    }
   }
 
-  // 2. Fall back to the latest .json anywhere in the caller-supplied dir.
+  // Latest .json in the caller-supplied dir (default: test-results/).
   const latestInDir = getLatestJsonResultFile(resultsDir);
   if (latestInDir) {
     return latestInDir;
   }
 
-  // 3. Last resort: the canonical repo-root priority file.
-  const priority = path.resolve(getRepoRoot(), PRIORITY_RESULTS_FILE);
-  return fs.existsSync(priority) ? priority : null;
+  // Legacy results.json fallback.
+  const explicit = path.resolve(resultsDir, 'results.json');
+  return fs.existsSync(explicit) ? explicit : null;
 }
 
 function extractErrorMessage(result: ParsedResult): string {
@@ -257,7 +264,7 @@ export function getTestFailures(resultsDir: string = DEFAULT_RESULTS_DIR): GetTe
   try {
     const resultFile = resolveResultsFile(resultsDir);
     if (!resultFile) {
-      const message = `No Playwright JSON results found. Expected '${PRIORITY_RESULTS_FILE}' or JSON under '${resultsDir}'.`;
+      const message = `No Playwright JSON results found. Expected '${getJsonResultsPath()}' or JSON under '${resultsDir}'.`;
       logger.info(message);
       return {
         failures: [],

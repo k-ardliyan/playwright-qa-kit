@@ -12,9 +12,16 @@
     "noEmit": true,
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@erpku/*": ["./example/erpku/*"]
     }
   },
-  "include": ["playwright.config.ts", "playwright.config.monorepo.ts", "src/**/*.ts"],
+  "include": [
+    "playwright.config.base.ts",
+    "playwright.config.ts",
+    "example/erpku/playwright.config.ts",
+    "src/**/*.ts",
+    "example/erpku/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

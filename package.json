@@ -1,6 +1,6 @@
 {
   "name": "playwright-qa-kit",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "description": "Reusable Playwright E2E acceleration framework with interactive runner, page objects, custom reporting, and AI-assisted workflow support",
   "keywords": [
@@ -34,18 +34,18 @@
     "test:ui": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
     "test:smoke": "npx playwright test --grep @smoke",
-    "test:demo": "npx playwright test --grep @demo",
+    "test:erpku-example": "npx playwright test -c example/erpku/playwright.config.ts",
     "mcp:build": "cd mcp-server && npm install && npm run build",
     "mcp:dev": "cd mcp-server && npx tsx src/index-mcp.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/mcp": "^0.0.76",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.0",
     "@types/node": "^25.9.3",
     "@types/prompts": "^2.4.9",
     "dotenv": "^17.4.2",
-    "eslint": "^10.4.1",
+    "eslint": "^10.5.0",
     "eslint-plugin-playwright": "^2.10.4",
     "fast-check": "^4.8.0",
     "husky": "^9.1.7",
@@ -54,7 +54,7 @@
     "prompts": "^2.4.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.0"
+    "typescript-eslint": "^8.61.1"
   },
   "lint-staged": {
     "*.ts": [
@@ -66,6 +66,6 @@
     ]
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.22.1"
   }
 }

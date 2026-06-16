@@ -1,6 +1,6 @@
-import { test, expect } from '@/fixtures/base.fixture';
+import { test, expect } from '@erpku/fixtures/base.fixture';
 import { uniqueName } from '@/shared/utils/factories';
-import { CustomersGroupPage } from '@/pages/ui/customers/CustomersGroupPage';
+import { CustomersGroupPage } from '@erpku/pages/customers/CustomersGroupPage';
 
 test.describe('Customer Group Scenario Suite', { tag: ['@customer', '@customer-group'] }, () => {
   // Helper: Navigasi langsung ke halaman Customer Groups

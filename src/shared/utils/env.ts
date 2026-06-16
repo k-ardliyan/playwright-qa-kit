@@ -87,4 +87,21 @@ export const env = {
   get USER_PASSWORD(): string {
     return requireSecretEnv('TEST_USER_PASSWORD');
   },
+
+  /** ── Konfigurasi Auth Setup (Opsional) ── */
+
+  /** Jalur URL yang menandakan login berhasil (wajib untuk auth setup) */
+  get AUTH_SUCCESS_URL_PATH(): string | undefined {
+    return process.env.AUTH_SUCCESS_URL_PATH?.trim() || undefined;
+  },
+
+  /** Jalur URL halaman login (wajib untuk auth setup) */
+  get AUTH_LOGIN_URL_PATH(): string | undefined {
+    return process.env.AUTH_LOGIN_URL_PATH?.trim() || undefined;
+  },
+
+  /** Teks yang muncul setelah berhasil login (wajib untuk auth setup) */
+  get AUTH_SUCCESS_TEXT(): string | undefined {
+    return process.env.AUTH_SUCCESS_TEXT?.trim() || undefined;
+  },
 } as const;

@@ -1,5 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  getAdapterTestRoot,
+  getPlaywrightTestRoot,
+  isUnderAllowedTestRoot,
+} from './playwright-paths';
 
 export const MAX_REQUIREMENTS_TEXT_BYTES = 256 * 1024;
 
@@ -13,14 +18,17 @@ export type AllowedPathKind =
 
 const READ_ONLY_KINDS = new Set<AllowedPathKind>(['environments', 'test-results', 'reports']);
 
-const ALLOWED_PREFIXES: Record<AllowedPathKind, string> = {
+const ALLOWED_PREFIXES: Record<Exclude<AllowedPathKind, 'tests'>, string> = {
   requirements: 'requirements',
   specs: 'specs',
-  tests: 'src/tests',
   reports: 'reports',
   'test-results': 'test-results',
   environments: 'environments',
 };
+
+function getTestsPrefix(): string {
+  return getPlaywrightTestRoot();
+}
 
 export interface ToolError {
   code: string;
@@ -112,7 +120,10 @@ export function resolveAllowedPath(
   options: { mustExist?: boolean; readOnly?: boolean } = {},
 ): { ok: true; absolutePath: string; relativePath: string } | { ok: false; error: ToolError } {
   const repoRoot = getRepoRoot();
-  const prefix = ALLOWED_PREFIXES[kind];
+  const prefix =
+    kind === 'tests'
+      ? getTestsPrefix()
+      : ALLOWED_PREFIXES[kind as Exclude<AllowedPathKind, 'tests'>];
   const normalizedInput = inputPath.replace(/\\/g, '/').trim();
 
   if (!normalizedInput || normalizedInput.includes('\0')) {
@@ -147,7 +158,17 @@ export function resolveAllowedPath(
   }
 
   const allowedPrefix = prefix.replace(/\\/g, '/');
-  if (relative !== allowedPrefix && !relative.startsWith(`${allowedPrefix}/`)) {
+  if (kind === 'tests') {
+    if (!isUnderAllowedTestRoot(relative)) {
+      return {
+        ok: false,
+        error: {
+          code: 'PATH_NOT_ALLOWED',
+          message: `Path must be under '${allowedPrefix}/' or '${getAdapterTestRoot()}/'. Received: '${relative}'.`,
+        },
+      };
+    }
+  } else if (relative !== allowedPrefix && !relative.startsWith(`${allowedPrefix}/`)) {
     return {
       ok: false,
       error: {

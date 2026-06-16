@@ -5,6 +5,11 @@ import fs from 'node:fs';
 
 const CHECKS: Array<{ label: string; path: string; hint: string }> = [
   {
+    label: '.vscode/mcp.json (Codex MCP config)',
+    path: path.join('.vscode', 'mcp.json'),
+    hint: 'ensure .vscode/mcp.json exists for Codex integration',
+  },
+  {
     label: '@playwright/mcp',
     path: path.join('node_modules', '@playwright', 'mcp'),
     hint: 'npm install @playwright/mcp',
@@ -23,6 +28,16 @@ const CHECKS: Array<{ label: string; path: string; hint: string }> = [
     label: 'requirements template',
     path: path.join('requirements', '_TEMPLATE.md'),
     hint: 'restore requirements/_TEMPLATE.md from repo',
+  },
+  {
+    label: 'Orchestrator agent (AGENTS.md)',
+    path: 'AGENTS.md',
+    hint: 'restore root AGENTS.md from repo',
+  },
+  {
+    label: 'project fixture seam',
+    path: path.join('src', 'fixtures', 'project.fixture.ts'),
+    hint: 'restore src/fixtures/project.fixture.ts from repo',
   },
   {
     label: 'QA guide',

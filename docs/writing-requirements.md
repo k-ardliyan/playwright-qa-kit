@@ -11,7 +11,7 @@ Panduan setup & pipeline: [GUIDE.md](GUIDE.md)
 3. **(Opsional) AI eksternal** — gunakan [prompt-external-ai.md](prompt-external-ai.md) di ChatGPT/Gemini.
 4. **Validasi format** — `npm run validate:requirement -- requirements/nama-fitur.md`
 5. **Paste & adjust** — sesuaikan ringan dengan Agent di Cursor jika perlu.
-6. **Jalankan pipeline** — prompt dari [prompt-cursor-agent.md](prompt-cursor-agent.md).
+6. **Jalankan pipeline** — prompt dari [prompt-ai-agent.md](prompt-ai-agent.md).
 
 ## Checklist Sebelum Commit
 

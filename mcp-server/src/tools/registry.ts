@@ -138,7 +138,8 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       properties: {
         filePath: {
           type: 'string',
-          description: 'Optional single file under src/tests/. Validates all specs when omitted.',
+          description:
+            'Optional single file under PLAYWRIGHT_TEST_ROOT (default src/tests/) or PLAYWRIGHT_ADAPTER_TEST_ROOT (default example/erpku/tests). Validates all specs when omitted.',
         },
       },
     },

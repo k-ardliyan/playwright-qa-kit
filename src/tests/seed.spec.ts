@@ -2,15 +2,13 @@ import { test, expect } from '@/fixtures/base.fixture';
 
 /**
  * Seed test — bootstrap for Planner/Generator agents.
- * Runs with project dependencies (auth setup) and demonstrates fixture usage.
+ * Generic entry point: opens BASE_URL without project-specific POM fixtures.
  */
 test.describe('Seed', { tag: ['@seed'] }, () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test('seed', async ({ loginPage, page }) => {
-    await test.step('Open login page as unauthenticated entry point', async () => {
-      await loginPage.goto();
-      await expect(page).toHaveURL(/login/i);
+  test('seed', async ({ page }) => {
+    await test.step('Open BASE_URL as generic bootstrap entry point', async () => {
+      await page.goto(process.env.BASE_URL ?? '/');
+      await expect(page).toHaveURL(/.+/);
     });
   });
 });

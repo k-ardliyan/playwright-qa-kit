@@ -4,20 +4,50 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 
 **Tim QA:** mulai dari [docs/GUIDE.md](docs/GUIDE.md). Dokumen ini untuk maintainer framework dan referensi kontrak tool — jangan duplikasi schema di dokumen QA.
 
+**Agent pipeline:** entry point Codex di root [`AGENTS.md`](AGENTS.md); governance ringkas di [`.github/AGENTS.md`](.github/AGENTS.md); sub-agent per fase di [`.github/agents/`](.github/agents/).
+
 ## MCP Server Installation
 
 Register and use these **three** servers (configured in [`.vscode/mcp.json`](.vscode/mcp.json)):
 
 1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
-   - Command: `npx -y @playwright/mcp@latest --headless`
+   - Command: `npx -y @playwright/mcp@0.0.76 --headless`
 
 2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
-   - Command: `npx playwright run-test-mcp-server -c playwright.config.ts`
+   - Launcher: `npx tsx scripts/playwright-test-mcp-launch.ts` (loads `environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
    - Requires `@playwright/test` >= 1.56
 
 3. **Custom QA MCP** (`playwright-qa`) — project-specific QA tools
    - Build: `npm run mcp:build`
-   - Run: `node mcp-server/dist/index-mcp.js`
+   - Run: `node mcp-server/dist/index-mcp.js` (bootstraps env at startup via `mcp-env-bootstrap.ts`)
+
+### Playwright profile seam
+
+Both `playwright-test` and `playwright-qa` read **`PLAYWRIGHT_CONFIG`** from `environments/{APP_ENV}.env` after bootstrap. Default: `playwright.config.ts`. For Reference Adapter runs:
+
+```bash
+PLAYWRIGHT_CONFIG=example/erpku/playwright.config.ts
+```
+
+Set in `environments/local.env`, then **restart MCP servers** in the IDE.
+
+Bootstrap module: [`mcp-server/src/utils/mcp-env-bootstrap.ts`](mcp-server/src/utils/mcp-env-bootstrap.ts) — also used by [`scripts/health-check-cli.ts`](scripts/health-check-cli.ts) and [`scripts/playwright-test-mcp-launch.ts`](scripts/playwright-test-mcp-launch.ts).
+
+### Optional: Playwright MCP capability flags
+
+Default install uses core browser tools only. Power users can enable extra capabilities via args in [`.vscode/mcp.json`](.vscode/mcp.json):
+
+```json
+"args": ["-y", "@playwright/mcp@0.0.76", "--headless", "--caps=network"]
+```
+
+| Flag              | Enables                                     |
+| ----------------- | ------------------------------------------- |
+| `--caps=network`  | `browser_network_requests`, request routing |
+| `--caps=devtools` | DevTools-oriented tooling                   |
+| `--caps=vision`   | Coordinate-based mouse interactions         |
+
+See [Playwright MCP configuration](https://github.com/microsoft/playwright-mcp) for full capability list.
 
 ## Running the Custom QA MCP Server
 
@@ -182,9 +212,40 @@ Or:
 
 ---
 
+## MCP pipeline environment overrides
+
+Optional variables in `environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
+
+| Variable                            | Default                              | Purpose                                                                                            |
+| ----------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                           |
+| `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set in `.vscode/mcp.json` args or local env |
+| `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                              |
+| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                 |
+| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts` | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter             |
+| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`       | Required import path for specs under adapter test root                                             |
+| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `test-results/erpku-results.json`    | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)          |
+
+**Config → JSON mapping** (when `PLAYWRIGHT_RESULTS_JSON` is unset): uses `PLAYWRIGHT_ADAPTER_CONFIG` and `PLAYWRIGHT_ADAPTER_RESULTS_JSON` defaults (ERPKU reference values above).
+
+`health_check` validates that `PLAYWRIGHT_CONFIG` points to an existing file and warns when the matching JSON results file is missing.
+
+**ERPKU adapter profile example:**
+
+```bash
+PLAYWRIGHT_CONFIG=example/erpku/playwright.config.ts
+PLAYWRIGHT_TEST_ROOT=example/erpku/tests
+```
+
+Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT` or `PLAYWRIGHT_ADAPTER_TEST_ROOT`.
+
+**Forks that delete `example/erpku/`:** unset or replace all `PLAYWRIGHT_ADAPTER_*` vars if you add a different reference adapter, or leave defaults unused if you have no adapter specs.
+
+---
+
 ## Tool: `list_artifacts`
 
-Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, `src/tests/**/*.spec.ts`.
+Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, and generated tests under `PLAYWRIGHT_TEST_ROOT` (default `src/tests/`).
 
 ### Input
 
@@ -196,7 +257,9 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, `src/tests/*
 
 ## Tool: `validate_generated_tests`
 
-Validates `.spec.ts` files for `@/fixtures/base.fixture`, `test.describe`, `test.step`, and `// spec:` / `// seed:` traceability headers (exempt: seed, smoke, legacy manual specs).
+Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, and traceability headers (exempt: seed, demo, example adapter).
+
+Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `src/tests`).
 
 ### Input
 
@@ -208,7 +271,7 @@ Or single file:
 
 ```json
 {
-  "filePath": "src/tests/ui/auth/login.spec.ts"
+  "filePath": "example/erpku/tests/ui/auth/login.spec.ts"
 }
 ```
 
@@ -216,7 +279,11 @@ Or single file:
 
 ## Tool: `get_test_failures`
 
-Reads failures from `test-results/results.json` (priority) or latest JSON under `test-results/`.
+Resolves Playwright JSON results in this order:
+
+1. **`getJsonResultsPath()`** — config-aware path from `PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`
+2. Latest `.json` by mtime under `resultsDir` (default `test-results/`)
+3. Legacy `test-results/results.json` fallback
 
 ### Input
 

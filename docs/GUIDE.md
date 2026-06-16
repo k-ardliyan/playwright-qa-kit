@@ -2,14 +2,17 @@
 
 Dokumen ini panduan utama tim QA. Untuk kontrak tool MCP, lihat [CUSTOM-MCP.md](../CUSTOM-MCP.md). Untuk diagram pipeline, lihat [README.md](../README.md).
 
+**Status framework:** Alpha (`v0.1.0-alpha.1`) — bukan production. Sesi workshop: [WORKSHOP.md](WORKSHOP.md). Fork production setelah beta: [FORK-ONBOARDING.md](FORK-ONBOARDING.md).
+
 ## Mulai di Sini
 
-| Langkah                       | Dokumen                                                                                                          |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Tulis requirement             | [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md) + [writing-requirements.md](writing-requirements.md) |
-| Rapikan dengan ChatGPT/Gemini | [prompt-external-ai.md](prompt-external-ai.md)                                                                   |
-| Jalankan pipeline di Cursor   | [prompt-cursor-agent.md](prompt-cursor-agent.md)                                                                 |
-| Contoh valid                  | [`requirements/example-login-extension.md`](../requirements/example-login-extension.md)                          |
+| Langkah                               | Dokumen                                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Workshop alpha (sesi facilitator)     | [WORKSHOP.md](WORKSHOP.md) + [ALPHA-LIMITATIONS.md](ALPHA-LIMITATIONS.md)                                        |
+| Tulis requirement                     | [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md) + [writing-requirements.md](writing-requirements.md) |
+| Rapikan dengan ChatGPT/Gemini         | [prompt-external-ai.md](prompt-external-ai.md)                                                                   |
+| Jalankan pipeline AI (Codex / Cursor) | [prompt-ai-agent.md](prompt-ai-agent.md)                                                                         |
+| Contoh valid                          | [`requirements/example-login-extension.md`](../requirements/example-login-extension.md)                          |
 
 ---
 
@@ -17,9 +20,9 @@ Dokumen ini panduan utama tim QA. Untuk kontrak tool MCP, lihat [CUSTOM-MCP.md](
 
 ### 1. Prasyarat
 
-- Node.js **>= 20**
+- Node.js **>= 22.22.1** (LTS 22.x recommended)
 - Git
-- Cursor atau VS Code dengan MCP aktif
+- VS Code dengan ekstensi Codex (Primary) atau Cursor
 
 ### 2. Instalasi
 
@@ -39,6 +42,33 @@ copy environments\local.env.example environments\local.env   # Windows
 
 Isi `BASE_URL`, kredensial tes di `environments/local.env`. **Jangan commit** file `.env` berisi password.
 
+Untuk menjalankan suite ERPKU contoh, salin juga nilai dari [`example/erpku/environments/erpku.env.example`](../example/erpku/environments/erpku.env.example) ke `environments/local.env` (`AUTH_*`, `TEST_USER_PHONE`).
+
+### Framework core vs project adapter
+
+Facilitator workshop pilih **satu** path per sesi:
+
+|                           | **Path A — template core (disarankan)** | **Path B — ERPKU adapter (demo)**                                                                                     |
+| ------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Tujuan workshop           | Latihan pipeline AI penuh               | Demo adapter + smoke; jelajah spec referensi                                                                          |
+| App                       | Frontend baru / generic                 | ERPKU reference (`example/erpku/`)                                                                                    |
+| `PLAYWRIGHT_CONFIG`       | `playwright.config.ts` (default)        | `example/erpku/playwright.config.ts`                                                                                  |
+| **Generate AI**           | `src/tests/*.spec.ts`                   | **Tidak didukung alpha** — `example/erpku/tests/` hanya spec referensi manual                                         |
+| Import fixture (generate) | `@/fixtures/base.fixture`               | —                                                                                                                     |
+| Env tambahan              | —                                       | `AUTH_*`, `TEST_USER_PHONE` dari [`erpku.env.example`](../example/erpku/environments/erpku.env.example) → `local.env` |
+| Sanity run                | `npm test`                              | `npm run test:erpku-example -- --project=smoke`                                                                       |
+
+Setelah ubah `PLAYWRIGHT_CONFIG` atau kredensial → **restart MCP servers**.
+
+Pipeline AI (Planner → Generator) **selalu** menulis ke `src/tests/` — termasuk latihan [`example-login-extension.md`](../requirements/example-login-extension.md). Path B dipakai untuk menjalankan dan mempelajari suite adapter, bukan generate spec baru via AI.
+
+| Perintah harian              | Layer         | Keterangan                           |
+| ---------------------------- | ------------- | ------------------------------------ |
+| `npm test`                   | Template core | Seed + property; `@demo` di-exclude  |
+| `npm run test:erpku-example` | ERPKU adapter | Smoke + regression (butuh env + app) |
+
+Fork proyek baru: ikuti checklist lengkap di [`docs/FORK-ONBOARDING.md`](FORK-ONBOARDING.md) (remote upstream, `project.fixture.ts` day-one, verifikasi setup).
+
 ### 4. Verifikasi setup
 
 ```bash
@@ -53,13 +83,14 @@ npm run test:quality
 
 ### 6. Perintah tes — kapan pakai apa
 
-| Perintah               | Kapan                                                 |
-| ---------------------- | ----------------------------------------------------- |
-| `npm run test:fast`    | Iterasi selector cepat (tanpa lint/typecheck)         |
-| `npm test`             | Suite E2E default (tanpa `@demo`; smoke + regression) |
-| `npm run test:smoke`   | Hanya `@smoke`                                        |
-| `npm run test:demo`    | Latihan Healer (`@demo` — sengaja gagal)              |
-| `npm run test:quality` | Sebelum push / sama dengan CI PR                      |
+| Perintah                     | Kapan                                                              |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `npm run test:fast`          | Iterasi selector cepat (tanpa lint/typecheck)                      |
+| `npm test`                   | Template core — seed spec (tanpa `@demo`)                          |
+| `npm run test:erpku-example` | Suite ERPKU lengkap (butuh env + app)                              |
+| `npm run test:smoke`         | Hanya `@smoke` (core grep; gunakan `--project=smoke` pada example) |
+| `npm run test:demo`          | Latihan Healer (`@demo` — sengaja gagal)                           |
+| `npm run test:quality`       | Sebelum push / sama dengan CI PR                                   |
 
 ### 7. Aktifkan 3 MCP Server
 
@@ -71,7 +102,19 @@ Konfigurasi ada di [`.vscode/mcp.json`](../.vscode/mcp.json):
 | `playwright-test` | Menjalankan tes (`run_tests`)                          |
 | `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan            |
 
+Di VS Code (Codex): Pastikan file `.vscode/mcp.json` tersedia dan extension mengenali server.
 Di Cursor: Settings → MCP → pastikan ketiga server **hijau/connected**.
+
+**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/local.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Setelah mengubah env, **restart MCP servers** di IDE agar `playwright-test` dan `playwright-qa` membaca profile yang sama.
+
+**CLI vs MCP:** `npm run health:check` dan MCP tool `health_check` keduanya mem-bootstrap env dari repo root; hasil seharusnya selaras setelah restart MCP.
+
+### Playwright CLI vs MCP (Generator)
+
+- **playwright-cli** (preferred): token-efficient, attach via `npx playwright test --debug=cli` + `playwright-cli attach`. Lihat [playwright-cli-generator.md](playwright-cli-generator.md).
+- **playwright MCP**: fallback exploratory/healing — `browser_snapshot`, `browser_click`, dll. via server `playwright`.
+
+Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum generate tes halaman baru).
 
 ---
 
@@ -94,7 +137,7 @@ Diagram visual: lihat section "Bagaimana Ini Bekerja?" di [README.md](../README.
 
 ## Validasi Format (Tanpa Buka Agent)
 
-Sebelum jalankan pipeline Cursor, cek format requirement:
+Sebelum jalankan pipeline AI (Codex/Cursor), cek format requirement:
 
 ```bash
 npm run validate:requirement -- requirements/nama-fitur.md
@@ -114,7 +157,7 @@ Gunakan [`requirements/example-login-extension.md`](../requirements/example-logi
 # 1. Validasi format
 npm run validate:requirement -- requirements/example-login-extension.md
 
-# 2. Di Cursor Agent mode, salin prompt dari docs/prompt-cursor-agent.md
+# 2. Di Codex chat (atau Cursor Agent mode), salin prompt dari docs/prompt-ai-agent.md
 #    (bagian "Pipeline lengkap") dengan path example-login-extension.md
 
 # 3. Setelah generate, jalankan tes
@@ -128,7 +171,7 @@ npm test
 Output yang diharapkan:
 
 - `specs/example-login-extension-test-plan.md` (dibuat Planner)
-- `src/tests/ui/auth/login-empty-fields.spec.ts` atau serupa (dibuat Generator)
+- `src/tests/login-empty-fields.spec.ts` atau serupa (dibuat Generator di `src/tests/`)
 - Tes SC-01 dan SC-02 jalan; SC-03 (@manual) di-skip
 
 ---
@@ -171,7 +214,7 @@ Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
 
 | Check             | Status    | Perbaikan                                        |
 | ----------------- | --------- | ------------------------------------------------ |
-| `node`            | fail      | Install Node.js >= 20                            |
+| `node`            | fail      | Install Node.js >= 22.22.1                       |
 | `mcp_build`       | fail      | `npm run mcp:build`                              |
 | `playwright_mcp`  | fail      | `npm install`                                    |
 | `playwright_test` | warn/fail | Upgrade `@playwright/test` >= 1.56               |
@@ -179,7 +222,7 @@ Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
 | `base_url`        | warn      | Set `BASE_URL` di file env                       |
 | `json_results`    | warn      | Normal sebelum tes pertama — jalankan `npm test` |
 
-CLI: `npm run health:check` (setara tool MCP `health_check`).
+CLI: `npm run health:check` — mem-bootstrap env seperti MCP `health_check`; restart MCP setelah ubah `environments/local.env`.
 
 ---
 
@@ -200,7 +243,8 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 
 1. `npm run mcp:build` — wajib setelah clone
 2. Cek [`.vscode/mcp.json`](../.vscode/mcp.json): `playwright-qa` → `node mcp-server/dist/index-mcp.js`
-3. Restart MCP di Cursor Settings
+3. **VS Code (Codex):** reload window atau restart extension jika MCP server tidak connect
+4. **Cursor:** Settings → MCP → restart server; pastikan ketiga server hijau/connected
 
 ---
 

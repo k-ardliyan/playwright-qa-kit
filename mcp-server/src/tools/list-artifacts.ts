@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot, isPipelineRequirementRelativePath } from '../utils/safety';
+import { getPlaywrightTestRoot } from '../utils/playwright-paths';
 
 export interface ListArtifactsOutput {
   status: 'success' | 'error';
@@ -61,7 +62,10 @@ function listRequirementFeatures(): string[] {
 export function listArtifacts(): ListArtifactsOutput {
   const requirements = listRequirementFeatures();
   const specs = listFilesRecursive(path.join(getRepoRoot(), 'specs'), '.md');
-  const tests = listFilesRecursive(path.join(getRepoRoot(), 'src', 'tests'), '.spec.ts');
+  const tests = listFilesRecursive(
+    path.join(getRepoRoot(), ...getPlaywrightTestRoot().split('/')),
+    '.spec.ts',
+  );
 
   return {
     status: 'success',

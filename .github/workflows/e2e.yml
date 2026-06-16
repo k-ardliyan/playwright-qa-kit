@@ -26,7 +26,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -48,6 +48,9 @@ jobs:
             [ -n "${TEST_USER_USERNAME}" ] && printf 'TEST_USER_USERNAME=%s\n' "${TEST_USER_USERNAME}"
             [ -n "${TEST_USER_PASSWORD}" ] && printf 'TEST_USER_PASSWORD=%s\n' "${TEST_USER_PASSWORD}"
             [ -n "${TEST_USER_PHONE}" ]    && printf 'TEST_USER_PHONE=%s\n'    "${TEST_USER_PHONE}"
+            printf 'AUTH_SUCCESS_URL_PATH=/dashboard\n'
+            printf 'AUTH_LOGIN_URL_PATH=login\n'
+            printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
           } > "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
 
@@ -57,18 +60,18 @@ jobs:
       - name: Install Playwright Chromium Browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run smoke tests
-        run: npx playwright test --project=smoke
+      - name: Run smoke tests (ERPKU example adapter)
+        run: npm run test:erpku-example -- --project=smoke
 
-      - name: Run regression tests
-        run: npm run test:ci -- --project=chromium
+      - name: Run regression tests (ERPKU example adapter)
+        run: npm run test:erpku-example -- --project=chromium
 
       - name: Upload Playwright HTML Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report
-          path: reports/html/
+          path: reports/erpku-html/
           retention-days: 30
 
       - name: Upload test results JSON
@@ -77,8 +80,9 @@ jobs:
         with:
           name: playwright-results
           path: |
-            test-results/results.json
+            test-results/erpku-results.json
             reports/test-summary.json
+            reports/custom-dashboard.html
           retention-days: 30
 
   e2e-skipped:

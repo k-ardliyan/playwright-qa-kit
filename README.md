@@ -3,6 +3,9 @@
 > **Framework Otomatisasi Pengujian Bertenaga AI**  
 > Solusi modern untuk merancang, menulis, menjalankan, memperbaiki, dan melaporkan pengujian otomatis (_End-to-End_) secara instan dengan bantuan kecerdasan buatan (AI).
 
+> **Status: Alpha (`v0.1.0-alpha.1`)** — uji coba internal dengan facilitator, bukan production.  
+> Workshop: [`docs/WORKSHOP.md`](docs/WORKSHOP.md) · Keterbatasan: [`docs/ALPHA-LIMITATIONS.md`](docs/ALPHA-LIMITATIONS.md)
+
 ---
 
 ## 🌟 Fitur Utama
@@ -10,7 +13,7 @@
 Bagi tim QA (baik yang mahir coding maupun non-coder), framework ini dirancang untuk mempermudah pekerjaan sehari-hari:
 
 - 🤖 **AI-Assisted Planning & Generation**: Cukup tulis apa yang ingin diuji dalam bahasa manusia biasa (dokumen kebutuhan/requirement), dan AI akan merancang skenario (_Test Plan_) serta menulis kode pengujiannya secara otomatis.
-- 🩺 **Self-Healing (Perbaikan Otomatis)**: Jika aplikasi web Anda berubah (misalnya ID tombol berganti), AI akan menganalisis kegagalan pengujian dan memperbaikinya secara otomatis tanpa Anda perlu mengubah kode secara manual.
+- 🩺 **Self-Healing (Perbaikan Otomatis)**: AI dapat menganalisis kegagalan dan memperbaiki selector (_alpha: best-effort, facilitator disarankan — lihat [ALPHA-LIMITATIONS.md](docs/ALPHA-LIMITATIONS.md)_).
 - 📊 **Laporan Visual yang Cantik**: Menyediakan dashboard interaktif yang mudah dibaca oleh manajer, produk owner, maupun tim QA.
 - 🌍 **Multi-Environment Ready**: Mudah mengalihkan target pengujian antara server **Lokal (Local)**, **Staging**, atau **Produksi (Production)** hanya dengan satu perintah mudah.
 
@@ -72,7 +75,7 @@ Berikut adalah folder penting yang akan sering Anda gunakan:
 
 ### 1. Persiapan Sistem (Sekali Saja)
 
-Pastikan komputer Anda sudah terinstal **Node.js** (versi 20 ke atas) dan **Git**.
+Pastikan komputer Anda sudah terinstal **Node.js** (versi **>= 22.22.1**, LTS 22.x) dan **Git**.
 
 ### 2. Instalasi Framework
 
@@ -163,7 +166,7 @@ Detail tool: [CUSTOM-MCP.md](CUSTOM-MCP.md).
    > _"Validasi requirements/example-login-extension.md, lalu jalankan pipeline: plan, generate, validate, run_tests, heal jika gagal, report."_
 5. AI memvalidasi dokumen (`validate_requirement`), membuat `specs/*-test-plan.md`, kode di `src/tests/`, menjalankan tes lewat **playwright-test**, dan memperbaiki kegagalan lewat **playwright-qa** `get_test_failures`.
 
-Panduan lengkap: [`docs/GUIDE.md`](docs/GUIDE.md) · Prompt Cursor: [`docs/prompt-cursor-agent.md`](docs/prompt-cursor-agent.md).
+Panduan lengkap: [`docs/GUIDE.md`](docs/GUIDE.md) · Prompt AI: [`docs/prompt-ai-agent.md`](docs/prompt-ai-agent.md).
 
 ### Checklist integrasi MCP
 
@@ -204,13 +207,14 @@ Mencakup: format, lint, typecheck, validate specs, validate requirement example,
 | `quality.yml` | PR + push          | Tidak                          |
 | `e2e.yml`     | push main + manual | Ya (`BASE_URL` + 4 kredensial) |
 
-Folder `example/erpku/` **tidak** dijalankan CI — referensi adopter saja.
+Folder `example/erpku/` adalah **reference adapter** ERPKU — dijalankan CI E2E (`npm run test:erpku-example`) bila secrets tersedia. Template core (`npm test`) hanya menjalankan seed + demo di `src/tests/`.
 
 ---
 
 ## 📚 Dokumen Pendukung Lainnya
 
 - 📄 [docs/GUIDE.md](docs/GUIDE.md) — **Panduan utama tim QA** (setup lokal, pipeline, troubleshooting).
+- 📄 [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md) — **Fork template** untuk proyek QA baru (upstream sync, day-one setup).
 - 📄 [docs/writing-requirements.md](docs/writing-requirements.md) — Format penulisan requirement.
 - 📄 [requirements/README.md](requirements/README.md) — Pointer singkat folder requirements.
 - 📄 [CUSTOM-MCP.md](CUSTOM-MCP.md) — Kontrak tool MCP (maintainer framework).

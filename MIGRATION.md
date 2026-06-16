@@ -24,7 +24,7 @@ Gunakan jika repositori frontend Anda single project.
    Tambahkan script E2E dan dependency Playwright ke `package.json` repositori target.
 
 3. **Gunakan Konfigurasi Playwright**
-   Jadikan `playwright.config.monorepo.ts` sebagai acuan untuk `playwright.config.ts` di repositori target.
+   Salin `playwright.config.base.ts` (kebijakan eksekusi bersama) dan gunakan [`docs/recipes/playwright.config.nextjs-e2e.recipe.ts`](docs/recipes/playwright.config.nextjs-e2e.recipe.ts) sebagai acuan untuk `playwright.config.ts` di repositori target — spread `playwrightSharedDefaults`, lalu override `testDir`, `projects`, dan `reporter` sesuai struktur `/e2e` Anda.
 
 ---
 

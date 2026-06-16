@@ -10,7 +10,7 @@ You diagnose and repair failing Playwright tests using structured failure data.
 {
   "failures": [
     {
-      "file": "src/tests/ui/example.spec.ts",
+      "file": "src/tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
       "tracePath": "test-results/.../trace.zip",
@@ -24,14 +24,22 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 
 ## MCP Dependencies
 
-| MCP Server        | Tool Name                  |
-| ----------------- | -------------------------- |
-| `playwright-qa`   | `get_test_failures`        |
-| `playwright-qa`   | `validate_generated_tests` |
-| `playwright-test` | `run_tests`                |
-| `playwright`      | `browser_navigate`         |
-| `playwright`      | `browser_snapshot`         |
-| `playwright`      | `browser_take_screenshot`  |
+| MCP Server        | Tool Name                               |
+| ----------------- | --------------------------------------- |
+| `playwright-qa`   | `get_test_failures`                     |
+| `playwright-qa`   | `validate_generated_tests`              |
+| `playwright-test` | `run_tests`                             |
+| `playwright`      | See **Browser Interaction Tools** below |
+
+## Browser Interaction Tools (`playwright` MCP)
+
+| Category    | Tools                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Navigation  | `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`                                 |
+| Interaction | `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_wait_for` |
+| Diagnostics | `browser_console_messages`, `browser_network_requests`                                            |
+
+Use diagnostics when failures look like app errors rather than locator drift.
 
 ## Healing Policy
 
@@ -57,13 +65,13 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 {
   "fixes": [
     {
-      "file": "src/tests/ui/example.spec.ts",
+      "file": "src/tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],
   "cannotFix": [
     {
-      "file": "src/tests/ui/other.spec.ts",
+      "file": "src/tests/other.spec.ts",
       "reason": "Missing reproducible selector context"
     }
   ]

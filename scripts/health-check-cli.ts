@@ -1,12 +1,10 @@
 /// <reference types="node" />
 
 import { healthCheck } from '../mcp-server/src/tools/health-check';
-import { findRepoRoot } from '../mcp-server/src/utils/safety';
+import { bootstrapMcpEnvironment } from './mcp-bootstrap';
 
 function main(): void {
-  // Anchor cwd at the repo root so health checks see the expected paths
-  // even when invoked from a subdirectory.
-  process.chdir(findRepoRoot(__dirname));
+  bootstrapMcpEnvironment(__dirname);
   const output = healthCheck();
 
   for (const check of output.checks) {

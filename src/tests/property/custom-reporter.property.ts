@@ -44,7 +44,7 @@ const DASHBOARD_PATH = path.join(REPORT_DIR, 'custom-dashboard.html');
 const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
 
 function makeSyntheticTest(index: number): TestCase {
-  const file = path.join(process.cwd(), 'src/tests/ui/smoke/smoke.spec.ts');
+  const file = path.join(process.cwd(), 'example/erpku/tests/ui/smoke/smoke.spec.ts');
   return {
     title: `synthetic-${index}`,
     titlePath: () => ['Property Suite', `synthetic-${index}`],

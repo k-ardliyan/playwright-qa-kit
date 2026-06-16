@@ -1,5 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import {
+  getJsonResultsPath,
+  getPlaywrightConfigPath,
+  resolvePlaywrightConfigAbsolute,
+} from '../utils/playwright-paths';
 import { getRepoRoot } from '../utils/safety';
 
 export interface HealthCheckItem {
@@ -15,14 +20,16 @@ export interface HealthCheckOutput {
 }
 
 function checkNodeVersion(): HealthCheckItem {
-  const major = Number(process.versions.node.split('.')[0]);
-  if (major >= 20) {
-    return { name: 'node', status: 'ok', message: `Node.js ${process.versions.node}` };
+  const version = process.versions.node;
+  const [major, minor, patch] = version.split('.').map(Number);
+  const ok = major > 22 || (major === 22 && (minor > 22 || (minor === 22 && (patch ?? 0) >= 1)));
+  if (ok) {
+    return { name: 'node', status: 'ok', message: `Node.js ${version}` };
   }
   return {
     name: 'node',
     status: 'fail',
-    message: `Node.js ${process.versions.node} — requires >= 20`,
+    message: `Node.js ${version} — requires >= 22.22.1`,
   };
 }
 
@@ -108,6 +115,25 @@ function checkEnvironmentFile(): HealthCheckItem {
   };
 }
 
+function checkPlaywrightConfig(): HealthCheckItem {
+  const configPath = getPlaywrightConfigPath();
+  const absolute = resolvePlaywrightConfigAbsolute(getRepoRoot());
+
+  if (fs.existsSync(absolute)) {
+    return {
+      name: 'playwright_config',
+      status: 'ok',
+      message: `PLAYWRIGHT_CONFIG=${configPath}`,
+    };
+  }
+
+  return {
+    name: 'playwright_config',
+    status: 'warn',
+    message: `PLAYWRIGHT_CONFIG=${configPath} — file not found at ${configPath}`,
+  };
+}
+
 function checkBaseUrl(): HealthCheckItem {
   const baseUrl = process.env.BASE_URL;
   if (baseUrl && baseUrl.length > 0) {
@@ -121,18 +147,23 @@ function checkBaseUrl(): HealthCheckItem {
 }
 
 function checkJsonReporterOutput(): HealthCheckItem {
-  const resultsJson = path.join(getRepoRoot(), 'test-results', 'results.json');
+  const relativePath = getJsonResultsPath();
+  const resultsJson = path.join(getRepoRoot(), relativePath);
+  const overrideNote = process.env.PLAYWRIGHT_RESULTS_JSON?.trim()
+    ? ' (PLAYWRIGHT_RESULTS_JSON override)'
+    : '';
+
   if (fs.existsSync(resultsJson)) {
     return {
       name: 'json_results',
       status: 'ok',
-      message: 'test-results/results.json exists (from last test run)',
+      message: `${relativePath} exists (from last test run)${overrideNote}`,
     };
   }
   return {
     name: 'json_results',
     status: 'warn',
-    message: 'test-results/results.json not found — run tests to populate Healer input',
+    message: `${relativePath} not found — run tests with PLAYWRIGHT_CONFIG=${getPlaywrightConfigPath()} to populate Healer input`,
   };
 }
 
@@ -143,6 +174,7 @@ export function healthCheck(): HealthCheckOutput {
     checkPlaywrightMcp(),
     checkPlaywrightTest(),
     checkEnvironmentFile(),
+    checkPlaywrightConfig(),
     checkBaseUrl(),
     checkJsonReporterOutput(),
   ];

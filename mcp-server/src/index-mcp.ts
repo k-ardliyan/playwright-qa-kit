@@ -2,6 +2,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { dispatchTool, MCP_TOOL_DEFINITIONS } from './tools/dispatch';
+import { bootstrapMcpEnvironment } from './utils/mcp-env-bootstrap';
 import { logger } from './utils/logger';
 
 const server = new Server(
@@ -61,6 +62,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function main() {
+  bootstrapMcpEnvironment(__dirname);
   process.stderr.write('[playwright-qa-mcp] Starting MCP server (stdio transport)...\n');
   logger.info('Starting Playwright QA MCP server...');
   const transport = new StdioServerTransport();

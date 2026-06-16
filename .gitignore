@@ -29,6 +29,10 @@ src/tests/__property_validator__/
 *.tsbuildinfo
 mcp-server/dist/
 
+# Local agent tooling (not part of release)
+.agents/
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

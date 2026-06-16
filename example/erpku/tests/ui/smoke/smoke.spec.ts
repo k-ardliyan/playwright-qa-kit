@@ -1,4 +1,4 @@
-import { test, expect } from '@/fixtures/base.fixture';
+import { test, expect } from '@erpku/fixtures/base.fixture';
 
 test.describe('Smoke Tests', { tag: ['@smoke'] }, () => {
   // Reset storageState agar smoke tests berjalan unauthenticated dan tidak redirect ke dashboard

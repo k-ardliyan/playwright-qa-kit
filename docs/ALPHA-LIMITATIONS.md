@@ -2,7 +2,12 @@
 
 Daftar keterbatasan **jujur** untuk rilis alpha. Framework ini **bukan production** dan **bukan General Availability (GA)**.
 
-Workshop: [WORKSHOP.md](WORKSHOP.md). Panduan lengkap: [GUIDE.md](GUIDE.md).
+Workshop dan panduan QA:
+
+- [WORKSHOP.md](WORKSHOP.md)
+- [Go/No-Go](WORKSHOP.md#go-no-go)
+- [GUIDE.md](GUIDE.md)
+- [README.md](README.md) — indeks dokumen
 
 ---
 

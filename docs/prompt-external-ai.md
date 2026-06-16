@@ -1,6 +1,6 @@
 # Prompt untuk AI Eksternal (ChatGPT / Gemini)
 
-Salin seluruh blok di bawah ke chat AI eksternal. Ganti `[CATATAN QA ANDA]` dengan catatan kasar tim QA.
+Untuk merapikan catatan QA kasar jadi requirement markdown. Salin blok di bawah ke chat eksternal; ganti `[CATATAN QA ANDA]` dengan catatan tim.
 
 ---
 
@@ -55,9 +55,9 @@ CATATAN QA:
 
 ---
 
-## Setelah AI Menghasilkan Output
+## Langkah setelah AI selesai
 
-1. Salin Markdown hasil AI.
-2. Buat file baru: `requirements/nama-fitur.md`.
-3. Paste dan review checklist di [writing-requirements.md](writing-requirements.md).
-4. Buka project di Cursor, minta agent: _"Validasi requirements/nama-fitur.md, perbaiki jika ada violation, lalu buat test plan dan generate tests."_
+1. Salin Markdown hasil AI ke `requirements/nama-fitur.md`.
+2. Cek format dengan [writing-requirements.md](writing-requirements.md).
+3. Jalankan `npm run validate:requirement -- requirements/nama-fitur.md`.
+4. Di VS Code Codex (atau Cursor Agent), pakai prompt validasi atau pipeline dari [prompt-ai-agent.md](prompt-ai-agent.md).

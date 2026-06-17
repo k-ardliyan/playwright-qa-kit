@@ -49,7 +49,7 @@ Setelah ubah env → **restart MCP** di VS Code. `BASE_URL` = IP FE meja (bukan 
 
 - [ ] **Kategori 1 — Facilitator** — tag, handout, IP + kredensial
 - [ ] **Kategori 2 — BE/FE** — satu WiFi/LAN; FE `0.0.0.0`; API → IP BE; app buka dari browser QA
-- [ ] **Kategori 3 — Prasyarat QA** — Node >= 22.22.1, Git, VS Code + Codex
+- [ ] **Kategori 3 — Prasyarat QA** — Node >= 20.19.0, Git, VS Code + Codex
 - [ ] **Kategori 4 — Repo** — clone, tag, install, playwright, `mcp:build`
 - [ ] **Kategori 5 — Env & MCP** — `local.env` + 3 MCP hijau di Codex
 - [ ] **Kategori 6 — Verifikasi** — `health:check` no fail · `npm test` pass · browser buka `BASE_URL`

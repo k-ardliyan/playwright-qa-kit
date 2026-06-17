@@ -1,6 +1,6 @@
 {
   "name": "playwright-qa-kit",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "description": "Reusable Playwright E2E acceleration framework with interactive runner, page objects, custom reporting, and AI-assisted workflow support",
   "keywords": [
@@ -25,13 +25,14 @@
     "install:mcp-server": "npm ci --prefix mcp-server",
     "prepare": "husky",
     "pretest": "npm run setup:check && npm run lint && npm run typecheck",
-    "test": "npx playwright test",
-    "test:fast": "npx playwright test",
+    "test": "npx playwright test --grep-invert @demo",
+    "test:fast": "npx playwright test --grep-invert @demo",
+    "test:demo": "npx playwright test --project=demo --workers=1",
     "test:ci": "npx playwright test --grep-invert @demo",
     "test:property": "tsx scripts/run-property-tests.ts",
     "test:quality": "npm run install:mcp-server && npm run format:check && npm run lint && npm run typecheck && npx tsc -p mcp-server/tsconfig.json --noEmit && npm run validate && npm run validate:requirement -- requirements/example-login-extension.md && npm run test:property && npm run mcp:build && npm run health:check",
     "test:custom": "tsx src/shared/utils/cli-runner.ts",
-    "test:headed": "npx playwright test --headed",
+    "test:headed": "npx playwright test --headed --grep-invert @demo",
     "test:ui": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
     "test:smoke": "npx playwright test --grep @smoke",
@@ -43,14 +44,14 @@
     "@eslint/js": "^10.0.1",
     "@playwright/mcp": "^0.0.76",
     "@playwright/test": "^1.61.0",
-    "@types/node": "^25.9.3",
+    "@types/node": "^20.17.0",
     "@types/prompts": "^2.4.9",
     "dotenv": "^17.4.2",
     "eslint": "^10.5.0",
     "eslint-plugin-playwright": "^2.10.4",
     "fast-check": "^4.8.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
+    "lint-staged": "^16.1.2",
     "prettier": "^3.8.4",
     "prompts": "^2.4.2",
     "tsx": "^4.22.4",
@@ -67,6 +68,6 @@
     ]
   },
   "engines": {
-    "node": ">=22.22.1"
+    "node": ">=20.19.0"
   }
 }

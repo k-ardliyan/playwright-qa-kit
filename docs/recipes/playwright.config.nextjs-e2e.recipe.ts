@@ -8,12 +8,15 @@
  */
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironment } from '../../src/utils/env-loader';
-import { createFrameworkReporters, playwrightSharedDefaults } from '../../playwright.config.base';
+import {
+  buildPlaywrightSharedDefaults,
+  createFrameworkReporters,
+} from '../../playwright.config.base';
 
 loadEnvironment();
 
 export default defineConfig({
-  ...playwrightSharedDefaults,
+  ...buildPlaywrightSharedDefaults(),
   testDir: './e2e',
   reporter: createFrameworkReporters({
     jsonOutput: 'test-results/results.json',

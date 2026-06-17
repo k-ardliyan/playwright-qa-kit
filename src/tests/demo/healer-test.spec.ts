@@ -4,7 +4,7 @@ test.describe('Healer Tests', { tag: ['@demo', '@healer'] }, () => {
   test('Healer test fail', async ({ page }) => {
     await test.step('Navigate to playwright.dev and try to click non-existent button', async () => {
       await page.goto('https://playwright.dev/');
-      await page.getByText('ButtonGakAda').click();
+      await page.getByText('ButtonGakAda').click({ timeout: 10_000 });
     });
   });
 });

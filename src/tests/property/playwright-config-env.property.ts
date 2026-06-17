@@ -101,9 +101,16 @@ async function main(): Promise<void> {
   });
   process.stdout.write('✓ invalid SLOW_MO and HEADLESS fall back to defaults\n');
 
+  const previousCiForSlowMo = process.env.CI;
+  delete process.env.CI;
   process.env.SLOW_MO = '500';
   assert.equal(resolveSlowMo(), 500);
   delete process.env.SLOW_MO;
+  if (previousCiForSlowMo === undefined) {
+    delete process.env.CI;
+  } else {
+    process.env.CI = previousCiForSlowMo;
+  }
   process.stdout.write('✓ resolveSlowMo reads process.env when already loaded\n');
 }
 

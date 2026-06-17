@@ -4,7 +4,7 @@ Ringkasan workflow **playwright-cli** untuk fase Generator. CLI token-efficient;
 
 ## Prasyarat
 
-- Node.js >= 22.22.1
+- Node.js >= 20.19.0
 - `@playwright/test` >= 1.56
 - CLI tersedia: `npx playwright-cli --help` (atau install global)
 

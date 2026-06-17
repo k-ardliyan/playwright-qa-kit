@@ -3,6 +3,7 @@
 // Feature: playwright-ai-agent-framework, Property 5: Reporter Output Completeness
 // Feature: playwright-ai-agent-framework, Property 6: Reporter Trace Link Generation
 // Feature: playwright-ai-agent-framework, Property 7: Reporter CI Mode Selection
+// Feature: playwright-ai-agent-framework, Property 8: Reporter Attachment Rendering
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -23,6 +24,8 @@ interface SyntheticCase {
   status: SyntheticStatus;
   duration: number;
   traceFile?: string;
+  screenshotFile?: string;
+  videoFile?: string;
   failedStep?: boolean;
 }
 
@@ -38,10 +41,13 @@ interface ReporterRunOutput {
   };
 }
 
-// process.cwd() selalu menunjuk ke root project saat dijalankan via tsx
 const REPORT_DIR = path.resolve(process.cwd(), 'reports');
 const DASHBOARD_PATH = path.join(REPORT_DIR, 'custom-dashboard.html');
 const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
+
+function toReportRelativePath(absolutePath: string): string {
+  return path.relative(REPORT_DIR, absolutePath).replace(/\\/g, '/');
+}
 
 function makeSyntheticTest(index: number): TestCase {
   const file = path.join(process.cwd(), 'example/erpku/tests/ui/smoke/smoke.spec.ts');
@@ -61,6 +67,14 @@ function makeSyntheticResult(index: number, data: SyntheticCase): TestResult {
       }
     : null;
 
+  const attachments = [
+    ...(data.traceFile ? [{ name: 'trace', path: data.traceFile }] : []),
+    ...(data.screenshotFile
+      ? [{ name: 'screenshot', path: data.screenshotFile, contentType: 'image/png' }]
+      : []),
+    ...(data.videoFile ? [{ name: 'video', path: data.videoFile, contentType: 'video/webm' }] : []),
+  ];
+
   return {
     status: data.status,
     duration: data.duration,
@@ -74,14 +88,7 @@ function makeSyntheticResult(index: number, data: SyntheticCase): TestResult {
         steps: [],
       },
     ],
-    attachments: data.traceFile
-      ? [
-          {
-            name: 'trace',
-            path: data.traceFile,
-          },
-        ]
-      : [],
+    attachments,
   } as unknown as TestResult;
 }
 
@@ -168,7 +175,15 @@ async function property5ReporterOutputCompleteness(): Promise<void> {
 
         assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
         assert.match(output.html, /id="resultDonut"/);
-        assert.match(output.html, /<details>/);
+        assert.match(output.html, /Detailed Test Records/);
+        if (total > 0) {
+          const cardMatches = output.html.match(/class="test-card"/g) ?? [];
+          assert.equal(cardMatches.length, total);
+        }
+        if (failedCount > 0) {
+          assert.match(output.html, /Synthetic failure/);
+          assert.match(output.html, /step failed/);
+        }
         assert.match(output.html, new RegExp(`${expectedPassRate}%`));
       },
     ),
@@ -190,18 +205,17 @@ async function property6ReporterTraceLinkGeneration(): Promise<void> {
           status: 'failed',
           duration: 250,
           failedStep: true,
-          traceFile: path.join(process.cwd(), 'playwright-report', `${name}.zip`),
+          traceFile: path.join(process.cwd(), 'test-results', `${name}.zip`),
         }));
 
         const output = await runReporter(cases, 'false');
 
-        const iconMatches = output.html.match(/📊 View Trace/g) ?? [];
-        assert.equal(iconMatches.length, traceNames.length);
+        const traceMatches = output.html.match(/View Trace/g) ?? [];
+        assert.equal(traceMatches.length, traceNames.length);
 
         for (const name of traceNames) {
-          const relative = path.relative(
-            process.cwd(),
-            path.join(process.cwd(), 'playwright-report', `${name}.zip`),
+          const relative = toReportRelativePath(
+            path.join(process.cwd(), 'test-results', `${name}.zip`),
           );
           assert.equal(output.html.includes(relative), true);
         }
@@ -234,6 +248,7 @@ async function property7ReporterCiModeSelection(): Promise<void> {
         assert.match(output.html, /Playwright Custom Dashboard \(Local\)/);
         assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
         assert.doesNotMatch(output.html, /Playwright Custom Dashboard \(CI Detailed\)/);
+        assert.match(output.html, /class="test-card"/);
       },
     ),
     { numRuns: 12 },
@@ -242,11 +257,51 @@ async function property7ReporterCiModeSelection(): Promise<void> {
   console.log('✓ Property 7 passed: CI mode selection for non-true values');
 }
 
+async function property8ReporterAttachmentRendering(): Promise<void> {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.uniqueArray(fc.stringMatching(/^[a-z0-9]{3,8}$/), {
+        minLength: 1,
+        maxLength: 3,
+      }),
+      async (names) => {
+        const cases: SyntheticCase[] = names.map((name) => ({
+          status: 'failed',
+          duration: 300,
+          failedStep: true,
+          screenshotFile: path.join(process.cwd(), 'test-results', `${name}.png`),
+          videoFile: path.join(process.cwd(), 'test-results', `${name}.webm`),
+        }));
+
+        const output = await runReporter(cases, 'false');
+
+        assert.match(output.html, /<img/);
+        assert.match(output.html, /<video/);
+
+        for (const name of names) {
+          const screenshotPath = toReportRelativePath(
+            path.join(process.cwd(), 'test-results', `${name}.png`),
+          );
+          const videoPath = toReportRelativePath(
+            path.join(process.cwd(), 'test-results', `${name}.webm`),
+          );
+          assert.equal(output.html.includes(screenshotPath), true);
+          assert.equal(output.html.includes(videoPath), true);
+        }
+      },
+    ),
+    { numRuns: 8 },
+  );
+
+  console.log('✓ Property 8 passed: reporter attachment rendering');
+}
+
 async function main(): Promise<void> {
   try {
     await property5ReporterOutputCompleteness();
     await property6ReporterTraceLinkGeneration();
     await property7ReporterCiModeSelection();
+    await property8ReporterAttachmentRendering();
   } finally {
     cleanReportArtifacts();
   }

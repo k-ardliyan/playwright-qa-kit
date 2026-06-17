@@ -1,12 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironment } from './src/utils/env-loader';
-import { createFrameworkReporters, playwrightSharedDefaults } from './playwright.config.base';
+import { buildPlaywrightSharedDefaults, createFrameworkReporters } from './playwright.config.base';
 
 loadEnvironment();
 
 export default defineConfig({
-  ...playwrightSharedDefaults,
-  grepInvert: /@demo/,
+  ...buildPlaywrightSharedDefaults(),
   testDir: './src/tests',
   reporter: createFrameworkReporters({
     jsonOutput: 'test-results/results.json',
@@ -23,6 +22,16 @@ export default defineConfig({
       testDir: './src/tests',
       testMatch: '**/*.spec.ts',
       testIgnore: ['**/demo/**'],
+    },
+    {
+      name: 'demo',
+      timeout: 60_000,
+      retries: 0,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testDir: './src/tests/demo',
+      testMatch: '**/*.spec.ts',
     },
   ],
   outputDir: './test-results',

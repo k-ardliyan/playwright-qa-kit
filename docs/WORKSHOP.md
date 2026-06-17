@@ -96,7 +96,7 @@ Semua item dicek serentak di hari-H sebelum latihan pipeline. Facilitator: mulai
 
 ### Kategori 3 — Pod: laptop QA — prasyarat
 
-- [ ] Node.js **>= 22.22.1** (`node -v`)
+- [ ] Node.js **>= 20.19.0** (`node -v`)
 - [ ] Git terinstall
 - [ ] VS Code + ekstensi **Codex** terinstall
 

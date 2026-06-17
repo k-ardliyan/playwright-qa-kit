@@ -32,7 +32,7 @@ Alpha `v0.1.0-alpha.1` — bukan production.
 
 ### 1. Prasyarat
 
-- Node.js **>= 22.22.1** (LTS 22.x recommended)
+- Node.js **>= 20.19.0** (LTS 20.x recommended)
 - Git
 - VS Code dengan ekstensi Codex (Primary) atau Cursor
 
@@ -53,6 +53,8 @@ copy environments\local.env.example environments\local.env   # Windows
 ```
 
 Isi `BASE_URL`, kredensial tes di `environments/local.env`. **Jangan commit** file `.env` berisi password.
+
+**Browser (opsional):** `HEADLESS=true|false` mengatur mode headless default; `SLOW_MO=<ms>` memperlambat aksi browser lewat `launchOptions.slowMo` (berguna saat demo Healer). Nilai dibaca **setelah** `loadEnvironment()` di `playwright.config.ts` — ubah di `local.env`, tidak perlu restart MCP kecuali Anda mengubah `PLAYWRIGHT_CONFIG` atau kredensial. `npm run test:headed` selalu menampilkan browser (override `HEADLESS`). Di CI, `SLOW_MO` dipaksa `0`.
 
 Workshop multi-pod (BE/FE/QA per meja via IP LAN): [Topologi LAN](WORKSHOP.md#topologi-lan) · [Go/No-Go](WORKSHOP.md#go-no-go).
 
@@ -105,7 +107,7 @@ npm run test:quality
 | `npm test`                   | Template core — seed spec (tanpa `@demo`)                          |
 | `npm run test:erpku-example` | Suite ERPKU lengkap (butuh env + app)                              |
 | `npm run test:smoke`         | Hanya `@smoke` (core grep; gunakan `--project=smoke` pada example) |
-| `npm run test:demo`          | Latihan Healer (`@demo` — sengaja gagal)                           |
+| `npm run test:demo`          | Latihan Healer — project `demo`, sengaja gagal (`@demo`)           |
 | `npm run test:quality`       | Sebelum push / sama dengan CI PR                                   |
 
 ### 7. Aktifkan 3 MCP Server
@@ -180,7 +182,7 @@ npm run validate:requirement -- requirements/example-login-extension.md
 npm test
 
 # 4. Lihat laporan
-#    - reports/custom-dashboard.html
+#    - reports/custom-dashboard.html (dashboard modern — errors, test steps, screenshot, video, attachments)
 #    - npx playwright show-report
 ```
 
@@ -234,7 +236,7 @@ Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
 
 | Check             | Status    | Perbaikan                                        |
 | ----------------- | --------- | ------------------------------------------------ |
-| `node`            | fail      | Install Node.js >= 22.22.1                       |
+| `node`            | fail      | Install Node.js >= 20.19.0                       |
 | `mcp_build`       | fail      | `npm run mcp:build`                              |
 | `playwright_mcp`  | fail      | `npm install`                                    |
 | `playwright_test` | warn/fail | Upgrade `@playwright/test` >= 1.56               |

@@ -1,14 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironment } from '../../src/utils/env-loader';
-import { createFrameworkReporters, playwrightSharedDefaults } from '../../playwright.config.base';
+import {
+  buildPlaywrightSharedDefaults,
+  createFrameworkReporters,
+} from '../../playwright.config.base';
 
 loadEnvironment({
   adapterEnv: { dir: 'example/erpku/environments', name: 'erpku' },
 });
 
 export default defineConfig({
-  ...playwrightSharedDefaults,
-  grepInvert: /@demo/,
+  ...buildPlaywrightSharedDefaults(),
   testDir: './tests',
   reporter: createFrameworkReporters({
     jsonOutput: 'test-results/erpku-results.json',

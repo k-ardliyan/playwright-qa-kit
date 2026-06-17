@@ -75,7 +75,7 @@ Berikut adalah folder penting yang akan sering Anda gunakan:
 
 ### 1. Persiapan Sistem (Sekali Saja)
 
-Pastikan komputer Anda sudah terinstal **Node.js** (versi **>= 22.22.1**, LTS 22.x) dan **Git**.
+Pastikan komputer Anda sudah terinstal **Node.js** (versi **>= 20.19.0**, LTS 20.x recommended) dan **Git**.
 
 ### 2. Clone Repository
 

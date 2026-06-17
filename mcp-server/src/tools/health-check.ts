@@ -21,15 +21,15 @@ export interface HealthCheckOutput {
 
 function checkNodeVersion(): HealthCheckItem {
   const version = process.versions.node;
-  const [major, minor, patch] = version.split('.').map(Number);
-  const ok = major > 22 || (major === 22 && (minor > 22 || (minor === 22 && (patch ?? 0) >= 1)));
+  const [major, minor] = version.split('.').map(Number);
+  const ok = major > 20 || (major === 20 && minor >= 19);
   if (ok) {
     return { name: 'node', status: 'ok', message: `Node.js ${version}` };
   }
   return {
     name: 'node',
     status: 'fail',
-    message: `Node.js ${version} — requires >= 22.22.1`,
+    message: `Node.js ${version} — requires >= 20.19.0`,
   };
 }
 

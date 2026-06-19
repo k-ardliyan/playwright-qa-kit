@@ -42,18 +42,29 @@ export function getTestSummary(): GetTestSummaryOutput {
     if (
       typeof summary.total !== 'number' ||
       typeof summary.passed !== 'number' ||
-      typeof summary.failed !== 'number'
+      typeof summary.failed !== 'number' ||
+      typeof summary.skipped !== 'number' ||
+      typeof summary.passRate !== 'number' ||
+      typeof summary.timestamp !== 'string'
     ) {
       return {
         status: 'error',
-        message: 'test-summary.json is missing required numeric fields.',
+        message:
+          'test-summary.json is missing required fields: total, passed, failed, skipped, passRate, timestamp.',
       };
     }
+
+    const timestampMs = Date.parse(summary.timestamp);
+    if (Number.isNaN(timestampMs)) {
+      return { status: 'error', message: 'test-summary.json has an invalid timestamp.' };
+    }
+
+    const mtime = fs.statSync(absolutePath).mtime.toISOString();
 
     return {
       status: 'success',
       summary,
-      message: `Summary: ${summary.passed}/${summary.total} passed (${summary.passRate}% pass rate).`,
+      message: `Summary: ${summary.passed}/${summary.total} passed (${summary.passRate}% pass rate, timestamp ${summary.timestamp}, file modified ${mtime}).`,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error reading test summary';

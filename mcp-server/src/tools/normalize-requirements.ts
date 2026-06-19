@@ -1,4 +1,5 @@
-import { assertRequirementsTextSize } from '../utils/safety';
+import * as fs from 'node:fs';
+import { assertRequirementsTextSize, resolveAllowedPath } from '../utils/safety';
 import { logger } from '../utils/logger';
 import {
   parseRequirementScenariosFromText,
@@ -225,10 +226,6 @@ function parseAcceptanceCriteriaFromLines(lines: string[]): AcceptanceCriterion[
     }));
 }
 
-function findScenarioSectionIndex(lines: string[]): number {
-  return lines.findIndex((line) => /^##\s+.*(?:skenario|test\s+scenarios?)/i.test(line));
-}
-
 function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
   const criteriaSection = extractSectionLines(
     lines,
@@ -238,40 +235,40 @@ function parseAcceptanceCriteria(lines: string[]): AcceptanceCriterion[] {
     return parseAcceptanceCriteriaFromLines(criteriaSection);
   }
 
-  // Fallback: take everything between the title and the first scenario/heading,
-  // but explicitly skip the Metadata section so its bullets don't get re-
-  // classified as acceptance criteria.
-  const scenarioIndex = findScenarioSectionIndex(lines);
-  const candidate =
-    scenarioIndex >= 0
-      ? lines.slice(0, scenarioIndex)
-      : lines.filter((line) => !/^###\s+/.test(line));
-
-  const preScenario: string[] = [];
-  let skippingMetadata = false;
-  for (const line of candidate) {
-    if (/^##\s+metadata\b/i.test(line)) {
-      skippingMetadata = true;
-      continue;
-    }
-    if (skippingMetadata && /^##\s+/.test(line)) {
-      skippingMetadata = false;
-    }
-    if (!skippingMetadata) {
-      preScenario.push(line);
-    }
-  }
-
-  return parseAcceptanceCriteriaFromLines(preScenario);
+  return [];
 }
 
-export function normalizeRequirements(requirementsText: string): NormalizeRequirementsOutput {
+export function normalizeRequirements(
+  options:
+    | string
+    | {
+        requirementsText?: string;
+        requirementPath?: string;
+      },
+): NormalizeRequirementsOutput {
+  const input = typeof options === 'string' ? { requirementsText: options } : options;
+  let requirementsText = input.requirementsText;
+
+  if (input.requirementPath) {
+    const resolved = resolveAllowedPath(input.requirementPath, 'requirements', {
+      mustExist: true,
+      readOnly: true,
+    });
+    if (!resolved.ok) {
+      return {
+        status: 'error',
+        error: { code: resolved.error.code, message: resolved.error.message },
+      };
+    }
+    requirementsText = fs.readFileSync(resolved.absolutePath, 'utf-8');
+  }
+
   if (typeof requirementsText !== 'string') {
     return {
       status: 'error',
       error: {
         code: 'INVALID_TYPE',
-        message: 'requirementsText must be a string.',
+        message: 'Provide requirementsText or requirementPath.',
       },
     };
   }

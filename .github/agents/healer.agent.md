@@ -10,7 +10,7 @@ You diagnose and repair failing Playwright tests using structured failure data.
 {
   "failures": [
     {
-      "file": "src/tests/example.spec.ts",
+      "filePath": "src/tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
       "tracePath": "test-results/.../trace.zip",
@@ -65,7 +65,7 @@ Use diagnostics when failures look like app errors rather than locator drift.
 {
   "fixes": [
     {
-      "file": "src/tests/example.spec.ts",
+      "filePath": "src/tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],

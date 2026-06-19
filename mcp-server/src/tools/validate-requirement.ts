@@ -52,17 +52,53 @@ const RESULT_LABEL = /^\*\*(?:Hasil|Expected(?:\s+Result)?|Outcome):\*\*/im;
 const PRECONDITION_LABEL = /^\*\*(?:Prekondisi|Precondition|Given):\*\*/im;
 
 function hasTitle(text: string): boolean {
-  return /^#\s+.+/m.test(text);
+  const firstMeaningfulLine = text.split(/\r?\n/).find((line) => line.trim().length > 0);
+  return /^#\s+REQ-[A-Za-z0-9-]+\s*:.+/.test(firstMeaningfulLine?.trim() ?? '');
 }
 
 function hasAcceptanceCriteria(text: string): boolean {
   const section = text.match(
     /##\s+(?:Kriteria Penerimaan|Acceptance Criteria)\s*\n([\s\S]*?)(?=\n##\s+|\n###\s+|$)/i,
   );
-  if (section) {
-    return /^[\s]*[-*]\s+.+/m.test(section[1]);
+  return Boolean(section && /^[\s]*[-*]\s+.+/m.test(section[1]));
+}
+
+function extractMetadataSection(text: string): string | null {
+  const section = text.match(/##\s+Metadata\s*\n([\s\S]*?)(?=\n##\s+|\n###\s+|$)/i);
+  return section?.[1] ?? null;
+}
+
+function validateMetadata(text: string): RequirementViolation[] {
+  const section = extractMetadataSection(text);
+  if (section === null) {
+    return [
+      {
+        ruleName: 'metadata_required',
+        severity: 'error',
+        message: 'Document must include ## Metadata with Tags and Auth state.',
+      },
+    ];
   }
-  return /^[\s]*[-*]\s+.+/m.test(text);
+
+  const violations: RequirementViolation[] = [];
+  if (!/^\s*-\s+\*\*Tags:\*\*\s+\S+/im.test(section) && !/^\s*tags?\s*:\s+\S+/im.test(section)) {
+    violations.push({
+      ruleName: 'metadata_tags_required',
+      severity: 'error',
+      message: 'Metadata must include Tags (e.g. - **Tags:** #ui).',
+    });
+  }
+
+  const auth = section.match(/^\s*-\s+\*\*Auth state:\*\*\s*(.+)$/im)?.[1]?.trim();
+  if (!auth || !/^(unauthenticated|authenticated)$/i.test(auth)) {
+    violations.push({
+      ruleName: 'metadata_auth_state_required',
+      severity: 'error',
+      message: 'Metadata must include Auth state: unauthenticated or authenticated.',
+    });
+  }
+
+  return violations;
 }
 
 function extractScenarioBlocks(
@@ -117,19 +153,30 @@ export function validateRequirementText(text: string): ValidateRequirementOutput
     violations.push({
       ruleName: 'title_required',
       severity: 'error',
-      message: 'Document must start with a # title heading (e.g. # REQ-01: Feature Name).',
+      message:
+        'Document must start with a first-line requirement title (e.g. # REQ-01: Feature Name).',
     });
   }
+
+  violations.push(...validateMetadata(text));
 
   const scenarios = parseRequirementScenariosFromText(text);
   const hasCriteria = hasAcceptanceCriteria(text);
 
-  if (!hasCriteria && scenarios.length === 0) {
+  if (!hasCriteria) {
     violations.push({
-      ruleName: 'content_required',
+      ruleName: 'acceptance_criteria_required',
+      severity: 'error',
+      message: 'Document must include at least one bullet in ## Kriteria Penerimaan.',
+    });
+  }
+
+  if (scenarios.length === 0) {
+    violations.push({
+      ruleName: 'scenario_required',
       severity: 'error',
       message:
-        'Document must contain acceptance criteria bullets or at least one parseable ### scenario.',
+        'Document must contain at least one parseable ### scenario with Langkah and Hasil sections.',
     });
   }
 

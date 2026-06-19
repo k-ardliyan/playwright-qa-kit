@@ -16,7 +16,7 @@ import { validateGeneratedTests } from './validate-generated-tests';
 import { validateRequirement } from './validate-requirement';
 import { discoverPages } from './discover-pages';
 import { snapshotPage } from './snapshot-page';
-import { createToolError, resolveAllowedPath } from '../utils/safety';
+import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
   type: 'object';
@@ -103,19 +103,13 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     name: 'normalize_requirements',
     description:
       'Parse requirement markdown into structured contract with acceptance criteria and optional test scenarios.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        requirementsText: { type: 'string', description: 'Raw requirement markdown text.' },
-      },
-      required: ['requirementsText'],
-    },
+    inputSchema: REQUIREMENTS_TEXT_OR_PATH,
     handler: (args) => {
-      const requirementsText = args?.requirementsText;
-      if (typeof requirementsText !== 'string') {
-        return createToolError('INVALID_INPUT', 'requirementsText must be a string.');
-      }
-      return normalizeRequirements(requirementsText);
+      const requirementsText =
+        typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
+      const requirementPath =
+        typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
+      return normalizeRequirements({ requirementsText, requirementPath });
     },
   },
   {

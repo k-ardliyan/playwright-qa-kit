@@ -129,7 +129,7 @@ function checkPlaywrightConfig(): HealthCheckItem {
 
   return {
     name: 'playwright_config',
-    status: 'warn',
+    status: 'fail',
     message: `PLAYWRIGHT_CONFIG=${configPath} — file not found at ${configPath}`,
   };
 }

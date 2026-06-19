@@ -20,7 +20,7 @@ QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requiremen
 | `playwright-test` | `npx tsx scripts/playwright-test-mcp-launch.ts`                | Execute tests (`run_tests`, etc.)               |
 | `playwright-qa`   | `node mcp-server/dist/index-mcp.js` (env bootstrap at startup) | Requirements, validation, failure/summary reads |
 
-Configure all three in [`.vscode/mcp.json`](../.vscode/mcp.json). Build custom QA server: `npm run mcp:build`.
+Configure all three in [`.mcp.json`](../.mcp.json) as the project MCP config. Keep [`.vscode/mcp.json`](../.vscode/mcp.json) only if your editor still expects workspace MCP config. Build custom QA server: `npm run mcp:build`.
 
 **Branch protection:** require CI workflow `Quality Gate` on PRs. E2E workflow runs on push to main / manual dispatch (needs GitHub Secrets).
 

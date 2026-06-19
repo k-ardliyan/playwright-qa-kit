@@ -10,7 +10,7 @@
 ## Toolchain
 
 - **Primary Stack** — VS Code + Codex extension. All documentation, configuration, and setup guides are aligned to this stack. Cursor is supported but optional — not the recommended environment.
-- **MCP Servers** — Three servers (`playwright`, `playwright-test`, `playwright-qa`) configured via `.vscode/mcp.json`, must be compatible with the Codex extension's MCP integration.
+- **MCP Servers** — Three servers (`playwright`, `playwright-test`, `playwright-qa`) configured via root `.mcp.json` as project source-of-truth. `.vscode/mcp.json` is optional editor-compatibility config when an IDE still expects workspace MCP setup.
 
 ## Pipeline
 

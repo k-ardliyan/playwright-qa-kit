@@ -1,0 +1,19 @@
+{
+  "servers": [
+    {
+      "name": "playwright",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.76", "--headless"]
+    },
+    {
+      "name": "playwright-test",
+      "command": "npx",
+      "args": ["tsx", "scripts/playwright-test-mcp-launch.ts"]
+    },
+    {
+      "name": "playwright-qa",
+      "command": "node",
+      "args": ["mcp-server/dist/index-mcp.js"]
+    }
+  ]
+}

@@ -175,7 +175,8 @@ async function property5ReporterOutputCompleteness(): Promise<void> {
 
         assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
         assert.match(output.html, /id="resultDonut"/);
-        assert.match(output.html, /Detailed Test Records/);
+        assert.match(output.html, /Detailed test records/);
+        assert.match(output.html, /Run healthy|Run degraded|Run failed/);
         if (total > 0) {
           const cardMatches = output.html.match(/class="test-card"/g) ?? [];
           assert.equal(cardMatches.length, total);
@@ -183,6 +184,7 @@ async function property5ReporterOutputCompleteness(): Promise<void> {
         if (failedCount > 0) {
           assert.match(output.html, /Synthetic failure/);
           assert.match(output.html, /step failed/);
+          assert.match(output.html, /Unhealthy tests/);
         }
         assert.match(output.html, new RegExp(`${expectedPassRate}%`));
       },
@@ -210,7 +212,7 @@ async function property6ReporterTraceLinkGeneration(): Promise<void> {
 
         const output = await runReporter(cases, 'false');
 
-        const traceMatches = output.html.match(/View Trace/g) ?? [];
+        const traceMatches = output.html.match(/View trace/g) ?? [];
         assert.equal(traceMatches.length, traceNames.length);
 
         for (const name of traceNames) {
@@ -248,6 +250,7 @@ async function property7ReporterCiModeSelection(): Promise<void> {
         assert.match(output.html, /Playwright Custom Dashboard \(Local\)/);
         assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
         assert.doesNotMatch(output.html, /Playwright Custom Dashboard \(CI Detailed\)/);
+        assert.match(output.html, /Local mode/);
         assert.match(output.html, /class="test-card"/);
       },
     ),

@@ -8,7 +8,7 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 
 ## MCP Server Installation
 
-Register and use these **three** servers (configured in [`.vscode/mcp.json`](.vscode/mcp.json)):
+Register and use these **three** servers. **Project source of truth:** [`.mcp.json`](.mcp.json). Keep [`.vscode/mcp.json`](.vscode/mcp.json) only for editor compatibility when needed.
 
 1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
    - Command: `npx -y @playwright/mcp@0.0.76 --headless`
@@ -224,15 +224,15 @@ Or:
 
 Optional variables in `environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
 
-| Variable                            | Default                              | Purpose                                                                                            |
-| ----------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                           |
-| `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set in `.vscode/mcp.json` args or local env |
-| `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                              |
-| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                 |
-| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts` | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter             |
-| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`       | Required import path for specs under adapter test root                                             |
-| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `test-results/erpku-results.json`    | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)          |
+| Variable                            | Default                              | Purpose                                                                                                   |
+| ----------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
+| `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
+| `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
+| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
+| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts` | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
+| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`       | Required import path for specs under adapter test root                                                    |
+| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `test-results/erpku-results.json`    | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
 
 **Config → JSON mapping** (when `PLAYWRIGHT_RESULTS_JSON` is unset): uses `PLAYWRIGHT_ADAPTER_CONFIG` and `PLAYWRIGHT_ADAPTER_RESULTS_JSON` defaults (ERPKU reference values above).
 

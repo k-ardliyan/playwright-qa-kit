@@ -5,9 +5,9 @@ import fs from 'node:fs';
 
 const CHECKS: Array<{ label: string; path: string; hint: string }> = [
   {
-    label: '.vscode/mcp.json (Codex MCP config)',
-    path: path.join('.vscode', 'mcp.json'),
-    hint: 'ensure .vscode/mcp.json exists for Codex integration',
+    label: '.mcp.json (project MCP config)',
+    path: '.mcp.json',
+    hint: 'ensure .mcp.json exists at the project root for Claude/Codex MCP detection',
   },
   {
     label: '@playwright/mcp',
@@ -79,6 +79,15 @@ function checkEnvironmentFile(): void {
   );
 }
 
+function checkOptionalWorkspaceMcpConfig(): void {
+  const workspaceConfig = path.join(process.cwd(), '.vscode', 'mcp.json');
+  if (!fs.existsSync(workspaceConfig)) {
+    process.stderr.write(
+      'WARN: .vscode/mcp.json not found — OK if your tooling reads project MCP config from .mcp.json\n',
+    );
+  }
+}
+
 function main(): void {
   let failed = false;
 
@@ -92,6 +101,7 @@ function main(): void {
 
   checkPlaywrightTestVersion();
   checkEnvironmentFile();
+  checkOptionalWorkspaceMcpConfig();
 
   if (failed) {
     process.exit(1);

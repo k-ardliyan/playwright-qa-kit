@@ -270,69 +270,75 @@ export async function discoverPages(
 ): Promise<DiscoverPagesOutput> {
   const start = Date.now();
 
-  if (!args || typeof args !== 'object') {
-    return {
-      status: 'error',
-      message: 'Invalid arguments object.',
-      error: { code: 'INVALID_INPUT', message: 'args must be an object.' },
-    };
-  }
-
-  const rootUrl = readString(args.rootUrl, 'rootUrl');
-  const featureName = readString(args.featureName, 'featureName');
-  if (!rootUrl) {
-    const err = createToolError('INVALID_INPUT', '`rootUrl` is required.');
-    return { status: 'error', message: err.error.message, error: err.error };
-  }
-  if (!featureName) {
-    const err = createToolError('INVALID_INPUT', '`featureName` is required.');
-    return { status: 'error', message: err.error.message, error: err.error };
-  }
-
-  let baseUrl: URL;
   try {
-    baseUrl = new URL(rootUrl);
-  } catch {
-    const err = createToolError('INVALID_INPUT', `Invalid rootUrl: ${rootUrl}`);
-    return { status: 'error', message: err.error.message, error: err.error };
-  }
+    if (!args || typeof args !== 'object') {
+      return {
+        status: 'error',
+        message: 'Invalid arguments object.',
+        error: { code: 'INVALID_INPUT', message: 'args must be an object.' },
+      };
+    }
 
-  const maxDepth = readNumber(args.maxDepth, 2);
-  const maxPages = readNumber(args.maxPages, 25);
-  const requestDelayMs = readNumber(args.requestDelayMs, 200);
-  const respectRobots = readBoolean(args.respectRobots, true);
-  const force = readBoolean(args.force, false);
-  const waitUntil: 'networkidle' | 'domcontentloaded' | 'load' =
-    args.waitUntil === 'domcontentloaded' || args.waitUntil === 'load'
-      ? args.waitUntil
-      : 'networkidle';
+    const rootUrl = readString(args.rootUrl, 'rootUrl');
+    const featureName = readString(args.featureName, 'featureName');
+    if (!rootUrl) {
+      const err = createToolError('INVALID_INPUT', '`rootUrl` is required.');
+      return { status: 'error', message: err.error.message, error: err.error };
+    }
+    if (!featureName) {
+      const err = createToolError('INVALID_INPUT', '`featureName` is required.');
+      return { status: 'error', message: err.error.message, error: err.error };
+    }
 
-  const excludePatterns = Array.isArray(args.excludePatterns)
-    ? args.excludePatterns.filter((v): v is string => typeof v === 'string')
-    : [];
-  let excludeRegex: RegExp[];
-  try {
-    excludeRegex = excludePatterns.map((p) => new RegExp(p));
+    let baseUrl: URL;
+    try {
+      baseUrl = new URL(rootUrl);
+    } catch {
+      const err = createToolError('INVALID_INPUT', `Invalid rootUrl: ${rootUrl}`);
+      return { status: 'error', message: err.error.message, error: err.error };
+    }
+
+    const maxDepth = readNumber(args.maxDepth, 2);
+    const maxPages = readNumber(args.maxPages, 25);
+    const requestDelayMs = readNumber(args.requestDelayMs, 200);
+    const respectRobots = readBoolean(args.respectRobots, true);
+    const force = readBoolean(args.force, false);
+    const waitUntil: 'networkidle' | 'domcontentloaded' | 'load' =
+      args.waitUntil === 'domcontentloaded' || args.waitUntil === 'load'
+        ? args.waitUntil
+        : 'networkidle';
+
+    const excludePatterns = Array.isArray(args.excludePatterns)
+      ? args.excludePatterns.filter((v): v is string => typeof v === 'string')
+      : [];
+    let excludeRegex: RegExp[];
+    try {
+      excludeRegex = excludePatterns.map((p) => new RegExp(p));
+    } catch (error) {
+      const err = createToolError(
+        'INVALID_INPUT',
+        `Invalid excludePatterns regex: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return { status: 'error', message: err.error.message, error: err.error };
+    }
+
+    return await runDiscover({
+      baseUrl,
+      featureName,
+      maxDepth,
+      maxPages,
+      excludeRegex,
+      requestDelayMs,
+      respectRobots,
+      waitUntil,
+      force,
+      startedAt: start,
+    });
   } catch (error) {
-    const err = createToolError(
-      'INVALID_INPUT',
-      `Invalid excludePatterns regex: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    const err = createToolError('TOOL_ERROR', message);
     return { status: 'error', message: err.error.message, error: err.error };
   }
-
-  return runDiscover({
-    baseUrl,
-    featureName,
-    maxDepth,
-    maxPages,
-    excludeRegex,
-    requestDelayMs,
-    respectRobots,
-    waitUntil,
-    force,
-    startedAt: start,
-  });
 }
 
 interface RunDiscoverInput {

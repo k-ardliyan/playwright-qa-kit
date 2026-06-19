@@ -179,6 +179,7 @@ npm run mcp:build
 
 - salin `environments/local.env.example` menjadi `environments/local.env`
 - isi `BASE_URL` dan kredensial test
+- pastikan project MCP config tersedia di `.mcp.json` (root repo); `.vscode/mcp.json` hanya untuk kompatibilitas editor bila perlu
 
 ### 4. Verifikasi setup
 

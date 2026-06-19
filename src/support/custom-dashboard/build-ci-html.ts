@@ -1,28 +1,43 @@
-import { renderDocumentShell, renderDonutPanel } from './shared';
+import {
+  renderDeepLinksPanel,
+  renderDocumentShell,
+  renderFailureAlert,
+  renderLegendPanel,
+  renderOpsSummaryPanel,
+  renderRunHealthPanel,
+} from './shared';
 import { renderTestAccordion } from './render-test-detail';
 import type { CollectedTestData, TestSummary } from './types';
 
+const UNHEALTHY_STATUSES = new Set(['failed', 'timedOut', 'interrupted']);
+
 export function buildCiHtml(summary: TestSummary, collectedTests: CollectedTestData[]): string {
-  const failedTests = collectedTests.filter((testData) =>
-    ['failed', 'timedOut', 'interrupted'].includes(testData.status),
-  );
+  const unhealthyCount = collectedTests.filter((testData) =>
+    UNHEALTHY_STATUSES.has(testData.status),
+  ).length;
 
   const body = `
-    <div class="layout">
-      ${renderDonutPanel()}
-      <div class="panel">
-        <h2 class="panel__title">Overview</h2>
-        <p class="empty-state" style="margin: 0 0 8px;"><strong>Mode:</strong> CI · <strong>Total:</strong> ${summary.total} · <strong>Unhealthy:</strong> ${failedTests.length}</p>
-      </div>
-    </div>
+    <div class="report-layout">
+      <aside class="rail">
+        ${renderRunHealthPanel()}
+        ${renderOpsSummaryPanel('ci', summary, collectedTests)}
+        ${renderLegendPanel()}
+        ${renderDeepLinksPanel()}
+      </aside>
 
-    <h2 class="section-title">Detailed Test Records</h2>
-    <div class="test-accordion">
-      ${renderTestAccordion(collectedTests)}
-    </div>
+      <section class="main-column">
+        ${renderFailureAlert(unhealthyCount)}
 
-    <div class="alert alert--warning">
-      <strong>Unhealthy Cases:</strong> ${failedTests.length} failing/timed out/interrupted test(s) detected.
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Detailed test records</h2>
+              <div class="section-copy">CI incident board. Unhealthy cases surface first so engineers can isolate regression paths fast.</div>
+            </div>
+          </div>
+          ${renderTestAccordion(collectedTests)}
+        </section>
+      </section>
     </div>
   `;
 
@@ -30,6 +45,7 @@ export function buildCiHtml(summary: TestSummary, collectedTests: CollectedTestD
     pageTitle: 'Playwright Custom Dashboard (CI Detailed)',
     mode: 'ci',
     summary,
+    collectedTests,
     body,
     includeChart: true,
   });

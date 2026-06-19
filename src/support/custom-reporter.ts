@@ -25,6 +25,7 @@ import { logger } from '@/utils/logger';
 const REPORT_DIR = path.resolve(process.cwd(), 'reports');
 const DASHBOARD_PATH = path.join(REPORT_DIR, 'custom-dashboard.html');
 const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
+const HTML_REPORT_DIR = path.join(REPORT_DIR, 'html');
 
 function collectSteps(steps: TestStep[]): CollectedStep[] {
   return steps.map((step) => ({
@@ -118,6 +119,56 @@ function ensureReportDirectory(): void {
   }
 }
 
+const HTML_THEME_OVERRIDE_STYLE = `
+<style data-dashboard-theme-override="light">
+  :root:not(.dark-mode):not(.light-mode) { color-scheme: light; }
+  :root { color-scheme: light; }
+</style>
+<script data-dashboard-theme-override="light">
+  (function () {
+    function forceLight() {
+      try {
+        var root = document.documentElement;
+        var meta = document.querySelector("meta[name='color-scheme']");
+        if (meta) meta.setAttribute('content', 'light');
+        if (root.classList.contains('dark-mode')) {
+          root.classList.remove('dark-mode');
+          root.classList.add('light-mode');
+        }
+        try { localStorage.setItem('playwright-report-theme', 'light'); } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
+    }
+    forceLight();
+    document.addEventListener('DOMContentLoaded', forceLight);
+    new MutationObserver(forceLight).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  })();
+</script>
+`;
+
+function forcePlaywrightHtmlToLight(htmlFolder: string): void {
+  const indexPath = path.join(htmlFolder, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    return;
+  }
+
+  let content = fs.readFileSync(indexPath, 'utf-8');
+  if (content.includes('data-dashboard-theme-override="light"')) {
+    return;
+  }
+
+  const injection = `    ${HTML_THEME_OVERRIDE_STYLE.trim()}\n`;
+  const headCloseIdx = content.indexOf('</head>');
+  if (headCloseIdx === -1) {
+    return;
+  }
+
+  content = content.slice(0, headCloseIdx) + injection + content.slice(headCloseIdx);
+  fs.writeFileSync(indexPath, content, 'utf-8');
+}
+
 export default class CustomReporter implements Reporter {
   private totalTests = 0;
   private passedTests = 0;
@@ -179,6 +230,8 @@ export default class CustomReporter implements Reporter {
 
       fs.writeFileSync(DASHBOARD_PATH, html, 'utf-8');
       fs.writeFileSync(SUMMARY_PATH, JSON.stringify(summary, null, 2), 'utf-8');
+
+      forcePlaywrightHtmlToLight(HTML_REPORT_DIR);
 
       logger.info('Custom reports generated.', {
         mode: isCiMode ? 'ci' : 'local',

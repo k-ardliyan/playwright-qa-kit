@@ -102,7 +102,7 @@ npm run test:quality
 
 ### 7. Aktifkan 3 MCP Server
 
-Konfigurasi ada di [`.vscode/mcp.json`](../.vscode/mcp.json):
+Konfigurasi project MCP ada di [`.mcp.json`](../.mcp.json). File [`.vscode/mcp.json`](../.vscode/mcp.json) dipertahankan hanya untuk kompatibilitas editor bila diperlukan:
 
 | Server            | Fungsi                                                 |
 | ----------------- | ------------------------------------------------------ |
@@ -110,7 +110,7 @@ Konfigurasi ada di [`.vscode/mcp.json`](../.vscode/mcp.json):
 | `playwright-test` | Menjalankan tes (`run_tests`)                          |
 | `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan            |
 
-Di VS Code (Codex): Pastikan file `.vscode/mcp.json` tersedia dan extension mengenali server.
+Di VS Code (Codex): Utamakan file `.mcp.json` di root project. Gunakan `.vscode/mcp.json` hanya bila editor Anda masih membutuhkan workspace MCP config.
 Di Cursor: Settings → MCP → pastikan ketiga server **hijau/connected**.
 
 **Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/local.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Setelah mengubah env, **restart MCP servers** di IDE agar `playwright-test` dan `playwright-qa` membaca profile yang sama.
@@ -336,7 +336,7 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 ## Troubleshooting MCP merah di IDE
 
 1. `npm run mcp:build` — wajib setelah clone
-2. Cek [`.vscode/mcp.json`](../.vscode/mcp.json): `playwright-qa` → `node mcp-server/dist/index-mcp.js`
+2. Cek [`.mcp.json`](../.mcp.json) sebagai source-of-truth project MCP config. Bila editor Anda masih memakai workspace config, pastikan [`.vscode/mcp.json`](../.vscode/mcp.json) tidak drift dan `playwright-qa` tetap menunjuk `node mcp-server/dist/index-mcp.js`.
 3. **VS Code (Codex):** reload window atau restart extension jika MCP server tidak connect
 4. **Cursor:** Settings → MCP → restart server; pastikan ketiga server hijau/connected
 

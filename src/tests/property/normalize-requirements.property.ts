@@ -17,23 +17,36 @@ function buildValidRequirementsText(
   acceptanceCriteria: string[],
   tags: string[],
 ): string {
-  const lines: string[] = [`# ${title}`];
+  const normalizedTags = tags.length > 0 ? tags : ['ui'];
+  const lines: string[] = [
+    `# ${title}`,
+    '',
+    '## Metadata',
+    `- **Tags:** ${normalizedTags.map((tag) => `#${tag}`).join(' ')}`,
+    '- **Auth state:** unauthenticated',
+    '',
+    '## Kriteria Penerimaan',
+  ];
   for (const criterion of acceptanceCriteria) {
     lines.push(`- ${criterion}`);
-  }
-  if (tags.length > 0) {
-    lines.push(`tags: ${tags.map((tag) => `#${tag}`).join(' ')}`);
   }
   return lines.join('\n');
 }
 
 function printContract(contract: RequirementsContract): string {
-  const lines: string[] = [`id: ${contract.id}`, `# ${contract.title}`];
+  const tags = contract.tags.length > 0 ? contract.tags : ['ui'];
+  const lines: string[] = [
+    `id: ${contract.id}`,
+    `# ${contract.title}`,
+    '',
+    '## Metadata',
+    `- **Tags:** ${tags.map((tag) => `#${tag}`).join(' ')}`,
+    `- **Auth state:** ${contract.metadata?.authState ?? 'unauthenticated'}`,
+    '',
+    '## Kriteria Penerimaan',
+  ];
   for (const item of contract.acceptanceCriteria) {
     lines.push(`- ${item.description}`);
-  }
-  if (contract.tags.length > 0) {
-    lines.push(`tags: ${contract.tags.map((tag) => `#${tag}`).join(' ')}`);
   }
   return lines.join('\n');
 }
@@ -225,6 +238,98 @@ async function propertyValidateRequirementExample(): Promise<void> {
   console.log('✓ validate_requirement passes for example-login-extension.md');
 }
 
+function propertyValidateRequirementStrictShape(): void {
+  const missingMetadata = `# REQ-01: Missing Metadata
+
+## Kriteria Penerimaan
+- Result is visible.
+
+## Skenario Uji
+
+### SC-01: Visible result
+**Langkah:**
+1. Open page
+**Hasil:**
+- Result is visible
+`;
+  assert.equal(validateRequirementText(missingMetadata).status, 'error');
+
+  const missingCriteria = `# REQ-01: Missing Criteria
+
+## Metadata
+- **Tags:** #ui
+- **Auth state:** unauthenticated
+
+## Skenario Uji
+
+### SC-01: Visible result
+**Langkah:**
+1. Open page
+**Hasil:**
+- Result is visible
+`;
+  assert.equal(validateRequirementText(missingCriteria).status, 'error');
+
+  const missingResult = `# REQ-01: Missing Result
+
+## Metadata
+- **Tags:** #ui
+- **Auth state:** unauthenticated
+
+## Kriteria Penerimaan
+- Result is visible.
+
+## Skenario Uji
+
+### SC-01: Visible result
+**Langkah:**
+1. Open page
+`;
+  assert.equal(validateRequirementText(missingResult).status, 'error');
+
+  const lateTitle = `draft notes
+# REQ-01: Late Title
+
+## Metadata
+- **Tags:** #ui
+- **Auth state:** unauthenticated
+
+## Kriteria Penerimaan
+- Result is visible.
+
+## Skenario Uji
+
+### SC-01: Visible result
+**Langkah:**
+1. Open page
+**Hasil:**
+- Result is visible
+`;
+  assert.equal(validateRequirementText(lateTitle).status, 'error');
+
+  console.log('✓ validate_requirement rejects loose non-code requirement shapes');
+}
+
+async function propertyNormalizeRequirementPathMatchesText(): Promise<void> {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const requirementPath = 'requirements/example-login-extension.md';
+  const absolutePath = path.join(process.cwd(), requirementPath);
+  const text = fs.readFileSync(absolutePath, 'utf-8');
+
+  const fromText = expectSuccess(normalizeRequirements(text));
+  const fromPath = expectSuccess(normalizeRequirements({ requirementPath }));
+
+  assert.deepEqual(canonicalize(fromPath), canonicalize(fromText));
+  assert.deepEqual(fromPath.metadata, fromText.metadata);
+
+  const invalid = normalizeRequirements({ requirementPath: 'requirements/_TEMPLATE.md' });
+  assert.equal(invalid.status, 'error');
+  assert.ok(invalid.error);
+
+  console.log('✓ normalize_requirements path input matches text input');
+}
+
 async function main(): Promise<void> {
   await property2RoundTrip();
   await property3ErrorHandling();
@@ -233,6 +338,8 @@ async function main(): Promise<void> {
   await propertyMetadataSection();
   await propertyMetadataNotFallThroughToAcceptanceCriteria();
   await propertyValidateRequirementExample();
+  propertyValidateRequirementStrictShape();
+  await propertyNormalizeRequirementPathMatchesText();
 }
 
 async function propertyMetadataNotFallThroughToAcceptanceCriteria(): Promise<void> {

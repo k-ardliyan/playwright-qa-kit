@@ -64,7 +64,7 @@ Before calling `browser_snapshot` for live verification, check `selector-catalog
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `metadata.tags` or `#tags`                | `test.describe('...', { tag: ['@auth', '@ui'] }, () => {`                                                          |
 | `metadata.authState: unauthenticated`     | `test.use({ storageState: { cookies: [], origins: [] } });`                                                        |
-| `metadata.authState: authenticated`       | omit storage override (use project default `.auth/user.json`)                                                      |
+| `metadata.authState: authenticated`       | use configured project auth setup only when available; otherwise mark scenario blocked/cannotGenerate with reason  |
 | `@manual` in plan notes or scenario name  | `test.skip(true, 'reason')` inside describe tagged `@manual`                                                       |
 | `Given: ...` prefix in Steps column       | first `test.step('Given: ...', async () => { ... })`                                                               |
 | `metadata.pomFixtures` (e.g. `loginPage`) | use matching fixture; create POM + register in `project.fixture.ts` if missing (do **not** edit `base.fixture.ts`) |
@@ -88,6 +88,7 @@ Use the actual spec path from the Planner output and always reference `src/tests
 - **Template seed:** `src/tests/seed.spec.ts` — unauthenticated bootstrap (`page.goto(BASE_URL)`); no `loginPage` fixture in template core.
 - **Generated tests:** `src/tests/<name>.spec.ts` — register new POMs in `src/fixtures/project.fixture.ts`.
 - **ERPKU reference specs:** `example/erpku/tests/` — manual/legacy adapter tests; not Generator output targets.
+- **Authenticated generated scenarios:** Template core has no auth setup project. Do not assume `.auth/user.json`; require a configured project auth setup or return blocked/cannotGenerate with a concrete reason.
 
 ## Live Verification — Dual Path (Mandatory)
 

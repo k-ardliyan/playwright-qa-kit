@@ -198,20 +198,18 @@ Jangan jalankan pipeline - hanya validasi dan perbaikan format.
 ### Pipeline lengkap
 
 ```
-Jalankan pipeline lengkap untuk requirements/nama-fitur.md:
+Jalankan pipeline lengkap untuk requirements/nama-fitur.md sesuai kontrak AGENTS.md:
 
-1. health_check (playwright-qa) - abort jika ada status fail
-2. validate_requirement (playwright-qa) - perbaiki error sebelum lanjut
-3. Planner: parse_requirement_scenarios + normalize_requirements -> tulis specs/nama-fitur-test-plan.md
-3.5. (Opsional) Untuk situs publik: panggil discover_pages (playwright-qa) dengan rootUrl + featureName agar Planner/Generator bisa baca selector-catalog/<feature>/page-map.json dan reuse JSON index selector.
-4. Generator: buat kode di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture) dari test plan
-5. validate_generated_tests (playwright-qa)
-6. run_tests (playwright-test)
-7. Jika gagal (<=10): get_test_failures (playwright-qa) -> Healer -> validate_generated_tests -> run_tests scoped
-8. get_test_summary (playwright-qa)
+1. Pre-flight dan validasi requirement; berhenti jika ada error.
+2. Buat test plan di specs/nama-fitur-test-plan.md.
+3. Generate spec Playwright di src/tests/ memakai @/fixtures/base.fixture.
+4. Validasi generated tests sebelum eksekusi.
+5. Jalankan tests lewat playwright-test.
+6. Jika gagal (<=10), ambil failure dari JSON hasil run aktif, heal, validasi ulang, lalu re-run scoped.
+7. Ambil summary akhir dan return unresolved failures jika ada.
 
+Untuk situs publik, boleh gunakan discover_pages/snapshot_page agar selector-catalog bisa dipakai ulang.
 Ikuti format requirement di requirements/_TEMPLATE.md.
-Return unresolved failures jika ada.
 ```
 
 ### Plan saja
@@ -253,7 +251,7 @@ Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login
 ```
 Heal kegagalan tes:
 
-1. get_test_failures (playwright-qa) dari test-results/results.json
+1. get_test_failures (playwright-qa) dari JSON hasil run aktif sesuai konfigurasi (`PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`)
 2. Perbaiki file spec yang gagal di src/tests/ (gunakan tracePath/screenshotPath jika ada)
 3. validate_generated_tests (playwright-qa)
 4. run_tests (playwright-test) hanya untuk file yang diperbaiki

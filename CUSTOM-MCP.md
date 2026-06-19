@@ -58,7 +58,7 @@ See [Playwright MCP configuration](https://github.com/microsoft/playwright-mcp) 
 
 ## Tool: `health_check`
 
-Verifies Node, Playwright packages, MCP build, environment files, and optional `test-results/results.json`.
+Verifies Node, Playwright packages, MCP build, environment files, active `PLAYWRIGHT_CONFIG`, and optional config-aware JSON reporter output.
 
 ### Input
 
@@ -88,7 +88,15 @@ Template reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
 
 ```json
 {
-  "requirementsText": "# Feature\n## Metadata\n- **Tags:** #auth\n## Kriteria Penerimaan\n- ..."
+  "requirementPath": "requirements/example-login-extension.md"
+}
+```
+
+Or:
+
+```json
+{
+  "requirementsText": "# REQ-01: Feature\n## Metadata\n- **Tags:** #auth\n- **Auth state:** unauthenticated\n## Kriteria Penerimaan\n- ..."
 }
 ```
 
@@ -309,7 +317,7 @@ Resolves Playwright JSON results in this order:
       "screenshotPath": "optional"
     }
   ],
-  "sourceFile": "test-results/results.json",
+  "sourceFile": "test-results/results.json or config-mapped JSON path",
   "message": "..."
 }
 ```
@@ -511,7 +519,7 @@ A URL is rejected (and recorded in `skipped[]`) when any of the following holds:
 2. `validate_requirement` — fix errors before planning
 3. `parse_requirement_scenarios` + `normalize_requirements` (Planner)
 4. Generate specs under `src/tests/` + `validate_generated_tests`
-5. `run_tests` (playwright-test) — writes `test-results/results.json` via JSON reporter
+5. `run_tests` (playwright-test) — writes JSON reporter output at the active config-mapped path (`getJsonResultsPath()`; default `test-results/results.json`)
 6. `get_test_failures` → Healer → `validate_generated_tests` → `run_tests` (scoped)
 7. `get_test_summary` (Report)
 

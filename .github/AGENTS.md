@@ -162,7 +162,7 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "failures": [
     {
-      "file": "src/tests/example.spec.ts",
+      "filePath": "src/tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
       "tracePath": "optional",
@@ -178,13 +178,13 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "fixes": [
     {
-      "file": "src/tests/example.spec.ts",
+      "filePath": "src/tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],
   "cannotFix": [
     {
-      "file": "src/tests/other.spec.ts",
+      "filePath": "src/tests/other.spec.ts",
       "reason": "Missing reproducible selector context"
     }
   ]

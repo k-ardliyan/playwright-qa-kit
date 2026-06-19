@@ -200,7 +200,7 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
       i += 1;
     }
 
-    if (name.length > 0 && (steps.length > 0 || expectedResult.length > 0)) {
+    if (name.length > 0 && steps.length > 0 && expectedResult.length > 0) {
       const scenario: RequirementScenario = {
         id: `SC-${scenarios.length + 1}`,
         name,

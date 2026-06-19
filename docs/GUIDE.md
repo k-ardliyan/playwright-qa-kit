@@ -7,22 +7,16 @@ Panduan setup, pipeline, dan troubleshooting tim QA.
 - [README.md](README.md) — indeks semua dokumen
 - [CUSTOM-MCP.md](../CUSTOM-MCP.md) — kontrak tool MCP
 - [README.md](../README.md) — diagram alur di root repo
-
-Alpha `v0.1.0-alpha.1` — bukan production.
-
-- [WORKSHOP.md](WORKSHOP.md) — sesi workshop
-- [FORK-ONBOARDING.md](FORK-ONBOARDING.md) — fork template (setelah beta)
+- [FORK-ONBOARDING.md](FORK-ONBOARDING.md) — fork template
 
 ## Mulai di Sini
 
-| Langkah                          | Dokumen                                                                                             |
-| -------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Setup & Go/No-Go hari-H          | [WORKSHOP.md](WORKSHOP.md#go-no-go)<br>[WORKSHOP-CHEATSHEET.md](WORKSHOP-CHEATSHEET.md) (print)     |
-| Batasan alpha                    | [ALPHA-LIMITATIONS.md](ALPHA-LIMITATIONS.md)                                                        |
-| Tulis requirement                | [\_TEMPLATE.md](../requirements/_TEMPLATE.md)<br>[writing-requirements.md](writing-requirements.md) |
-| Rapikan catatan (ChatGPT/Gemini) | [prompt-external-ai.md](prompt-external-ai.md)                                                      |
-| Pipeline AI (Codex)              | [prompt-ai-agent.md](prompt-ai-agent.md)                                                            |
-| Contoh requirement valid         | [`example-login-extension.md`](../requirements/example-login-extension.md)                          |
+| Langkah                          | Dokumen                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Tulis requirement                | [\_TEMPLATE.md](../requirements/_TEMPLATE.md)<br>[writing-requirements.md](writing-requirements.md)                      |
+| Rapikan catatan (ChatGPT/Gemini) | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
+| Pipeline AI (Codex)              | Section `Prompt Siap Pakai` di dokumen ini                                                                               |
+| Contoh requirement valid         | [`example-login-extension.md`](../requirements/example-login-extension.md)                                               |
 
 ---
 
@@ -56,22 +50,18 @@ Isi `BASE_URL`, kredensial tes di `environments/local.env`. **Jangan commit** fi
 
 **Browser (opsional):** `HEADLESS=true|false` mengatur mode headless default; `SLOW_MO=<ms>` memperlambat aksi browser lewat `launchOptions.slowMo` (berguna saat demo Healer). Nilai dibaca **setelah** `loadEnvironment()` di `playwright.config.ts` — ubah di `local.env`, tidak perlu restart MCP kecuali Anda mengubah `PLAYWRIGHT_CONFIG` atau kredensial. `npm run test:headed` selalu menampilkan browser (override `HEADLESS`). Di CI, `SLOW_MO` dipaksa `0`.
 
-Workshop multi-pod (BE/FE/QA per meja via IP LAN): [Topologi LAN](WORKSHOP.md#topologi-lan) · [Go/No-Go](WORKSHOP.md#go-no-go).
-
 Untuk menjalankan suite ERPKU contoh, salin juga nilai dari [`example/erpku/environments/erpku.env.example`](../example/erpku/environments/erpku.env.example) ke `environments/local.env` (`AUTH_*`, `TEST_USER_PHONE`).
 
 <a id="framework-core-vs-adapter"></a>
 
 ### Framework core vs project adapter
 
-Facilitator workshop pilih **satu** path per sesi:
-
 |                           | **Path A — template core (disarankan)** | **Path B — ERPKU adapter (demo)**                                                                                     |
 | ------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Tujuan workshop           | Latihan pipeline AI penuh               | Demo adapter + smoke; jelajah spec referensi                                                                          |
+| Tujuan                    | Latihan pipeline AI penuh               | Demo adapter + smoke; jelajah spec referensi                                                                          |
 | App                       | Frontend baru / generic                 | ERPKU reference (`example/erpku/`)                                                                                    |
 | `PLAYWRIGHT_CONFIG`       | `playwright.config.ts` (default)        | `example/erpku/playwright.config.ts`                                                                                  |
-| **Generate AI**           | `src/tests/*.spec.ts`                   | **Tidak didukung alpha** — `example/erpku/tests/` hanya spec referensi manual                                         |
+| **Generate AI**           | `src/tests/*.spec.ts`                   | Spec referensi manual — Generator tidak menulis ke folder adapter                                                     |
 | Import fixture (generate) | `@/fixtures/base.fixture`               | —                                                                                                                     |
 | Env tambahan              | —                                       | `AUTH_*`, `TEST_USER_PHONE` dari [`erpku.env.example`](../example/erpku/environments/erpku.env.example) → `local.env` |
 | Sanity run                | `npm test`                              | `npm run test:erpku-example -- --project=smoke`                                                                       |
@@ -129,7 +119,7 @@ Di Cursor: Settings → MCP → pastikan ketiga server **hijau/connected**.
 
 ### Playwright CLI vs MCP (Generator)
 
-- **playwright-cli** (preferred): token-efficient, attach via `npx playwright test --debug=cli` + `playwright-cli attach`. Lihat [playwright-cli-generator.md](playwright-cli-generator.md).
+- **playwright-cli** (preferred): token-efficient, attach via `npx playwright test --debug=cli src/tests/seed.spec.ts` lalu `npx playwright-cli attach tw-XXXX`. Replay langkah skenario dengan `snapshot`, `click`, `fill`, `press`, lalu pakai output TS sebagai basis spec. Jangan `open`/`goto` URL mentah; selalu attach lewat seed test agar bootstrap auth/fixture tetap benar.
 - **playwright MCP**: fallback exploratory/healing — `browser_snapshot`, `browser_click`, dll. via server `playwright`.
 
 Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum generate tes halaman baru).
@@ -175,8 +165,7 @@ Gunakan [`requirements/example-login-extension.md`](../requirements/example-logi
 # 1. Validasi format
 npm run validate:requirement -- requirements/example-login-extension.md
 
-# 2. Di Codex chat (atau Cursor Agent mode), salin prompt dari docs/prompt-ai-agent.md
-#    (bagian "Pipeline lengkap") dengan path example-login-extension.md
+# 2. Di Codex chat (atau Cursor Agent mode), kirim prompt pipeline dari section "Prompt Siap Pakai" di dokumen ini
 
 # 3. Setelah generate, jalankan tes
 npm test
@@ -191,6 +180,91 @@ Output yang diharapkan:
 - `specs/example-login-extension-test-plan.md` (dibuat Planner)
 - `src/tests/login-empty-fields.spec.ts` atau serupa (dibuat Generator di `src/tests/`)
 - Tes SC-01 dan SC-02 jalan; SC-03 (@manual) di-skip
+
+---
+
+## Prompt Siap Pakai
+
+Gunakan prompt berikut di Codex atau Cursor Agent mode. Ganti `requirements/nama-fitur.md` dengan file Anda.
+
+### Validasi format saja
+
+```
+Validasi requirements/nama-fitur.md menggunakan tool validate_requirement di server playwright-qa.
+Jika ada error severity, perbaiki file requirement lalu validasi ulang.
+Jangan jalankan pipeline - hanya validasi dan perbaikan format.
+```
+
+### Pipeline lengkap
+
+```
+Jalankan pipeline lengkap untuk requirements/nama-fitur.md:
+
+1. health_check (playwright-qa) - abort jika ada status fail
+2. validate_requirement (playwright-qa) - perbaiki error sebelum lanjut
+3. Planner: parse_requirement_scenarios + normalize_requirements -> tulis specs/nama-fitur-test-plan.md
+3.5. (Opsional) Untuk situs publik: panggil discover_pages (playwright-qa) dengan rootUrl + featureName agar Planner/Generator bisa baca selector-catalog/<feature>/page-map.json dan reuse JSON index selector.
+4. Generator: buat kode di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture) dari test plan
+5. validate_generated_tests (playwright-qa)
+6. run_tests (playwright-test)
+7. Jika gagal (<=10): get_test_failures (playwright-qa) -> Healer -> validate_generated_tests -> run_tests scoped
+8. get_test_summary (playwright-qa)
+
+Ikuti format requirement di requirements/_TEMPLATE.md.
+Return unresolved failures jika ada.
+```
+
+### Plan saja
+
+```
+Plan test scenarios dari requirements/nama-fitur.md:
+
+1. validate_requirement (playwright-qa)
+2. parse_requirement_scenarios + normalize_requirements (playwright-qa)
+3. Tulis specs/nama-fitur-test-plan.md dengan tabel: Scenario Name | Steps | Expected Result
+
+Jangan generate kode tes - hanya test plan.
+```
+
+### Generate saja
+
+```
+Generate Playwright tests dari specs/nama-fitur-test-plan.md:
+
+1. Baca metadata dari normalize_requirements jika perlu
+2. Untuk halaman baru: live verification via playwright-cli (preferred) atau browser_* MCP tools
+   - Untuk halaman yang sudah ada di selector-catalog/<feature>/<page>.json: baca JSON index, copy primary locator ke POM method. Hanya panggil browser_snapshot bila catalog stale (hash mismatch) atau element tidak ada di catalog.
+3. Tulis file di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture)
+4. validate_generated_tests (playwright-qa)
+```
+
+### Snapshot saja
+
+```
+Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login/login-form:
+
+1. snapshot_page (playwright-qa) - url=https://staging.app/login, featureName=login, pageName=login-form
+2. Baca file selector-catalog/login/login-form.json untuk lihat daftar selector + kandidat fallback
+3. Jika perlu crawl banyak halaman, pakai discover_pages sebagai gantinya
+```
+
+### Heal saja
+
+```
+Heal kegagalan tes:
+
+1. get_test_failures (playwright-qa) dari test-results/results.json
+2. Perbaiki file spec yang gagal di src/tests/ (gunakan tracePath/screenshotPath jika ada)
+3. validate_generated_tests (playwright-qa)
+4. run_tests (playwright-test) hanya untuk file yang diperbaiki
+```
+
+### Contoh konkret
+
+```
+Jalankan pipeline lengkap untuk requirements/example-login-extension.md.
+Ikuti prompt "Pipeline lengkap" di atas.
+```
 
 ---
 

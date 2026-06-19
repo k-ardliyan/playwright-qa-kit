@@ -328,6 +328,183 @@ Reads `reports/test-summary.json` from the custom reporter.
 
 ---
 
+## Tool: `snapshot_page`
+
+Navigate to a URL with a headless Chromium, capture the ARIA snapshot, and persist a structured selector catalog under `selector-catalog/<featureName>/<pageName>.{aria.yml,json}`. The MCP response is a compact summary (path, element count, hash) so AI agents do not need to parse the full ARIA tree in-band.
+
+### Why this tool exists
+
+QA non-coders and AI agents both need resilient, semantically-meaningful locators that survive CSS refactors. The selector extraction follows the Playwright 2026 priority order (`getByRole(name, exact)` → `getByLabel` → `getByText` → `getByTestId` → CSS fallback), and `fragile: true` flags any element that only has a CSS chain. The catalog is the single source of truth that Planner and Generator reuse — eliminating redundant `browser_snapshot` calls (saving ~80% of AI agent tokens per pipeline).
+
+### Input
+
+```json
+{
+  "url": "https://staging.app/login",
+  "featureName": "login",
+  "pageName": "login-form",
+  "waitForSelector": "form#login",
+  "include": ["main"],
+  "maxElements": 500,
+  "force": false,
+  "waitUntil": "networkidle",
+  "navigationTimeoutMs": 30000
+}
+```
+
+- `url` — required, absolute http/https URL.
+- `featureName` — required, lowercase slug. Becomes the catalog subfolder.
+- `pageName` — required, lowercase slug. Becomes the catalog filename.
+- `waitForSelector` — optional CSS selector to wait for before snapshotting.
+- `include` — optional CSS scope; restricts snapshot to the first matching subtree.
+- `maxElements` — hard cap on captured interactive elements (default 500).
+- `force` — re-capture and overwrite existing catalog (default `false`).
+- `waitUntil` — `networkidle` (default), `domcontentloaded`, or `load`.
+- `navigationTimeoutMs` — per-page timeout (default 30000).
+
+### Output
+
+```json
+{
+  "status": "success",
+  "featureName": "login",
+  "pageName": "login-form",
+  "url": "https://staging.app/login",
+  "hash": "sha256-hex...",
+  "elementCount": 12,
+  "truncated": false,
+  "ariaYmlPath": "selector-catalog/login/login-form.aria.yml",
+  "selectorsJsonPath": "selector-catalog/login/login-form.json",
+  "message": "Captured 12 element(s) → selector-catalog/login/login-form.json"
+}
+```
+
+The JSON file at `selectorsJsonPath` contains the full structured index:
+
+```json
+{
+  "featureName": "login",
+  "pageName": "login-form",
+  "url": "https://staging.app/login",
+  "hash": "sha256-hex...",
+  "capturedAt": "2026-06-19T...",
+  "truncated": false,
+  "elementCount": 12,
+  "elements": [
+    {
+      "role": "button",
+      "name": "Login",
+      "primary": "page.getByRole('button', { name: 'Login', exact: true })",
+      "candidates": [
+        {
+          "source": "role",
+          "expression": "page.getByRole('button', { name: 'Login', exact: true })"
+        },
+        { "source": "text", "expression": "page.getByText('Login', { exact: true })" },
+        { "source": "css", "expression": "[role=\"button\"]:has-text(\"Login\")" }
+      ],
+      "fragile": false
+    }
+  ]
+}
+```
+
+If a fresh catalog already exists for the same URL, the tool returns `skipped: true` and `skipReason: "catalog_fresh"`. Pass `force: true` to overwrite.
+
+### Safety
+
+- Files are written only under `selector-catalog/<featureName>/`.
+- Path traversal in `featureName` is rejected by `safety.resolveAllowedPath`.
+- Hard cap of 100 files per feature (env `SELECTOR_CATALOG_MAX_FILES` to override). Returns `CAP_EXCEEDED` when exceeded.
+
+---
+
+## Tool: `discover_pages`
+
+BFS auto-crawl a public site from a single entry point. For each unique same-origin URL the tool persists an ARIA + selector catalog (via the shared `_internal/snapshot-core.ts`) and appends the page metadata to `selector-catalog/<featureName>/page-map.json`. Respects `robots.txt`, applies a politeness delay, and writes a `.discover-state.json` checkpoint every 5 pages so a crashed crawl can resume.
+
+### Input
+
+```json
+{
+  "rootUrl": "https://staging.app",
+  "featureName": "public-pages",
+  "maxDepth": 2,
+  "maxPages": 25,
+  "excludePatterns": ["/admin", "/api/", "\\?logout", "/login$"],
+  "respectRobots": true,
+  "requestDelayMs": 200,
+  "waitUntil": "networkidle",
+  "force": false
+}
+```
+
+- `rootUrl` — required, absolute http/https starting URL.
+- `featureName` — required, lowercase slug.
+- `maxDepth` — BFS depth limit (default 2).
+- `maxPages` — total page cap (default 25).
+- `excludePatterns` — array of regex strings; matching URL paths are skipped.
+- `respectRobots` — honor `robots.txt` `Disallow` + `Crawl-delay` (default `true`).
+- `requestDelayMs` — politeness delay between requests (default 200ms).
+- `waitUntil` — same enum as `snapshot_page`.
+- `force` — re-capture even if catalog is fresh.
+
+### Output
+
+```json
+{
+  "status": "success",
+  "rootUrl": "https://staging.app",
+  "featureName": "public-pages",
+  "pagesDiscovered": 8,
+  "skippedCount": 3,
+  "errorCount": 0,
+  "pageMapPath": "selector-catalog/public-pages/page-map.json",
+  "durationMs": 12450,
+  "message": "Discovered 8 page(s) under public-pages/ (skipped 3, errors 0)."
+}
+```
+
+The aggregate `page-map.json` looks like:
+
+```json
+{
+  "rootUrl": "https://staging.app",
+  "featureName": "public-pages",
+  "crawledAt": "2026-06-19T...",
+  "pages": [
+    {
+      "url": "https://staging.app/",
+      "pageName": "home",
+      "title": "Staging App — Home",
+      "hash": "sha256-hex...",
+      "elementCount": 42,
+      "depth": 0,
+      "truncated": false
+    }
+  ],
+  "skipped": [{ "url": "https://staging.app/admin", "reason": "exclude_pattern" }],
+  "errors": []
+}
+```
+
+### Filter chain
+
+A URL is rejected (and recorded in `skipped[]`) when any of the following holds:
+
+- non-HTTP(S) scheme (`javascript:`, `mailto:`, `data:`, …)
+- origin differs from `rootUrl`
+- extension in the blocklist (`.jpg`, `.pdf`, `.zip`, `.css`, `.js`, …)
+- `excludePatterns` regex matches path or href
+- `respectRobots` enabled and `robots.txt` Disallow matches
+
+### Safety
+
+- No authentication, no login wall traversal. Login redirects are detected (URL ends with `/login` or contains `/auth`) and skipped.
+- Checkpoint file `.discover-state.json` is removed on successful completion.
+
+---
+
 ## Agent pipeline checklist
 
 1. `health_check` (playwright-qa)

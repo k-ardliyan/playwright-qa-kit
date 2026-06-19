@@ -38,7 +38,9 @@
     "test:smoke": "npx playwright test --grep @smoke",
     "test:erpku-example": "npx playwright test -c example/erpku/playwright.config.ts",
     "mcp:build": "npm run install:mcp-server && cd mcp-server && npm run build",
-    "mcp:dev": "cd mcp-server && npx tsx src/index-mcp.ts"
+    "mcp:dev": "cd mcp-server && npx tsx src/index-mcp.ts",
+    "snapshot:page": "tsx scripts/snapshot-page-cli.ts",
+    "discover:pages": "tsx scripts/discover-pages-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

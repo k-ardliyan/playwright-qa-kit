@@ -26,10 +26,22 @@ Golden test plan: [`specs/example-login-extension-test-plan.md`](../../specs/exa
 | `playwright-qa`   | `normalize_requirements`                                                                |
 | `playwright-qa`   | `parse_requirement_scenarios`                                                           |
 | `playwright-qa`   | `list_artifacts`                                                                        |
+| `playwright-qa`   | `discover_pages` (optional pre-crawl for public sites)                                  |
+| `playwright-qa`   | `snapshot_page` (optional — capture selector catalog for a known URL)                   |
 | `playwright-test` | `run_tests`                                                                             |
 | `playwright`      | `browser_navigate`, `browser_snapshot`, `browser_take_screenshot` (optional UI explore) |
 
 When planning scenarios for **new pages**, optionally inspect the live UI with `browser_navigate` + `browser_snapshot` before writing steps.
+
+### Optional Pre-Crawl (Token-Efficient Discovery)
+
+For public sites without authentication, prefer **`discover_pages`** over manual `browser_snapshot` exploration:
+
+1. Call `discover_pages` with `rootUrl`, `featureName`, `maxDepth`, `excludePatterns`, and `respectRobots`.
+2. Read the resulting `selector-catalog/<featureName>/page-map.json` to enumerate every URL, title, element count, and content hash.
+3. For pages that need detailed steps, call `snapshot_page` for that specific URL to get the structured selector catalog.
+4. **Skip** pages listed in `skipped[]` (login wall, robots disallow, exclude pattern). Document them in the spec as `@manual` if the requirement covers them.
+5. Fall back to `browser_navigate` + `browser_snapshot` only when the catalog is stale (hash mismatch) or the page is authenticated.
 
 ## Seed and auth context
 

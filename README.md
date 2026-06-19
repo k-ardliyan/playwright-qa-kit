@@ -1,10 +1,7 @@
 # 🚀 Playwright QA Kit
 
-> **Framework Otomatisasi Pengujian Bertenaga AI**  
+> **Framework Otomatisasi Pengujian Bertenaga AI**
 > Solusi modern untuk merancang, menulis, menjalankan, memperbaiki, dan melaporkan pengujian otomatis (_End-to-End_) secara instan dengan bantuan kecerdasan buatan (AI).
-
-> **Status: Alpha (`v0.1.0-alpha.1`)** — uji coba internal dengan facilitator, bukan production.  
-> Workshop (setup awal + Go/No-Go + script sesi): [`docs/WORKSHOP.md`](docs/WORKSHOP.md) · Keterbatasan: [`docs/ALPHA-LIMITATIONS.md`](docs/ALPHA-LIMITATIONS.md)
 
 ---
 
@@ -13,7 +10,7 @@
 Bagi tim QA (baik yang mahir coding maupun non-coder), framework ini dirancang untuk mempermudah pekerjaan sehari-hari:
 
 - 🤖 **AI-Assisted Planning & Generation**: Cukup tulis apa yang ingin diuji dalam bahasa manusia biasa (dokumen kebutuhan/requirement), dan AI akan merancang skenario (_Test Plan_) serta menulis kode pengujiannya secara otomatis.
-- 🩺 **Self-Healing (Perbaikan Otomatis)**: AI dapat menganalisis kegagalan dan memperbaiki selector (_alpha: best-effort, facilitator disarankan — lihat [ALPHA-LIMITATIONS.md](docs/ALPHA-LIMITATIONS.md)_).
+- 🩺 **Self-Healing (Perbaikan Otomatis)**: AI dapat menganalisis kegagalan dan memperbaiki selector.
 - 📊 **Laporan Visual yang Cantik**: Menyediakan dashboard interaktif yang mudah dibaca oleh manajer, produk owner, maupun tim QA.
 - 🌍 **Multi-Environment Ready**: Mudah mengalihkan target pengujian antara server **Lokal (Local)**, **Staging**, atau **Produksi (Production)** hanya dengan satu perintah mudah.
 
@@ -82,10 +79,7 @@ Pastikan komputer Anda sudah terinstal **Node.js** (versi **>= 20.19.0**, LTS 20
 ```bash
 git clone https://github.com/k-ardliyan/playwright-qa-kit.git
 cd playwright-qa-kit
-# workshop: pakai branch main (default) — tag v0.1.0-alpha.1 tidak di-update
 ```
-
-Workshop multi-pod (BE/FE/QA via IP LAN): checklist hari-H → [`docs/WORKSHOP.md`](docs/WORKSHOP.md#go-no-go). Ringkas 1 halaman → [`docs/WORKSHOP-CHEATSHEET.md`](docs/WORKSHOP-CHEATSHEET.md).
 
 ### 3. Instalasi Framework
 
@@ -170,7 +164,7 @@ Detail tool: [CUSTOM-MCP.md](CUSTOM-MCP.md).
 #### Menulis requirement (bisa di luar Cursor)
 
 1. Salin template [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
-2. (Opsional) Rapikan catatan kasar dengan ChatGPT/Gemini memakai [`docs/prompt-external-ai.md`](docs/prompt-external-ai.md).
+2. (Opsional) Rapikan catatan kasar dengan ChatGPT/Gemini — lihat section "Prompt untuk AI eksternal" di [`docs/writing-requirements.md`](docs/writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini).
 3. Simpan sebagai `requirements/nama-fitur.md` — lihat contoh [`requirements/example-login-extension.md`](requirements/example-login-extension.md).
 
 #### Menjalankan pipeline di Cursor
@@ -179,7 +173,7 @@ Detail tool: [CUSTOM-MCP.md](CUSTOM-MCP.md).
    > _"Validasi requirements/example-login-extension.md, lalu jalankan pipeline: plan, generate, validate, run_tests, heal jika gagal, report."_
 5. AI memvalidasi dokumen (`validate_requirement`), membuat `specs/*-test-plan.md`, kode di `src/tests/`, menjalankan tes lewat **playwright-test**, dan memperbaiki kegagalan lewat **playwright-qa** `get_test_failures`.
 
-Panduan lengkap: [`docs/GUIDE.md`](docs/GUIDE.md) · Prompt AI: [`docs/prompt-ai-agent.md`](docs/prompt-ai-agent.md).
+Panduan lengkap: [`docs/GUIDE.md`](docs/GUIDE.md) · lihat section `Prompt Siap Pakai` untuk contoh prompt Agent.
 
 ### Checklist integrasi MCP
 
@@ -226,12 +220,12 @@ Folder `example/erpku/` adalah **reference adapter** ERPKU — dijalankan CI E2E
 
 ## 📚 Dokumen Pendukung Lainnya
 
-- 📄 [docs/README.md](docs/README.md) — **Indeks dokumentasi** (semua link QA & workshop).
-- 📄 [docs/GUIDE.md](docs/GUIDE.md) — Panduan utama tim QA (setup, pipeline, troubleshooting).
-- 📄 [docs/WORKSHOP.md](docs/WORKSHOP.md) — Setup workshop + Go/No-Go hari-H.
-- 📄 [docs/WORKSHOP-CHEATSHEET.md](docs/WORKSHOP-CHEATSHEET.md) — Cheat-sheet 1 halaman (print).
-- 📄 [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md) — **Fork template** untuk proyek QA baru (upstream sync, day-one setup).
-- 📄 [docs/writing-requirements.md](docs/writing-requirements.md) — Format penulisan requirement.
-- 📄 [requirements/README.md](requirements/README.md) — Pointer singkat folder requirements.
-- 📄 [CUSTOM-MCP.md](CUSTOM-MCP.md) — Kontrak tool MCP (maintainer framework).
-- 📄 [MAINTENANCE.md](MAINTENANCE.md) — Perawatan framework (maintainer).
+Lihat [docs/README.md](docs/README.md) untuk indeks lengkap dokumentasi QA dan maintainer.
+
+Dokumen yang paling sering dibuka QA:
+
+- 📄 [docs/GUIDE.md](docs/GUIDE.md) — Panduan utama (setup, pipeline, troubleshooting)
+- 📄 [docs/writing-requirements.md](docs/writing-requirements.md) — Format requirement + prompt AI eksternal
+- 📄 [docs/prompt-ai-agent.md](docs/prompt-ai-agent.md) — Prompt Codex / Cursor Agent
+- 📄 [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md) — Fork template + integrasi repo existing
+- 📄 [CUSTOM-MCP.md](CUSTOM-MCP.md) — Kontrak tool MCP (maintainer)

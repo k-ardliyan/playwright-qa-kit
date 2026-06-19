@@ -59,7 +59,7 @@ const server = http.createServer(async (req: http.IncomingMessage, res: http.Ser
       const toolName = TOOL_ROUTES[url];
       if (toolName) {
         const body = await readJsonBody(req);
-        const result = dispatchTool(toolName, body);
+        const result = await dispatchTool(toolName, body);
         const statusCode =
           result.isError && (result.payload as { status?: string }).status === 'error' ? 400 : 200;
         sendJson(res, statusCode, result.payload);

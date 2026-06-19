@@ -14,6 +14,8 @@ import { normalizeRequirements } from './normalize-requirements';
 import { parseRequirementScenarios } from './parse-requirement-scenarios';
 import { validateGeneratedTests } from './validate-generated-tests';
 import { validateRequirement } from './validate-requirement';
+import { discoverPages } from './discover-pages';
+import { snapshotPage } from './snapshot-page';
 import { createToolError, resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -160,6 +162,96 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
       return validateRequirement({ requirementsText, requirementPath });
     },
+  },
+  {
+    name: 'snapshot_page',
+    description:
+      'Navigate to URL, capture ARIA snapshot, and persist a structured selector catalog under selector-catalog/<feature>/<page>.{aria.yml,json}. Returns a compact summary (path, elementCount, hash) for AI agents — read the JSON file for selector details.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Absolute http/https URL to navigate to.' },
+        featureName: {
+          type: 'string',
+          description: 'Lowercase feature slug, e.g. "login". Becomes the catalog subfolder.',
+        },
+        pageName: {
+          type: 'string',
+          description: 'Lowercase page slug, e.g. "login-form". Becomes the catalog filename.',
+        },
+        waitForSelector: {
+          type: 'string',
+          description: 'Optional CSS selector to wait for before capturing the snapshot.',
+        },
+        include: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional CSS scope — restricts snapshot to first matching subtree.',
+        },
+        maxElements: {
+          type: 'number',
+          description: 'Hard cap on captured interactive elements (default 500).',
+        },
+        force: {
+          type: 'boolean',
+          description: 'Re-capture and overwrite existing catalog (default false).',
+        },
+        waitUntil: {
+          type: 'string',
+          enum: ['networkidle', 'domcontentloaded', 'load'],
+          description: 'page.goto waitUntil strategy.',
+        },
+        navigationTimeoutMs: {
+          type: 'number',
+          description: 'Per-page navigation timeout in ms (default 30000).',
+        },
+      },
+      required: ['url', 'featureName', 'pageName'],
+    },
+    handler: (args) => snapshotPage(args),
+  },
+  {
+    name: 'discover_pages',
+    description:
+      'BFS auto-crawl a public site from a single entry point. For each unique same-origin URL: persist ARIA + selector catalog and append to page-map.json. Respects robots.txt, applies politeness delay, and supports checkpoint/resume.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootUrl: {
+          type: 'string',
+          description: 'Absolute http/https starting URL. Only same-origin links are followed.',
+        },
+        featureName: {
+          type: 'string',
+          description: 'Lowercase feature slug; catalog subfolder + page-map.json location.',
+        },
+        maxDepth: { type: 'number', description: 'BFS depth limit (default 2).' },
+        maxPages: { type: 'number', description: 'Total pages cap (default 25).' },
+        excludePatterns: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Regex patterns — any matching URL/path is skipped.',
+        },
+        respectRobots: {
+          type: 'boolean',
+          description: 'Honor robots.txt Disallow + Crawl-delay (default true).',
+        },
+        requestDelayMs: {
+          type: 'number',
+          description: 'Politeness delay between requests in ms (default 200).',
+        },
+        waitUntil: {
+          type: 'string',
+          enum: ['networkidle', 'domcontentloaded', 'load'],
+        },
+        force: {
+          type: 'boolean',
+          description: 'Re-capture pages even if catalog is fresh.',
+        },
+      },
+      required: ['rootUrl', 'featureName'],
+    },
+    handler: (args) => discoverPages(args),
   },
 ];
 

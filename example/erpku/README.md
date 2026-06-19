@@ -33,9 +33,9 @@ npm run test:erpku-example -- --project=chromium
 
 When forking for a new app, copy this folder as a starting point and replace POMs, env defaults, and tests for your target application.
 
-## Workshop (Path B)
+## ERPKU reference adapter (Path B)
 
-Reference adapter only on alpha:
+Reference adapter for ERPKU:
 
 - Run smoke: `npm run test:erpku-example -- --project=smoke`
 - Walkthrough POMs, fixtures, and existing specs under `tests/`

@@ -16,6 +16,11 @@ blob-report/
 reports/
 !reports/.gitkeep
 
+# Selector catalog (regenerable from snapshot_page / discover_pages MCP tools)
+selector-catalog/
+!selector-catalog/.gitkeep
+!selector-catalog/.meta.json
+
 # Logger output
 logs/
 

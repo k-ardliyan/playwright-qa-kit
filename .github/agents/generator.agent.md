@@ -18,11 +18,12 @@ Also read metadata from the source requirement via `normalize_requirements` when
 
 ## MCP Dependencies
 
-| MCP Server        | Tool Name                               |
-| ----------------- | --------------------------------------- |
-| `playwright-qa`   | `validate_generated_tests`              |
-| `playwright-test` | `run_tests`                             |
-| `playwright`      | See **Browser Interaction Tools** below |
+| MCP Server        | Tool Name                                                           |
+| ----------------- | ------------------------------------------------------------------- |
+| `playwright-qa`   | `validate_generated_tests`                                          |
+| `playwright-qa`   | `snapshot_page` (catalog reuse — preferred over `browser_snapshot`) |
+| `playwright-test` | `run_tests`                                                         |
+| `playwright`      | See **Browser Interaction Tools** below                             |
 
 ## Browser Interaction Tools (`playwright` MCP)
 
@@ -35,6 +36,27 @@ Use these during live verification (MCP path) or when CLI is unavailable:
 | Interaction | `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_press_key`, `browser_hover`, `browser_wait_for` |
 
 Prefer existing POM fixtures from `project.fixture.ts`. Fall back to inline locators derived from snapshot element refs when no POM exists.
+
+### Selector Catalog Reuse (Token-Efficient Locator Discovery)
+
+Before calling `browser_snapshot` for live verification, check `selector-catalog/<featureName>/<pageName>.json`. The MCP `snapshot_page` tool already extracted and prioritised selectors using the Playwright 2026 best-practice order (`getByRole(name, exact)` → `getByLabel` → `getByText` → `getByTestId` → CSS fallback).
+
+**Reuse flow:**
+
+1. **Read the JSON index** at `selector-catalog/<featureName>/<pageName>.json`.
+2. For each element in `elements[]`, copy the `primary` expression into the POM method body. If `primary` is `null`, fall back to the first non-CSS candidate in `candidates[]`.
+3. **Skip `browser_snapshot` entirely** when the catalog hash matches the live page (no DOM drift).
+4. **Only call `browser_snapshot`** when:
+   - The catalog file does not exist for the page.
+   - The hash in the catalog is older than the current build (DOM drift suspected).
+   - The required element is not present in the catalog (e.g. dynamically rendered after interaction).
+5. **Never** read the `.aria.yml` file for locator discovery — it is for `toMatchAriaSnapshot()` assertions only and is expensive to parse.
+
+**Selector priority when generating POMs:**
+
+1. `primary` from the catalog (already uniqueness-checked against the live DOM).
+2. The first `candidates[]` entry that is not a CSS chain.
+3. CSS chain as a last resort — flagged `fragile: true` in the catalog; surface that fragility in the POM JSDoc comment.
 
 ## Metadata → Code Mapping
 
@@ -79,8 +101,6 @@ For **each** scenario row, verify selectors against the live app before emitting
 4. Replay each scenario step: `snapshot`, `click`, `fill`, `press`, etc.
 5. Use emitted Playwright TS from CLI actions as the source for generated code.
 6. **Never** open a raw app URL — attach through the seed test (`src/tests/seed.spec.ts`) so the template bootstrap applies. For authenticated ERPKU flows, use `npm run test:erpku-example` separately (adapter config with setup project + POM fixtures).
-
-See [docs/playwright-cli-generator.md](../../docs/playwright-cli-generator.md).
 
 ### MCP verification (fallback)
 

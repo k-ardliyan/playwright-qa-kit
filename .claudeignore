@@ -1,0 +1,6 @@
+# Prevent AI agents from reading private keys or credentials
+**/.env.keys
+.env.keys
+environments/.env.keys
+mcp.json
+mcp-server/.env

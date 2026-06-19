@@ -22,7 +22,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import dotenv from 'dotenv';
+import * as os from 'os';
+import dotenvx from '@dotenvx/dotenvx';
 import { logger } from './logger';
 
 // ---------------------------------------------------------------------------
@@ -42,9 +43,47 @@ export interface LoadEnvironmentOptions {
   adapterEnv?: AdapterEnvRef;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
+export function getSecureKeysPath(): string {
+  const cwd = process.cwd();
+  const localKeysPath = path.resolve(cwd, 'environments/.env.keys');
+
+  // Dynamically get project name from package.json
+  const pkgPath = path.resolve(cwd, 'package.json');
+  let projectName = 'playwright-qa-kit';
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { name?: string };
+      if (pkg.name) {
+        projectName = pkg.name;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const globalKeysDir = path.resolve(os.homedir(), '.dotenvx-keys', projectName);
+  const globalKeysPath = path.resolve(globalKeysDir, '.env.keys');
+
+  // If local keys exist in workspace, automatically migrate them to the secure global folder
+  if (fs.existsSync(localKeysPath)) {
+    try {
+      if (!fs.existsSync(globalKeysDir)) {
+        fs.mkdirSync(globalKeysDir, { recursive: true });
+      }
+      fs.copyFileSync(localKeysPath, globalKeysPath);
+      fs.unlinkSync(localKeysPath);
+      logger.info(
+        `[SECURITY] Automatically migrated .env.keys to secure global folder: ${globalKeysPath}`,
+      );
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logger.warn(`[SECURITY] Failed to migrate .env.keys to global folder: ${errMsg}`);
+      return localKeysPath; // Fallback to local if migration fails
+    }
+  }
+
+  return globalKeysPath;
+}
 
 /**
  * Reads `APP_ENV` from `process.env`, selects the matching file from the
@@ -110,10 +149,38 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
       `environments/${appEnv}.env not found — loading template '${loaded.label}'. ` +
         `Create environments/${appEnv}.env and replace placeholder values before running tests.`,
     );
+  } else {
+    // [SECURITY GUARD] If the file is encrypted but no decryption key is available,
+    // fallback to loading the plaintext dummy .env.example instead of ciphertext values.
+    const secureKeysPath = getSecureKeysPath();
+    const appEnvUpper = appEnv.toUpperCase();
+    const hasEnvKey =
+      process.env.DOTENV_PRIVATE_KEY ||
+      process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}DEVELOPMENT`] ||
+      process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}`];
+
+    const hasKeys = fs.existsSync(secureKeysPath) || hasEnvKey;
+
+    if (!hasKeys) {
+      const fallbackPath = path.resolve(cwd, `environments/${appEnv}.env.example`);
+      if (fs.existsSync(fallbackPath)) {
+        dotenvx.config({ path: fallbackPath });
+        logger.warn(
+          `[SECURITY] Decryption keys missing. Falling back to dummy template: environments/${appEnv}.env.example`,
+        );
+        if (options?.adapterEnv) {
+          loadAdapterEnvOverlay(options.adapterEnv, cwd);
+        }
+        return;
+      }
+    }
   }
 
   // Requirement 5.5 (via dotenv): load the selected environment file
-  dotenv.config({ path: loaded.resolvedPath });
+  dotenvx.config({
+    path: loaded.resolvedPath,
+    envKeysFile: getSecureKeysPath(),
+  });
 
   // Requirement 5.6: log success at info level
   logger.info(`Loaded environment '${appEnv}' from ${loaded.label}`);
@@ -140,7 +207,11 @@ function loadAdapterEnvOverlay(adapterEnv: AdapterEnvRef, cwd: string): void {
       continue;
     }
 
-    dotenv.config({ path: candidate.resolvedPath, override: false });
+    dotenvx.config({
+      path: candidate.resolvedPath,
+      override: false,
+      envKeysFile: path.resolve(cwd, path.dirname(candidate.resolvedPath), '.env.keys'),
+    });
     logger.info(`Loaded adapter env overlay from ${candidate.label}`);
     return;
   }

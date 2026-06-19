@@ -175,11 +175,20 @@ npx playwright install --with-deps chromium
 npm run mcp:build
 ```
 
-### 3. Setup environment
+### 3. Setup environment & Keamanan Kredensial (Secrets)
 
-- salin `environments/local.env.example` menjadi `environments/local.env`
-- isi `BASE_URL` dan kredensial test
-- pastikan project MCP config tersedia di `.mcp.json` (root repo); `.vscode/mcp.json` hanya untuk kompatibilitas editor bila perlu
+Untuk mencegah kebocoran kredensial ke Git atau terintip oleh AI Agent, framework ini menggunakan **`dotenvx`** untuk mengenkripsi file `.env` secara otomatis:
+
+- Salin `environments/local.env.example` menjadi `environments/local.env`.
+- Isi `BASE_URL` dan kredensial test Anda dalam teks biasa (plaintext).
+- Pastikan project MCP config tersedia di `.mcp.json` (root repo); `.vscode/mcp.json` hanya untuk kompatibilitas editor bila perlu.
+- **Enkripsi & Proteksi Otomatis**: Saat Anda menjalankan tes (`npm test`) atau pengecekan setup (`npm run setup:check`), sistem akan mendeteksi kredensial baru, mengenkripsinya di file `.env` Anda, dan memindahkan kunci dekripsi `.env.keys` secara otomatis ke folder aman di luar proyek (`~/.dotenvx-keys/playwright-qa-kit/.env.keys` — atau `C:\Users\<Username>\.dotenvx-keys\playwright-qa-kit\.env.keys` di Windows).
+- **Cara Dekripsi Manual (Jika Ingin Edit)**:
+  Jika Anda ingin mendekripsi file kembali ke plaintext untuk mengedit nilainya, Anda bisa menyalin berkas `.env.keys` dari folder aman komputer Anda kembali ke folder `environments/`, lalu jalankan:
+  ```bash
+  npx @dotenvx/dotenvx decrypt -f environments/local.env
+  ```
+  _(Setelah selesai mengedit, cukup jalankan `npm run setup:check` kembali agar sistem otomatis mengamankannya lagi!)_
 
 ### 4. Verifikasi setup
 

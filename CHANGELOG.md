@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- `snapshot_page` and `discover_pages` MCP tools to capture ARIA snapshots and generate/manage selector catalogs
+- `npm run snapshot:page` and `npm run discover:pages` CLI scripts under `scripts/` to run page snapshotting and discovery from command line
+- Property tests for page snapshotting and discovery tools (`snapshot-page.property.ts`, `discover-pages.property.ts`)
+
+### Changed
+
+- Cleaned up raw Markdown files by simplifying all table separator formatting to minimal hyphens for improved readability
+
+### Removed
+
+- Deprecated documentation files (`MIGRATION.md`, ADRs 0001-0003, workshop guides, installation guides, cheatsheets) to clean up and stream line the framework guide
+
 ## [0.1.0-alpha.2] - 2026-06-17
 
 ### Added

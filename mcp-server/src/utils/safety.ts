@@ -14,7 +14,8 @@ export type AllowedPathKind =
   | 'tests'
   | 'reports'
   | 'test-results'
-  | 'environments';
+  | 'environments'
+  | 'selector-catalog';
 
 const READ_ONLY_KINDS = new Set<AllowedPathKind>(['environments', 'test-results', 'reports']);
 
@@ -24,6 +25,7 @@ const ALLOWED_PREFIXES: Record<Exclude<AllowedPathKind, 'tests'>, string> = {
   reports: 'reports',
   'test-results': 'test-results',
   environments: 'environments',
+  'selector-catalog': 'selector-catalog',
 };
 
 function getTestsPrefix(): string {

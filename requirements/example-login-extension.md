@@ -1,10 +1,10 @@
 # REQ-AUTH-002: Login — Validasi Field Kosong
 
 <!--
-  Contoh latihan workshop Path A + referensi format valid.
+  Contoh latihan pipeline + referensi format valid.
   Pipeline generate selalu ke src/tests/ (import @/fixtures/base.fixture).
-  Path B: jalankan smoke adapter; jangan generate ke example/erpku/tests/.
-  Prompt: docs/prompt-ai-agent.md — bagian "Contoh konkret"
+  Path B (ERPKU adapter): jalankan smoke; jangan generate ke example/erpku/tests/.
+  Prompt: docs/GUIDE.md — section "Prompt Siap Pakai" -> "Contoh konkret"
 -->
 
 ## Metadata

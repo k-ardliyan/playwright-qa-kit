@@ -33,7 +33,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   logger.info('CallTool request received.', { toolName: name });
 
   try {
-    const result = dispatchTool(name, (args ?? {}) as Record<string, unknown>);
+    const result = await dispatchTool(name, (args ?? {}) as Record<string, unknown>);
     return {
       content: [{ type: 'text', text: JSON.stringify(result.payload, null, 2) }],
       isError: result.isError,

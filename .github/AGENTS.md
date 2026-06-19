@@ -10,7 +10,7 @@ This document defines governance for framework agents:
 ## Requirement Template
 
 All requirement files must follow [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md).
-QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requirements.md`](../docs/writing-requirements.md), [`docs/prompt-external-ai.md`](../docs/prompt-external-ai.md).
+QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requirements.md`](../docs/writing-requirements.md).
 
 ## MCP Servers (three-server hybrid)
 
@@ -63,7 +63,7 @@ Coordinates the full pipeline:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`
+- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`, `snapshot_page`, `discover_pages`
 - `playwright-test`: `run_tests`
 - `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
 
@@ -102,7 +102,7 @@ Golden sample: [`specs/example-login-extension-test-plan.md`](../specs/example-l
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`
+- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`, `discover_pages`, `snapshot_page`
 - `playwright-test`: `run_tests` (seed bootstrap: `src/tests/seed.spec.ts`)
 - `playwright`: `browser_navigate`, `browser_snapshot`
 
@@ -134,7 +134,7 @@ Planner table with columns:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_generated_tests`
+- `playwright-qa`: `validate_generated_tests`, `snapshot_page` (catalog reuse)
 - `playwright-test`: `run_tests` (live verification loop, iterate until pass)
 - `playwright`: `browser_navigate`, `browser_snapshot`
 

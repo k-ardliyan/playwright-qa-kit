@@ -5,10 +5,10 @@ export interface ToolDispatchResult {
   isError: boolean;
 }
 
-export function dispatchTool(
+export async function dispatchTool(
   name: string,
   args: Record<string, unknown> | undefined,
-): ToolDispatchResult {
+): Promise<ToolDispatchResult> {
   const entry = getToolEntry(name);
   if (!entry) {
     return {
@@ -22,7 +22,7 @@ export function dispatchTool(
 
   let payload: unknown;
   try {
-    payload = entry.handler(args);
+    payload = await Promise.resolve(entry.handler(args));
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown tool error';
     payload = { status: 'error', error: { code: 'TOOL_ERROR', message } };

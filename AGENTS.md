@@ -44,6 +44,8 @@ List every tool explicitly by server:
   - `get_test_failures`
   - `get_test_summary`
   - `list_artifacts`
+  - `snapshot_page` (capture ARIA + selector catalog to `selector-catalog/<feature>/<page>.{aria.yml,json}`)
+  - `discover_pages` (BFS auto-crawl a public site, writes per-page catalog + `page-map.json`)
 - **playwright-test**
   - `run_tests` (and related test-runner tools from this server)
 - **playwright** (`@playwright/mcp`)
@@ -53,7 +55,6 @@ List every tool explicitly by server:
   - Diagnostics (Heal): `browser_console_messages`, `browser_network_requests`
 - **playwright-cli** (shell skill — Generator live verification, preferred when available)
   - `npx playwright test --debug=cli` + `playwright-cli attach tw-XXXX`
-  - See [docs/playwright-cli-generator.md](docs/playwright-cli-generator.md)
 
 ## Execution Pipeline
 
@@ -74,6 +75,7 @@ List every tool explicitly by server:
      - `Scenario Name`
      - `Steps`
      - `Expected Result`
+   - When the requirement targets a public site, Planner MAY call `discover_pages` first to populate `selector-catalog/<feature>/` and read `page-map.json` to enumerate pages — this avoids redundant `browser_snapshot` calls in later stages.
 
 2. **Generate stage**
    - Pass Planner table output to Generator.

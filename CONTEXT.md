@@ -27,9 +27,9 @@
 
 ## Scope
 
-- **Workshop Path A** — Facilitator session using template core: write requirement → AI pipeline → generated specs in `src/tests/`. Recommended for alpha workshop exercise.
-- **Workshop Path B** — Facilitator session using ERPKU Reference Adapter: smoke run + walkthrough existing specs under `example/erpku/tests/`. No AI generate to adapter folder on alpha.
-- **Generator verification** — How the Generator confirms selectors before writing code: CLI attach (preferred) or MCP browser tools (fallback). Not the same as Workshop Path A/B.
+- **Path A — Template core** — Write requirement → AI pipeline → generated specs in `src/tests/`. Recommended starting point.
+- **Path B — ERPKU Reference Adapter** — Smoke run + walkthrough existing specs under `example/erpku/tests/`. Generator does not write to adapter folder.
+- **Generator verification** — How the Generator confirms selectors before writing code: CLI attach (preferred) or MCP browser tools (fallback). Not the same as Path A/B.
 
 - **Framework Scope** — Generic, multi-project. The Playwright QA Kit is a reusable toolkit that works across different web applications. Application-specific code (auth flows, POMs, env configs) lives in each project's instance. ERPKU exists only as a sample/example implementation under `example/erpku/`.
 - **Reference Adapter** — Runnable example under `example/erpku/` demonstrating fork patterns (POMs, auth setup, adapter env overlay). Not part of template core. _Avoid:_ sample app, demo project (when meaning the adapter seam).

@@ -1,6 +1,6 @@
 # Fork Onboarding — New QA Project from Template
 
-This guide implements [ADR-0003: Template Fork Deployment Model](adr/0003-template-fork-deployment-model.md). Each QA project gets its own Git repository forked or copied from the `playwright-qa-kit` template core.
+Each QA project gets its own Git repository forked or copied from the `playwright-qa-kit` template core.
 
 ---
 
@@ -178,8 +178,69 @@ See [GUIDE.md](GUIDE.md) for the full QA pipeline on a local machine.
 
 ---
 
+## 10. Integration into an existing frontend repo
+
+Use this if you want to embed the framework into an **existing** repo (Next.js, monorepo, single project) rather than fork into a new repo. TypeScript is recommended for autocomplete and type safety even if your frontend is JS.
+
+### Skenario A: Standalone folder (`/e2e`) — recommended
+
+For a single-project frontend repo:
+
+1. **Copy main folders and files**
+   - Copy the test folder to `/e2e` at the root.
+   - Copy `tsconfig.json` to `/e2e/tsconfig.json` to isolate E2E TypeScript config.
+   - Merge `.env.example` content into the target repo's `.env.example`.
+   - Copy the Playwright workflow to `.github/workflows/` if you use CI.
+2. **Merge dependencies and scripts**
+   Add E2E scripts and Playwright dependencies to the target repo's `package.json`.
+3. **Use the Playwright config**
+   Copy `playwright.config.base.ts` (shared execution policy) and use [`docs/recipes/playwright.config.nextjs-e2e.recipe.ts`](recipes/playwright.config.nextjs-e2e.recipe.ts) as a reference for the target repo's `playwright.config.ts` — call `loadEnvironment()` first, then spread `buildPlaywrightSharedDefaults()`, then override `testDir`, `projects`, and `reporter` to match your `/e2e` layout.
+
+### Skenario B: Monorepo package (`/packages/e2e-tests`)
+
+For workspaces (PNPM/Yarn/NPM Workspaces):
+
+1. Create a new package subfolder, e.g. `/packages/e2e-tests`.
+2. Copy framework files (`package.json`, `tsconfig.json`, `playwright.config.ts`, `src/`, supporting docs) into the subfolder.
+3. Register the package in the workspace root config.
+4. Install dependencies from the monorepo root.
+
+### Automatic webServer (Next.js)
+
+If the target app uses Next.js, add a `webServer` block so the server starts before tests run:
+
+```typescript
+webServer: {
+  command: process.env.CI ? 'npm run build && npm run start' : 'npm run dev',
+  url: 'http://localhost:3000',
+  reuseExistingServer: !process.env.CI,
+  timeout: 120_000,
+}
+```
+
+Adjust `url` if the target app does not run on port 3000.
+
+### CI secrets
+
+Add minimum secrets in your CI provider:
+
+- `BASE_URL`
+- `TEST_USER_EMAIL`
+- `TEST_USER_PASSWORD`
+
+Add other secrets as your app domain requires.
+
+### Post-migration checklist
+
+1. `npm run setup:check`
+2. `npm run lint`
+3. `npm run typecheck`
+4. `npx playwright test --grep @smoke`
+
+If all steps pass, the basic framework integration is ready to use in the target project.
+
+---
+
 ## Related documents
 
 - [CONTEXT.md](../CONTEXT.md) — domain glossary (Framework Scope, Deployment Model)
-- [ADR-0002](adr/0002-generic-multi-project-framework.md) — generic core vs application adapter
-- [ADR-0003](adr/0003-template-fork-deployment-model.md) — why template fork

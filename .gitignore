@@ -7,6 +7,10 @@ node_modules/
 environments/*.env
 !environments/*.env.example
 
+# dotenvx keys
+**/.env.keys
+.env.keys
+
 # Playwright artifacts
 test-results/
 playwright-report/

@@ -15,8 +15,26 @@ on:
           - staging
 
 jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-base-url: ${{ steps.check.outputs.has-base-url }}
+    steps:
+      - name: Check if BASE_URL secret is set
+        id: check
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+        shell: bash
+        run: |
+          if [ -n "$BASE_URL" ]; then
+            echo "has-base-url=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-base-url=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
-    if: ${{ secrets.BASE_URL != '' }}
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-base-url == 'true'
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +104,8 @@ jobs:
           retention-days: 30
 
   e2e-skipped:
-    if: ${{ secrets.BASE_URL == '' }}
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-base-url != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Skip E2E — BASE_URL secret not configured

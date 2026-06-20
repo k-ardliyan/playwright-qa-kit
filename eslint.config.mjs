@@ -13,6 +13,8 @@ export default tseslint.config(
       'reports/',
       '.auth/',
       'mcp-server/dist/',
+      'src/utils/*.js',
+      'src/utils/*.d.ts',
     ],
   },
 

@@ -44,11 +44,32 @@ export interface LoadEnvironmentOptions {
 }
 
 export function getSecureKeysPath(): string {
-  const cwd = process.cwd();
-  const localKeysPath = path.resolve(cwd, 'environments/.env.keys');
+  // Climb up to find the repository root (containing package.json with 'playwright-qa-kit')
+  let repoRoot = __dirname;
+  while (true) {
+    const pkgPath = path.join(repoRoot, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { name?: string };
+        if (pkg.name === 'playwright-qa-kit') {
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const parent = path.dirname(repoRoot);
+    if (parent === repoRoot) {
+      repoRoot = process.cwd(); // Fallback
+      break;
+    }
+    repoRoot = parent;
+  }
+
+  const localKeysPath = path.resolve(repoRoot, 'environments/.env.keys');
 
   // Dynamically get project name from package.json
-  const pkgPath = path.resolve(cwd, 'package.json');
+  const pkgPath = path.resolve(repoRoot, 'package.json');
   let projectName = 'playwright-qa-kit';
   if (fs.existsSync(pkgPath)) {
     try {

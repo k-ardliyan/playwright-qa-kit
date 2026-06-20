@@ -55,3 +55,7 @@ Thumbs.db
 # Local debug / temp artifacts
 debug-validator.ts
 *.diff
+
+# Compiled env loader for plain node execution in MCP server
+src/utils/*.js
+src/utils/*.d.ts

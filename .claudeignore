@@ -4,3 +4,7 @@
 environments/.env.keys
 mcp.json
 mcp-server/.env
+
+# Ignore compiled javascript files in src/utils
+src/utils/*.js
+src/utils/*.d.ts

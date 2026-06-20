@@ -174,6 +174,21 @@ function main(): void {
   // Auto-encrypt any plaintext secrets edited by users/QA before running checks
   autoEncryptEnvFiles();
 
+  // Auto-build playwright-qa MCP server if the build is missing
+  const mcpBuildPath = path.resolve(process.cwd(), 'mcp-server', 'dist', 'index-mcp.js');
+  if (!fs.existsSync(mcpBuildPath)) {
+    process.stdout.write('Playwright-qa MCP build missing. Attempting to build...\n');
+    try {
+      execSync('npm run mcp:build', { stdio: 'inherit' });
+      process.stdout.write('✓ Build completed successfully.\n\n');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `WARN: Failed to auto-build MCP server: ${errMsg}. Setup check might fail.\n\n`,
+      );
+    }
+  }
+
   for (const check of CHECKS) {
     const absolute = path.resolve(process.cwd(), check.path);
     if (!fs.existsSync(absolute)) {

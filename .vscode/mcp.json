@@ -3,7 +3,7 @@
     {
       "name": "playwright",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.76", "--headless"]
+      "args": ["-y", "@playwright/mcp@0.0.77", "--headless"]
     },
     {
       "name": "playwright-test",

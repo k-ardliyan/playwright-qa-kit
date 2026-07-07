@@ -9,14 +9,14 @@
 
 ## Toolchain
 
-- **Primary Stack** — VS Code + Codex extension. All documentation, configuration, and setup guides are aligned to this stack. Cursor is supported but optional — not the recommended environment.
-- **MCP Servers** — Three servers (`playwright`, `playwright-test`, `playwright-qa`) configured via root `.mcp.json` as project source-of-truth. `.vscode/mcp.json` is optional editor-compatibility config when an IDE still expects workspace MCP setup.
+- **Primary Stack** — VS Code + Codex extension, Cursor, or Kiro. All documentation, configuration, and setup guides support multi-platform AI clients. MCP configuration can be auto-generated for each platform via `npm run mcp:config`.
+- **MCP Servers** — Three servers (`playwright`, `playwright-test`, `playwright-qa`) configured via root `.mcp.json` as project source-of-truth. Platform-specific configs (Claude, Cursor, Kiro) are auto-generated. `.vscode/mcp.json` is optional editor-compatibility config.
 
 ## Pipeline
 
-- **Orchestration Model** — Currently prompt-driven (QA User invokes pipeline steps via prompts). Long-term direction: automatic orchestration where the AI agent detects the workflow phase and delegates to the appropriate agent role. This is a _future investment_, not a launch requirement.
+- **Orchestration Model** — Supports both prompt-driven (`manual` mode — QA User invokes pipeline steps via prompts) and fully automated (`automatic` mode — AI agent executes all phases sequentially without pausing). Automatic mode includes pipeline state persistence and resume capability via `reports/pipeline-state.json`. Multi-platform AI client support through the Universal Agent Integration Layer (`src/agents/integration/`).
 - **Pipeline Phases** — Pre-flight → Validate → Plan → Generate → Execute → Heal → Report. Each phase maps to an _Agent Role_.
-- **Agent Role** — One of four logical roles: _Orchestrator_, _Planner_, _Generator_, _Healer_. These instruction sets are structured for Codex compatibility, with the root `AGENTS.md` defining the Orchestrator guidelines and instructing Codex on how to read and delegate tasks to the specific sub-agent instructions located in `.github/agents/`.
+- **Agent Role** — One of five logical roles: _Orchestrator_, _Planner_, _Generator_, _Healer_, _Reporter_. These instruction sets are structured for multi-AI-client compatibility, with the root `AGENTS.md` defining the Orchestrator guidelines and instructing agents on how to read and delegate tasks to the specific sub-agent instructions located in `.github/agents/`.
 - **Selector Discovery** — AI-first. The _Generator_ auto-discovers selectors for unknown pages via `browser_snapshot` without waiting for a _Framework Maintainer_ to pre-build a _Page Object_. Pre-built _Page Objects_ are optional optimizations, not prerequisites for test generation.
 
 ## Test Architecture

@@ -24,9 +24,14 @@ Setup mesin dan pipeline: [GUIDE.md](GUIDE.md)
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul
 - [ ] Prekondisi diisi untuk skenario auth-sensitive
 
-## Contoh
+## Contoh & Referensi
 
-[`requirements/example-login-extension.md`](../requirements/example-login-extension.md)
+| File                                                                                    | Untuk apa                                                                                    |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                             | Template utama yang Anda salin. Self-explanatory dengan inline ✅/❌ contoh.                 |
+| [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                     | Contoh requirement BAIK (5 skenario lengkap, login feature). Target kualitas.                |
+| [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                       | Contoh requirement BURUK — apa yang harus dihindari. `validate_requirement` akan reject ini. |
+| [`requirements/example-login-extension.md`](../requirements/example-login-extension.md) | Contoh valid lain untuk latihan pipeline.                                                    |
 
 ## Format label (parser)
 

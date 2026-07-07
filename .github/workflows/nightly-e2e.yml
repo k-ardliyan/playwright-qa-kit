@@ -1,0 +1,328 @@
+name: Nightly E2E Tests
+
+on:
+  schedule:
+    # Weekdays at 2 AM UTC
+    - cron: '0 2 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      browsers:
+        description: 'Comma-separated list of browsers to test'
+        required: true
+        default: 'chromium,firefox,webkit'
+        type: string
+      shardCount:
+        description: 'Number of shards per browser (1-10)'
+        required: true
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          - '10'
+
+# Queue overlapping runs rather than cancelling them
+concurrency:
+  group: nightly-e2e-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Build matrix from inputs
+        id: set-matrix
+        run: |
+          # Determine browsers
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BROWSERS="${{ github.event.inputs.browsers }}"
+            SHARD_COUNT="${{ github.event.inputs.shardCount }}"
+          else
+            BROWSERS="chromium,firefox,webkit"
+            SHARD_COUNT="3"
+          fi
+
+          # Convert comma-separated browsers to JSON array
+          BROWSER_JSON=$(echo "$BROWSERS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
+
+          # Generate shard indices array [1, 2, ..., N]
+          SHARD_JSON=$(seq 1 "$SHARD_COUNT" | jq -s .)
+
+          # Build the matrix object
+          MATRIX=$(jq -n \
+            --argjson browsers "$BROWSER_JSON" \
+            --argjson shardIndex "$SHARD_JSON" \
+            '{browser: $browsers, shardIndex: $shardIndex}')
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  e2e-matrix:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Materialize CI environment file
+        env:
+          TARGET_ENV: ${{ github.event.inputs.environment || 'staging' }}
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_USERNAME: ${{ secrets.TEST_USER_USERNAME }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+        run: |
+          {
+            printf 'BASE_URL=%s\n' "${BASE_URL}"
+            printf 'ENV_NAME=%s\n' "${TARGET_ENV}"
+            [ -n "${TEST_USER_EMAIL}" ]    && printf 'TEST_USER_EMAIL=%s\n'    "${TEST_USER_EMAIL}"
+            [ -n "${TEST_USER_USERNAME}" ] && printf 'TEST_USER_USERNAME=%s\n' "${TEST_USER_USERNAME}"
+            [ -n "${TEST_USER_PASSWORD}" ] && printf 'TEST_USER_PASSWORD=%s\n' "${TEST_USER_PASSWORD}"
+            [ -n "${TEST_USER_PHONE}" ]    && printf 'TEST_USER_PHONE=%s\n'    "${TEST_USER_PHONE}"
+            printf 'AUTH_SUCCESS_URL_PATH=/dashboard\n'
+            printf 'AUTH_LOGIN_URL_PATH=login\n'
+            printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
+          } > "environments/${TARGET_ENV}.env"
+          echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
+
+      - name: Build playwright-qa MCP server
+        run: npm run mcp:build
+
+      - name: Install Playwright browser - ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run E2E tests - ${{ matrix.browser }} (shard ${{ matrix.shardIndex }})
+        env:
+          SHARD_TOTAL: ${{ github.event.inputs.shardCount || '3' }}
+        run: |
+          npx playwright test \
+            --project=${{ matrix.browser }} \
+            --shard=${{ matrix.shardIndex }}/$SHARD_TOTAL
+
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: test-results-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
+          path: |
+            test-results/
+            reports/test-summary.json
+          retention-days: 30
+
+  publish-reports:
+    needs: e2e-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download all report artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: playwright-report-*
+          path: downloaded-reports/
+          merge-multiple: false
+
+      - name: Prepare report directory structure
+        id: prepare-reports
+        run: |
+          # Generate date-based directory name for this run
+          RUN_DATE=$(date -u +"%Y-%m-%d")
+          RUN_NUMBER="${{ github.run_number }}"
+          REPORT_DIR="${RUN_DATE}/${RUN_NUMBER}"
+          echo "report_dir=${REPORT_DIR}" >> "$GITHUB_OUTPUT"
+          echo "run_date=${RUN_DATE}" >> "$GITHUB_OUTPUT"
+
+          # Create the report output directory
+          mkdir -p "pages-site/${REPORT_DIR}/playwright-report"
+
+          # Merge all downloaded Playwright HTML reports into one directory
+          if [ -d "downloaded-reports" ]; then
+            for dir in downloaded-reports/playwright-report-*/; do
+              if [ -d "$dir" ]; then
+                cp -r "$dir"* "pages-site/${REPORT_DIR}/playwright-report/" 2>/dev/null || true
+              fi
+            done
+          fi
+
+          # Include custom dashboard if it exists in reports output
+          if [ -f "playwright-report/custom-dashboard.html" ]; then
+            cp "playwright-report/custom-dashboard.html" "pages-site/${REPORT_DIR}/"
+          fi
+
+          # Check for custom dashboard in downloaded artifacts
+          find downloaded-reports/ -name "custom-dashboard.html" -exec cp {} "pages-site/${REPORT_DIR}/" \; 2>/dev/null || true
+
+      - name: Checkout gh-pages branch for history
+        id: checkout-pages
+        continue-on-error: true
+        run: |
+          git fetch origin gh-pages:gh-pages 2>/dev/null || true
+          if git show-ref --verify --quiet refs/heads/gh-pages; then
+            git worktree add pages-history gh-pages
+            # Copy existing reports to merge with new ones
+            if [ -d "pages-history" ]; then
+              # Copy all existing date directories (but not index.html, we regenerate it)
+              find pages-history -mindepth 1 -maxdepth 1 -type d -exec cp -r {} pages-site/ \; 2>/dev/null || true
+            fi
+            echo "has_history=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_history=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clean up reports older than 30 days
+        run: |
+          RETENTION_DAYS=30
+          CUTOFF_DATE=$(date -u -d "${RETENTION_DAYS} days ago" +"%Y-%m-%d" 2>/dev/null || date -u -v-${RETENTION_DAYS}d +"%Y-%m-%d")
+
+          # Remove directories older than retention period
+          if [ -d "pages-site" ]; then
+            for dir in pages-site/*/; do
+              # Extract the date portion from directory name (YYYY-MM-DD format)
+              dir_name=$(basename "$dir")
+              # Check if directory name matches date format
+              if echo "$dir_name" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+                if [ "$dir_name" \< "$CUTOFF_DATE" ]; then
+                  echo "Removing old report: $dir_name (older than ${RETENTION_DAYS} days)"
+                  rm -rf "$dir"
+                fi
+              fi
+            done
+          fi
+
+      - name: Generate index page
+        run: |
+          cat > pages-site/index.html << 'INDEXEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>E2E Test Reports</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; background: #f8f9fa; }
+              h1 { color: #1a1a2e; border-bottom: 2px solid #4361ee; padding-bottom: 0.5rem; }
+              .report-list { list-style: none; padding: 0; }
+              .report-list li { background: white; margin: 0.5rem 0; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+              .report-list a { color: #4361ee; text-decoration: none; font-weight: 500; }
+              .report-list a:hover { text-decoration: underline; }
+              .report-date { color: #6c757d; font-size: 0.875rem; }
+              .badge { background: #4361ee; color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; }
+              .empty { color: #6c757d; text-align: center; padding: 3rem; }
+            </style>
+          </head>
+          <body>
+            <h1>🎭 E2E Test Reports</h1>
+            <p>Nightly test run reports sorted by most recent first.</p>
+            <ul class="report-list" id="report-list"></ul>
+            <script>
+          INDEXEOF
+
+          # Generate report entries by scanning existing directories in reverse chronological order
+          echo "      const reports = [" >> pages-site/index.html
+
+          # Find all run directories and sort reverse chronologically
+          if [ -d "pages-site" ]; then
+            find pages-site -mindepth 2 -maxdepth 2 -type d | \
+              sed 's|pages-site/||' | \
+              sort -r | \
+              while read -r report_path; do
+                date_part=$(echo "$report_path" | cut -d'/' -f1)
+                run_part=$(echo "$report_path" | cut -d'/' -f2)
+                # Only include valid date/run directories
+                if echo "$date_part" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' && echo "$run_part" | grep -qE '^[0-9]+$'; then
+                  echo "        { date: '${date_part}', run: '${run_part}', path: '${report_path}' }," >> pages-site/index.html
+                fi
+              done
+          fi
+
+          cat >> pages-site/index.html << 'INDEXEOF2'
+              ];
+              const list = document.getElementById('report-list');
+              if (reports.length === 0) {
+                list.innerHTML = '<li class="empty">No reports available yet.</li>';
+              } else {
+                reports.forEach(r => {
+                  const li = document.createElement('li');
+                  li.innerHTML = `
+                    <div>
+                      <a href="${r.path}/playwright-report/index.html">Run #${r.run}</a>
+                      <span class="report-date">${r.date}</span>
+                    </div>
+                    <span class="badge">Report</span>
+                  `;
+                  list.appendChild(li);
+                });
+              }
+            </script>
+          </body>
+          </html>
+          INDEXEOF2
+
+      - name: Upload Pages artifact
+        id: upload-pages
+        uses: actions/upload-pages-artifact@v3
+        continue-on-error: true
+        with:
+          path: pages-site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Fallback - Upload reports as workflow artifacts
+        if: steps.deployment.outcome == 'failure' || steps.upload-pages.outcome == 'failure'
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-reports-${{ steps.prepare-reports.outputs.run_date }}-run${{ github.run_number }}
+          path: pages-site/${{ steps.prepare-reports.outputs.report_dir }}/
+          retention-days: 30

@@ -11,7 +11,7 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 Register and use these **three** servers. **Project source of truth:** [`.mcp.json`](.mcp.json). Keep [`.vscode/mcp.json`](.vscode/mcp.json) only for editor compatibility when needed.
 
 1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
-   - Command: `npx -y @playwright/mcp@0.0.76 --headless`
+   - Command: `npx -y @playwright/mcp@0.0.77 --headless`
 
 2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
    - Launcher: `npx tsx scripts/playwright-test-mcp-launch.ts` (loads `environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
@@ -38,7 +38,7 @@ Bootstrap module: [`mcp-server/src/utils/mcp-env-bootstrap.ts`](mcp-server/src/u
 Default install uses core browser tools only. Power users can enable extra capabilities via args in [`.vscode/mcp.json`](.vscode/mcp.json):
 
 ```json
-"args": ["-y", "@playwright/mcp@0.0.76", "--headless", "--caps=network"]
+"args": ["-y", "@playwright/mcp@0.0.77", "--headless", "--caps=network"]
 ```
 
 | Flag              | Enables                                     |

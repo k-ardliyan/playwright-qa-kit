@@ -55,16 +55,20 @@ Kalau Anda baru pertama kali buka repo ini, lakukan ini dulu:
    npm run setup:check
    npm run health:check
    ```
-4. Buka panduan utama QA:
+4. **Jalankan pipeline happy path** (1 command):
+   ```bash
+   npm run qa:run -- requirements/example-login-extension.md
+   ```
+   Command ini otomatis: pre-flight → validate requirement → print prompt siap copy-paste ke AI agent → opsional run smoke test.
+5. Buka panduan utama QA:
    - [docs/GUIDE.md](docs/GUIDE.md)
-5. Mulai dari contoh requirement:
-   - [requirements/example-login-extension.md](requirements/example-login-extension.md)
+   - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) (1 halaman printable)
 
 **Target sukses pertama:**
 
 - setup sehat,
-- requirement bisa divalidasi,
-- test bisa dijalankan,
+- `npm run qa:run -- requirements/example-login-extension.md` exit 0,
+- prompt ter-print dan bisa di-paste ke agent,
 - report bisa dibuka.
 
 ---
@@ -100,6 +104,14 @@ Kalau Anda baru pertama kali buka repo ini, lakukan ini dulu:
 - [Peta Dokumentasi: Buka File yang Mana?](#peta-dokumentasi-buka-file-yang-mana)
 - [Quality Gates dan Verifikasi](#quality-gates-dan-verifikasi)
 - [FAQ untuk QA](#faq-untuk-qa)
+
+### Flow Harian (Detail)
+
+- [Flow Harian QA — Step by Step](#flow-harian-qa--step-by-step)
+
+### Integration Layer
+
+- [Universal AI Agent Integration Layer](#universal-ai-agent-integration-layer)
 
 ---
 
@@ -197,10 +209,14 @@ npm run setup:check
 npm run health:check
 ```
 
-### 5. Validasi requirement contoh
+### 5. Validasi requirement (atau pakai qa:run happy path)
 
 ```bash
+# Cara tradisional: validate manual
 npm run validate:requirement -- requirements/example-login-extension.md
+
+# Cara single-command: pre-flight + validate + print prompt agent
+npm run qa:run -- requirements/example-login-extension.md
 ```
 
 ### 6. Jalankan test utama
@@ -272,12 +288,18 @@ Karena file di sana adalah **input awal**. Satu requirement bisa menghasilkan ba
 Gunakan command ini sebagai paket inti QA:
 
 ```bash
+# Happy path 1-command (paling sering dipakai pemula)
+npm run qa:run -- requirements/nama-fitur.md
+
 # Verifikasi setup lokal
 npm run setup:check
 npm run health:check
 
 # Validasi requirement
 npm run validate:requirement -- requirements/nama-fitur.md
+
+# List skenario (@manual) yang harus dijalankan manual
+npm run manual:check
 
 # Jalankan test utama
 npm test
@@ -294,15 +316,19 @@ npm run test:quality
 
 ### Kapan dipakai?
 
-| Command                               | Kegunaan                                      |
-| ------------------------------------- | --------------------------------------------- |
-| `npm run setup:check`                 | memastikan setup dasar siap                   |
-| `npm run health:check`                | memastikan pre-flight sehat                   |
-| `npm run validate:requirement -- ...` | memastikan requirement valid sebelum pipeline |
-| `npm test`                            | menjalankan suite utama                       |
-| `npm run test:smoke`                  | verifikasi alur paling penting                |
-| `npm run test:headed`                 | debug dengan browser terlihat                 |
-| `npm run test:quality`                | gate lengkap sebelum push / PR                |
+| Command                               | Kegunaan                                                               |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run qa:run -- X`                 | **happy path 1-command**: pre-flight + validate + print prompt + smoke |
+| `npm run setup:check`                 | memastikan setup dasar siap                                            |
+| `npm run health:check`                | memastikan pre-flight sehat                                            |
+| `npm run validate:requirement -- ...` | memastikan requirement valid sebelum pipeline                          |
+| `npm run manual:check`                | list semua skenario `(@manual)` yang harus dijalankan manual           |
+| `npm test`                            | menjalankan suite utama                                                |
+| `npm run test:smoke`                  | verifikasi alur paling penting                                         |
+| `npm run test:headed`                 | debug dengan browser terlihat                                          |
+| `npm run test:quality`                | gate lengkap sebelum push / PR                                         |
+
+**Referensi exit code** setiap command: [docs/EXIT-CODES.md](docs/EXIT-CODES.md)
 
 Perintah lanjutan tetap ada di:
 
@@ -530,6 +556,239 @@ Urutan aman:
 Mulai dari:
 
 - [docs/GUIDE.md](docs/GUIDE.md)
+
+---
+
+---
+
+## Flow Harian QA — Step by Step
+
+Bagian ini menjelaskan secara detail apa yang dilakukan QA setiap hari menggunakan framework ini. Ikuti langkah-langkah ini dari atas ke bawah.
+
+### Fase 1: Persiapan (Sekali di Awal Hari)
+
+```bash
+# Pastikan environment sehat
+npm run health:check
+```
+
+Jika ada error, lihat [Troubleshooting di docs/GUIDE.md](docs/GUIDE.md#troubleshooting-health-check).
+
+### Fase 2: Menulis Requirement
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  INPUT: Ide fitur / bug / user story dari PM / BA / ticket             │
+│  OUTPUT: File requirements/nama-fitur.md yang valid                     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Langkah:**
+
+1. Salin template:
+   ```bash
+   copy requirements\_TEMPLATE.md requirements\nama-fitur.md
+   ```
+2. Isi bagian-bagian wajib:
+   - `# REQ-XXX: Judul Fitur` — judul jelas
+   - `## Metadata` — tags, prioritas, halaman awal
+   - `## Kriteria Penerimaan` — apa yang harus tercapai
+   - `## Skenario Uji` — setiap skenario harus punya:
+     - `### SC-XX: Nama Skenario`
+     - `**Prekondisi:**` kondisi awal
+     - `**Langkah:**` aksi user (numbered list)
+     - `**Hasil:**` yang bisa diamati (URL, teks, elemen visible)
+3. Tandai skenario yang tidak bisa diotomatisasi dengan `(@manual)`:
+   ```markdown
+   ### SC-03: Verifikasi CAPTCHA (@manual)
+   ```
+
+**Tips menulis requirement yang baik:**
+
+- Hasil harus **observable**: "URL berubah ke /dashboard", bukan "sistem bekerja"
+- Satu skenario = satu alur user yang jelas
+- Boleh pakai Bahasa Indonesia
+
+### Fase 3: Validasi Requirement
+
+```bash
+npm run validate:requirement -- requirements/nama-fitur.md
+```
+
+**Hasil yang diharapkan:** `✓ All requirement checks passed. Score: 100/100.`
+
+Jika ada error:
+
+| Error                | Perbaikan                                                   |
+| -------------------- | ----------------------------------------------------------- |
+| `title_required`     | Tambah baris `# REQ-01: Judul Fitur`                        |
+| `scenario_structure` | Pastikan setiap `###` punya `**Langkah:**` dan `**Hasil:**` |
+| `observable_result`  | Hasil harus menyebut URL/teks/visibility                    |
+
+### Fase 4: Jalankan Pipeline AI
+
+Buka IDE (VS Code/Cursor/Kiro) dengan MCP server aktif, lalu kirim prompt:
+
+```
+Jalankan pipeline lengkap untuk requirements/nama-fitur.md sesuai kontrak AGENTS.md:
+1. Pre-flight dan validasi requirement
+2. Buat test plan di specs/
+3. Generate spec Playwright di src/tests/
+4. Validasi generated tests
+5. Jalankan tests
+6. Jika gagal, heal lalu re-run
+7. Return summary akhir
+```
+
+**Yang terjadi di belakang layar:**
+
+```mermaid
+sequenceDiagram
+    participant QA as QA (Anda)
+    participant AI as AI Agent
+    participant PQ as playwright-qa
+    participant PT as playwright-test
+    participant PW as playwright (browser)
+
+    QA->>AI: "Jalankan pipeline untuk requirements/login.md"
+    AI->>PQ: health_check
+    PQ-->>AI: ✓ semua sehat
+    AI->>PQ: validate_requirement
+    PQ-->>AI: ✓ score 100/100
+    AI->>PQ: parse_requirement_scenarios
+    PQ-->>AI: 3 skenario ditemukan
+    Note over AI: Planner membuat test plan
+    AI->>PW: browser_snapshot (ambil selector)
+    PW-->>AI: DOM snapshot
+    Note over AI: Generator menulis .spec.ts
+    AI->>PQ: validate_generated_tests
+    PQ-->>AI: ✓ valid
+    AI->>PT: run_tests
+    PT-->>AI: 2 pass, 1 fail
+    AI->>PQ: get_test_failures
+    PQ-->>AI: detail failure + trace
+    Note over AI: Healer memperbaiki
+    AI->>PT: run_tests (scoped)
+    PT-->>AI: 3 pass, 0 fail
+    AI->>PQ: get_test_summary
+    PQ-->>AI: summary final
+    AI-->>QA: ✓ Pipeline selesai, 3/3 pass
+```
+
+### Fase 5: Review Hasil
+
+Setelah pipeline selesai, buka report:
+
+```bash
+# Opsi 1: Dashboard custom (lebih ringkas)
+start reports/custom-dashboard.html
+
+# Opsi 2: Report Playwright (lebih detail)
+npx playwright show-report
+```
+
+**Yang perlu dicek:**
+
+- ✅ Berapa test yang pass?
+- ⚠️ Berapa yang di-heal? (heal = tadinya gagal, diperbaiki AI)
+- ❌ Ada unresolved failure? (perlu investigasi manual)
+- 📊 Coverage: semua skenario dari requirement sudah ter-cover?
+
+### Fase 6: Iterasi (jika perlu)
+
+| Kondisi                       | Aksi                                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| Semua pass                    | ✅ Selesai — push / commit                                                   |
+| Ada heal, semua akhirnya pass | ✅ Review perubahan healer, lalu push                                        |
+| Ada unresolved failure        | 🔄 Cek: requirement kurang jelas? Selector berubah? Lalu perbaiki dan ulangi |
+| Scenario baru muncul          | ➕ Tambah ke requirement, ulangi dari Fase 3                                 |
+
+### Ringkasan Visual Flow Harian
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  TULIS       │     │  VALIDASI    │     │  PIPELINE    │
+│  requirement │────▶│  requirement │────▶│  AI          │
+│  (.md)       │     │  (CLI)       │     │  (prompt)    │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+                                                   │
+                     ┌──────────────┐     ┌────────▼───────┐
+                     │  ITERASI     │     │  REVIEW        │
+                     │  (jika perlu)│◀────│  report        │
+                     └──────────────┘     └────────────────┘
+```
+
+---
+
+## Universal AI Agent Integration Layer
+
+Framework ini mendukung **multi-platform AI client** melalui Integration Layer yang universal. Tidak lagi terikat ke satu AI client saja.
+
+### AI Client yang Didukung
+
+| Platform           | Config File                  | Status            |
+| ------------------ | ---------------------------- | ----------------- |
+| GitHub Copilot     | `.mcp.json` (source)         | ✅ Native         |
+| Claude / Anthropic | `claude_desktop_config.json` | ✅ Auto-generated |
+| Cursor             | `.cursor/mcp.json`           | ✅ Auto-generated |
+| Kiro               | `.kiro/mcp.json`             | ✅ Auto-generated |
+| OpenAI Codex       | via protocol                 | ✅ Supported      |
+
+### Generate Config untuk Platform Anda
+
+```bash
+# Generate untuk semua platform sekaligus
+npm run mcp:config
+
+# Atau untuk platform tertentu
+npm run mcp:config -- --platform claude
+npm run mcp:config -- --platform cursor
+npm run mcp:config -- --platform kiro
+```
+
+### Capability Manifest
+
+AI client bisa self-discover semua kemampuan pipeline melalui manifest:
+
+```bash
+npm run manifest:generate
+```
+
+Output: `agent-manifest.json` — berisi daftar lengkap phase, tools, input/output schema.
+
+### Validate Agent Instructions
+
+Pastikan semua file agent instruction (.agent.md) valid:
+
+```bash
+npm run validate:agents
+
+# Auto-fix masalah yang bisa diperbaiki
+npm run validate:agents -- --fix
+```
+
+### Mode Orkestrasi
+
+| Mode        | Deskripsi                | Kapan Pakai       |
+| ----------- | ------------------------ | ----------------- |
+| `manual`    | Satu phase per prompt    | Debug, eksplorasi |
+| `automatic` | Full pipeline tanpa jeda | Daily run, CI     |
+
+### Pipeline State dan Resume
+
+Pipeline menyimpan progress otomatis. Jika terputus, bisa dilanjutkan:
+
+- State tersimpan di `reports/pipeline-state.json`
+- Resume dari phase terakhir yang berhasil
+- History archived di `reports/archive/`
+
+### Event Hooks dan Observability
+
+Setiap transisi phase menghasilkan structured events:
+
+- `phase:start`, `phase:complete`, `phase:error`
+- Log tersimpan di `reports/pipeline-events.jsonl`
+- Bisa diintegrasikan dengan sistem monitoring eksternal
 
 ---
 

@@ -1,5 +1,15 @@
 <!-- rtk-instructions v2 -->
 
+# Playwright QA Kit — Claude Instructions
+
+## Pipeline QA
+
+Untuk menjalankan pipeline QA (Plan → Generate → Execute → Heal → Report), baca dan ikuti instruksi di [`AGENTS.md`](AGENTS.md). File tersebut adalah source-of-truth untuk orkestrasi pipeline, termasuk urutan MCP tools, format input/output, dan error handling policy.
+
+Sub-agent instructions ada di `.github/agents/*.agent.md`.
+
+---
+
 # RTK (Rust Token Killer) - Token-Optimized Commands
 
 ## Golden Rule

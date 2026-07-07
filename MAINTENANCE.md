@@ -189,6 +189,25 @@ npm run test:ci
 
 ---
 
+## 7) Integration Layer Maintenance
+
+When modifying the integration layer (`src/agents/integration/`):
+
+1. Run `npm run validate:agents` to verify agent instruction files remain valid.
+2. Run `npm run manifest:generate` if phase definitions or tool mappings changed.
+3. Run `npm run mcp:config` to regenerate platform-specific MCP configs if `.mcp.json` changed.
+4. Run `npm run test:property` — integration layer has 23 correctness properties that must pass.
+5. Run `npx playwright test -c playwright.unit.config.ts` for unit/integration tests.
+
+Checklist:
+
+- [ ] `npm run validate:agents` passes (exit code 0)
+- [ ] Property tests pass (50/50 files)
+- [ ] Unit/integration tests pass
+- [ ] `npm run test:quality` passes
+
+---
+
 ## Traceability Exempt Policy
 
 Generated tests (Generator output) **must** include:

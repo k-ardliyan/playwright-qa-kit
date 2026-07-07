@@ -9,13 +9,14 @@ You run the end-to-end sequence:
 
 Your goal is to transform a requirement file into executable tests, run those tests, heal failures when possible, and return a final run summary.
 
-## Sub-Agents (Important for Codex)
+## Sub-Agents
 
 When executing the pipeline, you must read and adopt the specialized instructions for each phase from the following files:
 
 - **Planner:** `.github/agents/planner.agent.md`
 - **Generator:** `.github/agents/generator.agent.md`
 - **Healer:** `.github/agents/healer.agent.md`
+- **Reporter:** `.github/agents/reporter.agent.md`
 
 You must delegate tasks by consulting the corresponding sub-agent file for instructions on how to perform that specific phase.
 
@@ -23,13 +24,24 @@ You must delegate tasks by consulting the corresponding sub-agent file for instr
 
 ```json
 {
-  "requirementPath": "requirements/<feature-name>.md"
+  "requirementPath": "requirements/<feature-name>.md",
+  "orchestrationMode": "manual | automatic"
 }
 ```
 
 - `requirementPath` is required.
+- `orchestrationMode` defaults to `manual` when omitted.
 - The file must exist under the repository `requirements/` directory.
 - Format reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
+
+## Orchestration Modes
+
+| Mode        | Behavior                                                         | When to use                                            |
+| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| `manual`    | Execute one phase at a time; wait for user prompt between phases | Debugging, exploratory testing, review-driven workflow |
+| `automatic` | Execute all phases sequentially without pausing                  | Daily run, CI, batch execution                         |
+
+In **automatic** mode, the pipeline persists state after each phase. If interrupted, it can resume from the last completed phase (see Pipeline State below).
 
 ## MCP Tools Required
 
@@ -88,18 +100,34 @@ List every tool explicitly by server:
    - Prefer scoped runs (single file or `--grep` tag) when healing.
 
 4. **Heal stage**
-   - If failures exist and failure count is `<= 10`, call `get_test_failures` on **playwright-qa**.
+   - Call `get_test_failures` on **playwright-qa** to retrieve structured failure data.
+   - Use `prioritizeFailures()` to rank failures by fix likelihood (known patterns first, shared fixtures prioritized, healability order respected).
    - Use `tracePath` and `screenshotPath` from failure payload when present.
-   - Pass structured failure data to Healer.
+   - For each prioritized failure: lookup known pattern → apply or diagnose → fix → store outcome.
    - Re-run `validate_generated_tests`, then `run_tests` for affected files.
+   - Max **3 heal cycles** per file. After 3 cycles with the same root error, classify as `cannotFix`.
 
 5. **Report stage**
-   - Call `get_test_summary` for pass/fail counts.
-   - Return a final summary and unresolved failures (if any).
+   - Delegate to Reporter agent (`.github/agents/reporter.agent.md`).
+   - Reporter calls `get_test_summary` and `get_test_failures` for data.
+   - Reporter produces:
+     - Structured JSON `PipelineReport` with summary metrics, per-scenario coverage, and unresolved failures.
+     - Markdown report written to `reports/pipeline-report-<runId>.md`.
+   - In `automatic` mode: Reporter runs immediately after Heal without prompting.
+   - In `manual` mode: Reporter waits for explicit invocation.
+
+## Pipeline State and Resume
+
+The pipeline persists execution state to `reports/pipeline-state.json` after each phase completion:
+
+- **Fields:** `runId`, `status`, `currentPhase`, `completedPhases`, `artifacts`, `timestamp`
+- **Resume:** If a run is interrupted, send a `resume` request with the `runId` to continue from the last completed phase.
+- **Artifact validation:** On resume, artifact file paths are verified. If any are missing, affected phases are invalidated and re-run.
+- **Archive:** Completed runs are archived to `reports/archive/pipeline-state-<runId>.json`.
 
 ## Error Handling Policy
 
-For each stage (`planner`, `generator`, `healer`):
+For each stage (`planner`, `generator`, `healer`, `reporter`):
 
 - Run one diagnostic-and-fix retry if a stage errors.
 - Classify as **cannot fix** if retry:
@@ -108,6 +136,11 @@ For each stage (`planner`, `generator`, `healer`):
   - produces structurally invalid output (for example malformed TypeScript).
 - Continue pipeline to **Report** even when a stage cannot be fixed.
 - If Healer crashes, continue to **Report** and include unresolved failure details.
+
+**Automatic mode error behavior:**
+
+- **Retryable error:** retry the phase once, then continue or skip-to-report.
+- **Non-retryable error:** skip remaining intermediate phases, execute Report with failure details included.
 
 ## Output Format
 
@@ -118,19 +151,39 @@ For each stage (`planner`, `generator`, `healer`):
     "testsGenerated": 0,
     "testsPassing": 0,
     "testsFailing": 0,
-    "testsHealed": 0
+    "testsHealed": 0,
+    "testsSkipped": 0
   },
   "unresolvedFailures": [
     {
       "stage": "planner | generator | healer",
-      "errorMessage": "..."
+      "errorMessage": "...",
+      "tracePath": "test-results/.../trace.zip",
+      "screenshotPath": "test-results/.../screenshot.png"
     }
   ]
 }
 ```
 
-`unresolvedFailures` is optional and must be present only when unresolved failures exist.
+- `unresolvedFailures` is optional and must be present only when unresolved failures exist.
+- `tracePath` and `screenshotPath` are optional per failure entry.
 
-## Example Prompt
+## Example Prompts
 
-- "Run full pipeline for `requirements/example-login-extension.md` and return unresolved failures if any."
+**Pipeline lengkap:**
+
+```
+Run full pipeline for requirements/example-login-extension.md and return unresolved failures if any.
+```
+
+**Automatic mode:**
+
+```
+Run full pipeline in automatic mode for requirements/login-feature.md. Resume from last checkpoint if state exists.
+```
+
+**Manual — single phase:**
+
+```
+Run only the Plan stage for requirements/checkout-flow.md.
+```

@@ -6,6 +6,7 @@ This document defines governance for framework agents:
 - `planner`
 - `generator`
 - `healer`
+- `reporter`
 
 ## Requirement Template
 
@@ -16,7 +17,7 @@ QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requiremen
 
 | Server            | Command                                                        | Role                                            |
 | ----------------- | -------------------------------------------------------------- | ----------------------------------------------- |
-| `playwright`      | `npx -y @playwright/mcp@0.0.76 --headless`                     | Browser exploration (`browser_*` tools)         |
+| `playwright`      | `npx -y @playwright/mcp@0.0.77 --headless`                     | Browser exploration (`browser_*` tools)         |
 | `playwright-test` | `npx tsx scripts/playwright-test-mcp-launch.ts`                | Execute tests (`run_tests`, etc.)               |
 | `playwright-qa`   | `node mcp-server/dist/index-mcp.js` (env bootstrap at startup) | Requirements, validation, failure/summary reads |
 
@@ -50,12 +51,15 @@ Coordinates the full pipeline:
     "testsGenerated": 0,
     "testsPassing": 0,
     "testsFailing": 0,
-    "testsHealed": 0
+    "testsHealed": 0,
+    "testsSkipped": 0
   },
   "unresolvedFailures": [
     {
       "stage": "planner | generator | healer",
-      "errorMessage": "..."
+      "errorMessage": "...",
+      "tracePath": "optional",
+      "screenshotPath": "optional"
     }
   ]
 }
@@ -200,3 +204,33 @@ Diagnoses and repairs failing tests using structured failure payloads.
 ### Example Prompt
 
 - "Heal failures from `get_test_failures`, validate, and re-run affected specs."
+
+---
+
+## 5) Reporter Agent
+
+### Role Description
+
+Aggregates test execution results, healing outcomes, and coverage metrics into structured reports.
+
+### Input Format
+
+Pipeline context from Orchestrator plus `get_test_summary` and `get_test_failures` tool outputs.
+
+### Output Format
+
+- Structured JSON `PipelineReport` with summary, coverage, and unresolved failures
+- Markdown report at `reports/pipeline-report-<runId>.md`
+
+### MCP Tools Consumed
+
+- `playwright-qa`: `get_test_summary`, `get_test_failures`
+
+### Orchestration Mode Behavior
+
+- **Automatic:** Runs immediately after Heal phase without prompting
+- **Manual:** Waits for explicit invocation
+
+### Example Prompt
+
+- "Generate the pipeline report for the current run and write it to `reports/pipeline-report-<runId>.md`."

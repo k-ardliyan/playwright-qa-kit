@@ -1,0 +1,32 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "runId",
+    "status",
+    "completedPhases",
+    "artifacts",
+    "timestamp",
+    "startedAt",
+    "requirementPath",
+    "orchestrationMode"
+  ],
+  "properties": {
+    "runId": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["running", "completed", "failed", "paused"] },
+    "currentPhase": { "enum": ["plan", "generate", "execute", "heal", "report", null] },
+    "completedPhases": {
+      "type": "array",
+      "items": { "enum": ["plan", "generate", "execute", "heal", "report"] }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "requirementPath": { "type": "string" },
+    "orchestrationMode": { "enum": ["manual", "automatic"] },
+    "errors": { "type": "array" }
+  }
+}

@@ -4,6 +4,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 import os from 'node:os';
+import { EXIT } from './scripts/exit-codes';
+import { printOk, printWarn, printError } from './scripts/format-error';
 
 const CHECKS: Array<{ label: string; path: string; hint: string }> = [
   {
@@ -56,17 +58,16 @@ function checkPlaywrightTestVersion(): void {
 
   const version = (JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string }).version;
   if (!version) {
-    process.stderr.write('WARN: Could not read version of @playwright/test\n');
+    printWarn('Could not read version of @playwright/test');
     return;
   }
 
   const [major, minor] = version.split('.').map(Number);
   if (major < 1 || (major === 1 && minor < 56)) {
-    process.stderr.write(
-      `WARN: @playwright/test ${version} — playwright-test MCP needs >= 1.56. Run: npm install @playwright/test@latest\n`,
-    );
+    printWarn(`@playwright/test ${version} — playwright-test MCP butuh >= 1.56`);
+    process.stdout.write('  💡 Fix: npm install @playwright/test@latest\n');
   } else {
-    process.stdout.write(`✓ @playwright/test version (${version}) - OK (>= 1.56)\n`);
+    printOk(`@playwright/test version (${version}) - OK (>= 1.56)`);
   }
 }
 
@@ -76,27 +77,27 @@ function checkEnvironmentFile(): void {
   const fallback = path.join('environments', `${appEnv}.env.example`);
 
   if (fs.existsSync(primary)) {
-    process.stdout.write(`✓ Environment file (environments/${appEnv}.env) - OK\n`);
+    printOk(`Environment file (environments/${appEnv}.env) - OK`);
     return;
   }
   if (fs.existsSync(fallback)) {
-    process.stdout.write(`✓ Fallback environment file (environments/${appEnv}.env.example) - OK\n`);
+    printOk(`Fallback environment file (environments/${appEnv}.env.example) - OK`);
+    process.stdout.write('  ℹ Salin ke environments/local.env lalu isi BASE_URL + kredensial\n');
     return;
   }
 
-  process.stderr.write(
-    `WARN: No environments/${appEnv}.env or .env.example — copy from environments/local.env.example\n`,
-  );
+  printWarn(`No environments/${appEnv}.env atau .env.example`);
+  process.stdout.write(`  💡 Fix: cp environments/local.env.example environments/${appEnv}.env\n`);
 }
 
 function checkOptionalWorkspaceMcpConfig(): void {
   const workspaceConfig = path.join(process.cwd(), '.vscode', 'mcp.json');
   if (!fs.existsSync(workspaceConfig)) {
     process.stdout.write(
-      'info: .vscode/mcp.json not found — OK if your tooling reads project MCP config from .mcp.json\n',
+      '  ℹ .vscode/mcp.json not found — OK kalau tooling baca .mcp.json dari root\n',
     );
   } else {
-    process.stdout.write('✓ .vscode/mcp.json (workspace MCP config) - OK\n');
+    printOk('.vscode/mcp.json (workspace MCP config) - OK');
   }
 }
 
@@ -128,10 +129,10 @@ function migrateKeysToSecureFolder(): void {
       }
       fs.copyFileSync(localKeysPath, globalKeysPath);
       fs.unlinkSync(localKeysPath);
-      process.stdout.write(`✓ Secured and moved keys to: ${globalKeysPath}\n`);
+      printOk(`Secured and moved keys to: ${globalKeysPath}`);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`WARN: Failed to secure keys: ${errMsg}\n`);
+      printWarn(`Failed to secure keys: ${errMsg}`);
     }
   }
 }
@@ -156,11 +157,11 @@ function autoEncryptEnvFiles(): void {
     const filePath = path.join('environments', file);
     try {
       execSync(`npx @dotenvx/dotenvx encrypt -f "${filePath}"`, { stdio: 'pipe' });
-      process.stdout.write(`✓ ${filePath} - Encrypted & Secured\n`);
+      printOk(`${filePath} - Encrypted & Secured`);
       migrateKeysToSecureFolder();
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`WARN: Failed to encrypt ${filePath}: ${errMsg}\n`);
+      printWarn(`Failed to encrypt ${filePath}: ${errMsg}`);
     }
   }
   process.stdout.write('\n');
@@ -180,22 +181,25 @@ function main(): void {
     process.stdout.write('Playwright-qa MCP build missing. Attempting to build...\n');
     try {
       execSync('npm run mcp:build', { stdio: 'inherit' });
-      process.stdout.write('✓ Build completed successfully.\n\n');
+      printOk('Build completed successfully.\n');
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(
-        `WARN: Failed to auto-build MCP server: ${errMsg}. Setup check might fail.\n\n`,
-      );
+      printWarn(`Failed to auto-build MCP server: ${errMsg}. Setup check might fail.`);
     }
   }
 
   for (const check of CHECKS) {
     const absolute = path.resolve(process.cwd(), check.path);
     if (!fs.existsSync(absolute)) {
-      process.stderr.write(`✗ ERROR: Missing ${check.label}. Run: ${check.hint}\n`);
+      printError({
+        title: `Missing ${check.label}`,
+        detail: `Expected path: ${check.path}`,
+        hint: `Fix: ${check.hint}`,
+        exitCode: EXIT.FIXABLE,
+      });
       failed = true;
     } else {
-      process.stdout.write(`✓ ${check.label} - OK\n`);
+      printOk(`${check.label} - OK`);
     }
   }
 
@@ -205,10 +209,18 @@ function main(): void {
 
   process.stdout.write('\n');
   if (failed) {
-    process.stdout.write('❌ Setup check failed. Please resolve the errors above.\n');
-    process.exit(1);
+    printError({
+      title: 'Setup check gagal',
+      detail: 'Satu atau lebih check essential gagal di atas.',
+      hint: 'Perbaiki yang gagal lalu jalankan ulang: npm run setup:check',
+      docsLink: 'docs/GUIDE.md#setup-lokal',
+      exitCode: EXIT.FIXABLE,
+    });
+    process.exit(EXIT.FIXABLE);
   } else {
-    process.stdout.write('🎉 All essential checks passed successfully!\n');
+    printOk(
+      '🎉 Semua essential check passed. Lanjut ke: npm run validate:requirement -- requirements/nama-fitur.md',
+    );
   }
 }
 

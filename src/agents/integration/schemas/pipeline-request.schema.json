@@ -1,0 +1,32 @@
+﻿{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["action"],
+  "properties": {
+    "action": { "enum": ["invoke", "query", "resume"] },
+    "phase": { "enum": ["plan", "generate", "execute", "heal", "report"] },
+    "requirementPath": { "type": "string", "pattern": "^requirements/.+\\.md$" },
+    "options": {
+      "type": "object",
+      "properties": {
+        "orchestrationMode": { "enum": ["manual", "automatic"] },
+        "resume": { "type": "boolean" },
+        "runId": { "type": "string", "format": "uuid" },
+        "dryRun": { "type": "boolean" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "invoke" } } },
+      "then": { "required": ["phase", "requirementPath"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "resume" } } },
+      "then": {
+        "required": ["options"],
+        "properties": { "options": { "required": ["runId"] } }
+      }
+    }
+  ]
+}

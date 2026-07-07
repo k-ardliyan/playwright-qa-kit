@@ -67,17 +67,41 @@ See [CUSTOM-MCP.md](../../CUSTOM-MCP.md) for MCP pipeline env details.
 
 ## Planner Workflow
 
-1. Call `validate_requirement` with `requirementPath`. Fix all `error` severity violations before continuing.
-2. Call `parse_requirement_scenarios` with `requirementPath` for structured scenarios.
-3. Call `normalize_requirements` for acceptance criteria, metadata, and tags.
-4. Run `run_tests` (playwright-test) scoped to `src/tests/seed.spec.ts` (template bootstrap — unauthenticated, no auth setup in root config).
-5. Optionally inspect target pages with `browser_navigate` + `browser_snapshot` when UI context is needed.
-6. Map each scenario to a table row:
+### Pre-Planning: Feedback Loop (Ambiguity Detection)
+
+Before generating a test plan, apply the feedback loop to ensure requirement clarity:
+
+1. Call `normalize_requirements` with `requirementPath` to get a `NormalizedRequirement`.
+2. Call `detectAmbiguity(normalizedRequirement)` from `src/agents/planner/feedback.ts`.
+3. Evaluate the returned `AmbiguityReport.confidence` score:
+   - **If confidence >= 0.7**: Proceed to planning (Step 4 onward). No clarification needed.
+   - **If confidence < 0.7**: Route a `ClarificationRequest` to the QA engineer via structured output:
+     - Call `requestClarification(report)` from `src/agents/planner/clarification.ts`.
+     - Output the `ClarificationRequest` as structured JSON in the response so the orchestrator can route it to the QA engineer.
+     - **Halt planning** and wait for clarification response or timeout.
+4. **Timeout fallback (300 seconds)**: If no clarification is received within 300 seconds, call `handleClarificationTimeout(report)` from `src/agents/planner/clarification.ts`. This proceeds with the original requirement and attaches unresolved ambiguities as warnings in the plan output.
+
+### Planning Steps
+
+5. Call `validate_requirement` with `requirementPath`. Fix all `error` severity violations before continuing.
+6. Call `parse_requirement_scenarios` with `requirementPath` for structured scenarios.
+7. Run `run_tests` (playwright-test) scoped to `src/tests/seed.spec.ts` (template bootstrap — unauthenticated, no auth setup in root config).
+8. Optionally inspect target pages with `browser_navigate` + `browser_snapshot` when UI context is needed.
+9. Map each scenario to a table row:
    - Prefix `Steps` with `Given: <precondition>` when `precondition` is present.
    - Prefix `Steps` with auth context from `metadata.authState` when no per-scenario precondition exists.
    - Mark `automatable: false` scenarios with `@manual` in plan notes.
-7. Save output to:
-   - `specs/<feature-name>-test-plan.md`
+
+### Post-Planning: Test Plan Validation
+
+10. After generating the test plan, call `validateTestPlan(plan)` from `src/agents/planner/plan-validator.ts` as a post-planning validation step.
+11. Evaluate the `PlanValidationResult.status`:
+    - **"valid"**: Plan is ready. Proceed to save and output.
+    - **"warnings"**: Plan has non-blocking issues. Log warnings, include them in output metadata, and proceed.
+    - **"invalid"**: Plan has errors. Attempt to fix auto-fixable issues (where `autoFixable: true`). For non-auto-fixable errors, report them back to the orchestrator for QA review.
+12. If `coverageGaps` is non-empty, add a "Coverage Gaps" section to the plan output listing uncovered acceptance criteria.
+13. Save output to:
+    - `specs/<feature-name>-test-plan.md`
 
 ## Output Format (Mandatory)
 

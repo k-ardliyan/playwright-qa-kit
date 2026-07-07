@@ -33,6 +33,9 @@
     "mcp:build": "npm run install:mcp-server && npx tsc src/utils/env-loader.ts --outDir src/utils --module commonjs --target es2020 --esModuleInterop --declaration --skipLibCheck --ignoreConfig --types node && cd mcp-server && npm run build",
     "mcp:dev": "cd mcp-server && npx tsx src/index-mcp.ts",
     "mcp:typecheck": "npx tsc -p mcp-server/tsconfig.json --noEmit",
+    "mcp:config": "tsx scripts/generate-mcp-config.ts",
+    "manifest:generate": "tsx scripts/generate-manifest.ts",
+    "validate:agents": "tsx scripts/validate-agents.ts",
     "quality:check-code": "npm run format:check && npm run lint && npm run typecheck && npm run mcp:typecheck",
     "quality:check-rules": "npm run validate && npm run validate:requirement -- requirements/example-login-extension.md && npm run test:property",
     "test:quality": "npm run setup:check && npm run quality:check-code && npm run quality:check-rules && npm run mcp:build && npm run health:check",
@@ -43,25 +46,27 @@
     "test:smoke": "npx playwright test --grep @smoke",
     "test:erpku-example": "npx playwright test -c example/erpku/playwright.config.ts",
     "snapshot:page": "tsx scripts/snapshot-page-cli.ts",
-    "discover:pages": "tsx scripts/discover-pages-cli.ts"
+    "discover:pages": "tsx scripts/discover-pages-cli.ts",
+    "qa:run": "tsx scripts/qa-run.ts",
+    "manual:check": "tsx scripts/manual-check.ts"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.74.3",
+    "@dotenvx/dotenvx": "^1.75.1",
     "@eslint/js": "^10.0.1",
-    "@playwright/mcp": "^0.0.76",
-    "@playwright/test": "^1.61.0",
-    "@types/node": "^20.17.0",
+    "@playwright/mcp": "^0.0.77",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^20.19.43",
     "@types/prompts": "^2.4.9",
-    "eslint": "^10.5.0",
-    "eslint-plugin-playwright": "^2.10.4",
+    "eslint": "^10.6.0",
+    "eslint-plugin-playwright": "^2.10.5",
     "fast-check": "^4.8.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
-    "prettier": "^3.8.4",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.4",
     "prompts": "^2.4.2",
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1"
+    "typescript-eslint": "^8.63.0"
   },
   "lint-staged": {
     "*.ts": [

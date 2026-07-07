@@ -366,7 +366,7 @@ Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` da
 
 - **Halaman baru** tanpa POM → Generator butuh 1–2 iterasi (`browser_snapshot` + Heal).
 - **`@manual`** → tes di-skip otomatis (CAPTCHA, email nyata).
-- **Healer** → maksimal 10 kegagalan per run.
+- **Healer** → menggunakan prioritization berbasis pattern (tidak ada cap arbitrer).
 - **Environment** → tiap QA pakai `local.env` sendiri.
 
 ---

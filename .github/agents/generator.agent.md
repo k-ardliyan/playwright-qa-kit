@@ -115,6 +115,66 @@ For **each** scenario row, verify selectors against the live app before emitting
 2. If the test fails, fix locators/waits/assertions and re-run (max **3** attempts per scenario).
 3. If still failing after 3 attempts, leave the file as-is and report the scenario for the Healer with the last error message.
 
+## Partial Generation with Retry (Mandatory)
+
+The Generator Agent uses `generatePartial()` from `src/agents/generator` instead of all-or-nothing generation. Each scenario is processed **independently** — a failure in one scenario does NOT block others.
+
+### Generation Pipeline
+
+1. **Use `generatePartial(plan, options)`** to process the test plan scenario-by-scenario.
+2. For each scenario, the engine tracks state: `pending → in_progress → generated | skipped`.
+3. On failure, the **failure classifier** (`classifyFailure()`) categorizes the error:
+   - `transient_network` — ECONNREFUSED, ETIMEDOUT, fetch failed → **retryable**
+   - `selector_not_found` — locator not found → **retryable** (refresh selector catalog first)
+   - `app_unavailable` — HTTP 5xx or base URL unreachable → **retryable**
+   - `timeout` — exceeded without network keywords → **retryable**
+   - `auth_required` — 401/403 or login redirect → **non-retryable, skip immediately**
+   - `structural_error` — anything else → **non-retryable, skip immediately**
+
+### Retry Decision Logic
+
+The **retry engine** (`retryScenario()`) applies exponential backoff for retryable failures:
+
+- **Formula:** `delay = retryDelayMs × 2^(attempt - 1)`, capped at 30 000 ms
+- **Total attempts** = `maxRetriesPerScenario + 1` (initial + retries)
+- On `selector_not_found`: refresh the selector catalog before the next attempt
+- On success after retry: include in generated list with attempt count in metrics
+- On exhaustion with `fallbackToSkeleton: true`: generate a skeleton test (see below)
+- On exhaustion with `fallbackToSkeleton: false`: add to skipped list with classification
+
+### Default Generation Options
+
+```typescript
+{
+  maxRetriesPerScenario: 2,
+  retryDelayMs: 1000,
+  fallbackToSkeleton: true,
+  continueOnFailure: true,
+  selectorCatalogRequired: false,
+  liveVerificationTimeout: 30000,
+}
+```
+
+### Skeleton Test Fallback
+
+When all retries are exhausted and `fallbackToSkeleton` is enabled, the engine generates a placeholder test file using `generateSkeletonContent()`:
+
+- File is named `<scenario-id>.skeleton.spec.ts`
+- Marked with `test.fixme()` so it appears in test reports as a known gap
+- Contains scenario steps and expected result as comments for manual implementation
+- **Skeleton files are included in `validate_generated_tests`** — they pass validation as valid TypeScript but are reported as fixme'd
+
+### Post-Generation Flow
+
+After `generatePartial()` completes:
+
+1. Call `validate_generated_tests` on ALL generated files (including skeletons)
+2. Report the `PartialGenerationResult` to the Orchestrator:
+   - `status: 'complete'` — all scenarios generated, no skipped
+   - `status: 'partial'` — some generated, some skipped
+   - `status: 'failed'` — none generated
+3. Skipped scenarios with `canRetryLater: true` are eligible for Healer retry in a later pass
+
 ## Generation Rules (Mandatory)
 
 1. Parse the Planner table **row-by-row** and generate tests for each scenario.

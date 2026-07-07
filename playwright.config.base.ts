@@ -1,4 +1,5 @@
-import type { PlaywrightTestConfig } from '@playwright/test';
+import type { PlaywrightTestConfig, Project } from '@playwright/test';
+import { devices } from '@playwright/test';
 
 /**
  * Shared Playwright execution policy for template core, Reference Adapter, and docs/recipes/.
@@ -82,5 +83,91 @@ export function createFrameworkReporters(options: {
     ['json', { outputFile: options.jsonOutput }],
     ['html', { outputFolder: options.htmlFolder, open: 'never' }],
     [options.customReporterPath],
+  ];
+}
+
+/**
+ * Browser target type supported by the multi-browser executor.
+ */
+export type ConfigBrowserTarget = 'chromium' | 'firefox' | 'webkit';
+
+/**
+ * Options for building multi-browser project definitions.
+ */
+export interface MultiBrowserProjectOptions {
+  /** Test directory for all browser projects */
+  testDir?: string;
+  /** Test match pattern */
+  testMatch?: string;
+  /** Test ignore patterns */
+  testIgnore?: string[];
+  /** Storage state to apply to all browser projects */
+  storageState?: { cookies: unknown[]; origins: unknown[] };
+}
+
+/**
+ * Builds a Firefox project definition compatible with Playwright config.
+ *
+ * @param options - Project customization options
+ * @returns A Playwright project definition for Firefox
+ */
+export function buildFirefoxProject(options?: MultiBrowserProjectOptions): Project {
+  return {
+    name: 'firefox',
+    use: {
+      ...devices['Desktop Firefox'],
+      ...(options?.storageState ? { storageState: options.storageState } : {}),
+    },
+    ...(options?.testDir ? { testDir: options.testDir } : {}),
+    ...(options?.testMatch ? { testMatch: options.testMatch } : {}),
+    ...(options?.testIgnore ? { testIgnore: options.testIgnore } : {}),
+  };
+}
+
+/**
+ * Builds a WebKit project definition compatible with Playwright config.
+ *
+ * @param options - Project customization options
+ * @returns A Playwright project definition for WebKit
+ */
+export function buildWebkitProject(options?: MultiBrowserProjectOptions): Project {
+  return {
+    name: 'webkit',
+    use: {
+      ...devices['Desktop Safari'],
+      ...(options?.storageState ? { storageState: options.storageState } : {}),
+    },
+    ...(options?.testDir ? { testDir: options.testDir } : {}),
+    ...(options?.testMatch ? { testMatch: options.testMatch } : {}),
+    ...(options?.testIgnore ? { testIgnore: options.testIgnore } : {}),
+  };
+}
+
+/**
+ * Builds all multi-browser project definitions (chromium, firefox, webkit).
+ * Each project uses the standard device emulation from Playwright's device list.
+ *
+ * @param options - Shared project customization options applied to all browsers
+ * @returns Array of Playwright project definitions for chromium, firefox, and webkit
+ */
+export function buildMultiBrowserProjects(options?: MultiBrowserProjectOptions): Project[] {
+  const storageState = options?.storageState ?? { cookies: [], origins: [] };
+  const commonProps = {
+    ...(options?.testDir ? { testDir: options.testDir } : {}),
+    ...(options?.testMatch ? { testMatch: options.testMatch } : {}),
+    ...(options?.testIgnore ? { testIgnore: options.testIgnore } : {}),
+  };
+
+  return [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState,
+      },
+      ...commonProps,
+    },
+    buildFirefoxProject({ ...options, storageState }),
+    buildWebkitProject({ ...options, storageState }),
   ];
 }

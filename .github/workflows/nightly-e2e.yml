@@ -66,8 +66,8 @@ jobs:
           # Generate shard indices array [1, 2, ..., N]
           SHARD_JSON=$(seq 1 "$SHARD_COUNT" | jq -s .)
 
-          # Build the matrix object
-          MATRIX=$(jq -n \
+          # Build the matrix object (compact single-line for $GITHUB_OUTPUT)
+          MATRIX=$(jq -nc \
             --argjson browsers "$BROWSER_JSON" \
             --argjson shardIndex "$SHARD_JSON" \
             '{browser: $browsers, shardIndex: $shardIndex}')

@@ -4,6 +4,8 @@ Simpan file fitur di folder [`requirements/`](../requirements/), sejajar dengan 
 
 Setup mesin dan pipeline: [GUIDE.md](GUIDE.md)
 
+---
+
 ## Alur kerja
 
 1. Duplikat [`_TEMPLATE.md`](../requirements/_TEMPLATE.md) → `requirements/nama-fitur.md`.
@@ -11,27 +13,69 @@ Setup mesin dan pipeline: [GUIDE.md](GUIDE.md)
 3. (Opsional) Rapikan catatan kasar via ChatGPT/Gemini — lihat section **Prompt untuk AI eksternal** di bawah.
 4. Validasi: `npm run validate:requirement -- requirements/nama-fitur.md`
 5. Koreksi ringan di editor jika perlu.
-6. Pipeline AI di Codex: pakai section `Prompt Siap Pakai` di [GUIDE.md](GUIDE.md).
+6. Pipeline AI di IDE: pakai section **Prompt Siap Pakai** di [GUIDE.md](GUIDE.md).
+
+---
 
 ## Checklist sebelum commit
 
 - [ ] `npm run validate:requirement` lulus (tanpa error)
 - [ ] Judul `# REQ-XXX: ...` ada di baris pertama
-- [ ] Section `## Metadata` terisi (minimal Tags dan Auth state)
-- [ ] Minimal satu bullet di `## Kriteria Penerimaan`
-- [ ] Setiap skenario punya `###` heading + `**Langkah:**` + `**Hasil:**`
-- [ ] Hasil bersifat observable (URL, teks, visibility)
+- [ ] Section `## Metadata` terisi (minimal Tags, Auth state, Halaman awal)
+- [ ] Minimal satu bullet di `## Kriteria Penerimaan`, semuanya observable
+- [ ] Setiap skenario punya `### SC-XX:` heading + `**Langkah:**` + `**Hasil:**`
+- [ ] Hasil bersifat observable (URL, teks, visibility — bukan "berjalan baik")
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul
 - [ ] Prekondisi diisi untuk skenario auth-sensitive
+- [ ] Jika `Auth state: authenticated` dan fitur berbeda per role → tambah `Role scope` dan `Access expectation`
+
+---
+
+## Tipe Skenario
+
+Tambahkan tag di judul `### SC-XX:` untuk membedakan tipe:
+
+| Tag                     | Artinya                                        |
+| ----------------------- | ---------------------------------------------- |
+| `(@success)`            | Happy path — alur normal berhasil              |
+| `(@failure)`            | Negative path — input salah, validasi gagal    |
+| `(@access-restriction)` | Role tidak berhak, akses ditolak               |
+| `(@manual)`             | Tidak bisa diotomasi (CAPTCHA, OTP, biometric) |
+
+Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
+
+---
+
+## Metadata Opsional untuk Role-Aware Testing
+
+Tambahkan field berikut jika fitur berbeda per role bisnis:
+
+```markdown
+- **Role scope:** super-admin, finance
+- **Access expectation:** super-admin: bisa approve dan reject; finance: bisa approve; hrd: tidak bisa mengakses
+- **Risk level:** high
+```
+
+Validator akan memberi warning jika:
+
+- `Auth state: authenticated` tapi tidak ada `Role scope` (mungkin perlu ditambahkan)
+- `Role scope` diisi tapi `Access expectation` kosong
+- Requirement menyebut kata gagal/error/ditolak tapi tidak ada skenario `(@failure)`
+
+Lihat panduan lengkap: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)
+
+---
 
 ## Contoh & Referensi
 
-| File                                                                                    | Untuk apa                                                                                    |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                             | Template utama yang Anda salin. Self-explanatory dengan inline ✅/❌ contoh.                 |
-| [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                     | Contoh requirement BAIK (5 skenario lengkap, login feature). Target kualitas.                |
-| [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                       | Contoh requirement BURUK — apa yang harus dihindari. `validate_requirement` akan reject ini. |
-| [`requirements/example-login-extension.md`](../requirements/example-login-extension.md) | Contoh valid lain untuk latihan pipeline.                                                    |
+| File                                                                                    | Untuk apa                                           |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                             | Template utama yang Anda salin                      |
+| [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                     | Contoh requirement BAIK — target kualitas           |
+| [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                       | Contoh requirement BURUK — apa yang harus dihindari |
+| [`requirements/example-login-extension.md`](../requirements/example-login-extension.md) | Contoh valid untuk latihan pipeline                 |
+
+---
 
 ## Format label (parser)
 
@@ -41,57 +85,56 @@ Setup mesin dan pipeline: [GUIDE.md](GUIDE.md)
 | `**Hasil:**`      | `**Expected Result:**`, `**Expected:**`, `**Outcome:**` |
 | `**Prekondisi:**` | `**Precondition:**`, `**Given:**`                       |
 
-## Prompt untuk AI eksternal (ChatGPT / Gemini)
+---
 
-Untuk merapikan catatan QA kasar menjadi requirement markdown, salin blok di bawah ke chat eksternal. Ganti `[CATATAN QA ANDA]` dengan catatan tim.
+## Prompt untuk AI Eksternal (ChatGPT / Gemini)
 
-### System / Instruksi (salin ke AI)
+Gunakan ini untuk mengubah catatan kasar atau tiket menjadi requirement siap pakai.
 
 ```
-Kamu adalah asisten QA yang merapikan catatan uji menjadi dokumen requirement terstruktur.
+Tolong ubah catatan berikut menjadi requirement QA dalam format Markdown.
 
-TUGAS:
-Konversi catatan QA di bawah menjadi satu file Markdown requirement sesuai template PERSIS.
-
-ATURAN WAJIB:
-1. Output HANYA Markdown mentah — tanpa penjelasan, tanpa kode Playwright, tanpa blok code fence.
-2. Judul dokumen: # REQ-XXX: [Judul Fitur] (gunakan ID REQ jika ada di catatan, atau buat REQ-01).
-3. Wajib ada section: ## Metadata, ## Kriteria Penerimaan, ## Skenario Uji.
-4. Setiap skenario WAJIB pakai heading ### dan label persis:
-   - **Prekondisi:** (jika relevan)
-   - **Langkah:** (diikuti numbered list 1. 2. 3.)
-   - **Hasil:** (diikuti bullet observable)
-5. JANGAN ubah label **Langkah:** dan **Hasil:** — parser sistem hanya mengenali format bold + colon ini.
-6. Hasil harus observable: URL, teks yang tampil, visibility elemen — BUKAN "berjalan baik" atau "sukses" tanpa detail.
-7. Skenario yang tidak bisa diotomatisasi (CAPTCHA, email nyata, OTP SMS) → tambahkan (@manual) di judul ###.
-8. Metadata minimal: Tags (#ui #auth dll), Auth state (unauthenticated/authenticated), Halaman awal.
-9. Tulis dalam Bahasa Indonesia.
-
-TEMPLATE STRUKTUR:
-
+FORMAT YANG HARUS DIIKUTI:
 # REQ-XXX: [Judul Fitur]
 
 ## Metadata
-- **Tags:** #ui
-- **Prioritas:** high | medium | low
-- **Auth state:** unauthenticated | authenticated
-- **Halaman awal:** /path
-- **POM yang dibutuhkan:** loginPage
+- **Tags:** #<tag1> #<tag2>
+- **Prioritas:** high / medium / low
+- **Auth state:** unauthenticated / authenticated
+- **Halaman awal:** /path-halaman
+- **POM yang dibutuhkan:** namaPage (opsional)
+- **Role scope:** role1, role2 (HANYA jika fitur berbeda per role)
+- **Access expectation:** role1: bisa X; role2: tidak bisa X (HANYA jika Role scope diisi)
 
 ## Kriteria Penerimaan
-- [bullet observable]
+- [kondisi observable 1]
+- [kondisi observable 2]
 
 ## Skenario Uji
 
-### SC-01: [Nama]
-**Prekondisi:** ...
+### SC-01: [Nama Skenario] (@success)
+**Prekondisi:** [kondisi awal]
 **Langkah:**
-1. ...
+1. [langkah 1]
+2. [langkah 2]
 **Hasil:**
-- ...
+- [hasil observable — URL, teks, elemen visible]
 
-CATATAN QA:
-[CATATAN QA ANDA]
+### SC-02: [Nama Skenario] (@failure)
+**Prekondisi:** [kondisi awal]
+**Langkah:**
+1. [langkah 1]
+**Hasil:**
+- [pesan error atau kondisi gagal yang observable]
+
+ATURAN PENTING:
+- Hasil HARUS observable: URL, teks visible, elemen tampil/hilang
+- JANGAN tulis "sistem bekerja dengan baik" — itu tidak observable
+- Tandai (@manual) di judul skenario yang butuh CAPTCHA / OTP / biometric
+- Setiap skenario harus punya Langkah dan Hasil
+
+CATATAN SAYA:
+[paste catatan Anda di sini]
 ```
 
 ### Langkah setelah AI selesai
@@ -99,14 +142,19 @@ CATATAN QA:
 1. Salin Markdown hasil AI ke `requirements/nama-fitur.md`.
 2. Cek format dengan section **Format label (parser)** di atas.
 3. Jalankan `npm run validate:requirement -- requirements/nama-fitur.md`.
-4. Di VS Code Codex (atau Cursor Agent), pakai prompt validasi atau pipeline dari section `Prompt Siap Pakai` di [GUIDE.md](GUIDE.md).
+4. Di IDE (Cursor/Kiro/Claude), pakai prompt pipeline dari section **Prompt Siap Pakai** di [GUIDE.md](GUIDE.md).
+
+---
 
 ## Troubleshooting validasi
 
-| Rule                 | Perbaikan                                                   |
-| -------------------- | ----------------------------------------------------------- |
-| `title_required`     | Tambah `# REQ-01: Judul`                                    |
-| `scenario_structure` | Cek bold `**Langkah:**` dan `**Hasil:**` per skenario `###` |
-| `observable_result`  | Hasil harus URL/teks/visibility, bukan "berjalan baik"      |
+| Rule                           | Perbaikan                                                        |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `title_required`               | Tambah `# REQ-01: Judul`                                         |
+| `scenario_structure`           | Cek bold `**Langkah:**` dan `**Hasil:**` per skenario `###`      |
+| `observable_result`            | Hasil harus URL/teks/visibility, bukan "berjalan baik"           |
+| `role_scope_recommended`       | Jika authenticated + multi-role, tambah `Role scope` di Metadata |
+| `access_expectation_missing`   | Tambah `Access expectation` jika `Role scope` sudah diisi        |
+| `failure_scenario_recommended` | Tambah skenario `(@failure)` jika ada kata error/gagal/ditolak   |
 
 Detail: [GUIDE — troubleshooting validate_requirement](GUIDE.md#troubleshooting-validate-requirement)

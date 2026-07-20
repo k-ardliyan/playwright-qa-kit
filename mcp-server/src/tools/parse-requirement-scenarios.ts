@@ -6,6 +6,8 @@ import {
   type ToolError,
 } from '../utils/safety';
 
+export type ScenarioType = 'success' | 'failure' | 'access-restriction' | 'manual' | 'general';
+
 export interface RequirementScenario {
   id: string;
   name: string;
@@ -13,12 +15,22 @@ export interface RequirementScenario {
   expectedResult: string;
   precondition?: string;
   automatable: boolean;
+  /** Scenario type derived from (@success/@failure/@access-restriction/@manual) tag in heading */
+  scenarioType: ScenarioType;
+  /** Role this scenario applies to, extracted from heading prefix or requirement metadata */
+  roleScope?: string;
+  /** Auth context hint: storage state path or 'unauthenticated' */
+  authContext?: string;
 }
 
 export interface ParseRequirementScenariosOutput {
   status: 'success' | 'error';
   scenarios?: RequirementScenario[];
   sourcePath?: string;
+  /** Roles found in requirement metadata Role scope field */
+  rolesInScope?: string[];
+  /** Access expectations parsed from metadata, keyed by role name */
+  accessExpectations?: Record<string, string>;
   error?: ToolError;
   message: string;
 }
@@ -42,7 +54,62 @@ function isManualScenario(rawHeading: string): boolean {
 }
 
 function cleanScenarioName(rawHeading: string): string {
-  return rawHeading.replace(/\s*\(@manual\)\s*/gi, ' ').trim();
+  return rawHeading
+    .replace(/\s*\(@(?:manual|success|failure|access-restriction)\)\s*/gi, ' ')
+    .trim();
+}
+
+function extractScenarioType(rawHeading: string): ScenarioType {
+  if (/@manual/i.test(rawHeading)) return 'manual';
+  if (/@failure/i.test(rawHeading)) return 'failure';
+  if (/@access-restriction/i.test(rawHeading)) return 'access-restriction';
+  if (/@success/i.test(rawHeading)) return 'success';
+  return 'general';
+}
+
+/**
+ * Parse "Role scope" metadata field → array of role names.
+ * Handles: "super-admin, finance, hrd" or "super-admin; finance"
+ */
+function parseRolesInScope(text: string): string[] {
+  const match = text.match(/^\s*-\s+\*\*Role\s+scope:\*\*\s*(.+)$/im);
+  if (!match) return [];
+  return match[1]
+    .split(/[,;]/)
+    .map((r) => r.trim().toLowerCase())
+    .filter((r) => r.length > 0 && r !== 'semua role' && r !== 'all roles');
+}
+
+/**
+ * Parse "Access expectation" metadata field → Record<role, expectation>.
+ * Handles: "super-admin: bisa approve; finance: bisa approve; hrd: tidak bisa"
+ */
+function parseAccessExpectations(text: string): Record<string, string> {
+  const match = text.match(/^\s*-\s+\*\*Access\s+expectation:\*\*\s*(.+)$/im);
+  if (!match) return {};
+  const result: Record<string, string> = {};
+  const parts = match[1].split(/;\s*/);
+  for (const part of parts) {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx === -1) continue;
+    const role = part.slice(0, colonIdx).trim().toLowerCase();
+    const expectation = part.slice(colonIdx + 1).trim();
+    if (role && expectation) result[role] = expectation;
+  }
+  return result;
+}
+
+/**
+ * Derive auth context from auth state + role.
+ * Role-aware → .auth/<role>.json; unauthenticated → 'unauthenticated'; else undefined.
+ */
+function deriveAuthContext(text: string, role?: string): string | undefined {
+  const authMatch = text.match(/^\s*-\s+\*\*Auth\s+state:\*\*\s*(\S+)/im);
+  if (!authMatch) return undefined;
+  const authState = authMatch[1].toLowerCase();
+  if (authState === 'unauthenticated') return 'unauthenticated';
+  if (role) return `.auth/${role}.json`;
+  return undefined;
 }
 
 type BlockMode = 'list' | 'paragraph';
@@ -201,12 +268,16 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
     }
 
     if (name.length > 0 && steps.length > 0 && expectedResult.length > 0) {
+      const scenarioType = extractScenarioType(rawName);
+      const authContext = deriveAuthContext(text);
       const scenario: RequirementScenario = {
         id: `SC-${scenarios.length + 1}`,
         name,
         steps,
         expectedResult,
         automatable,
+        scenarioType,
+        ...(authContext !== undefined && { authContext }),
       };
       if (precondition) {
         scenario.precondition = precondition;
@@ -255,10 +326,15 @@ export function parseRequirementScenarios(options: {
     };
   }
 
+  const rolesInScope = parseRolesInScope(text);
+  const accessExpectations = parseAccessExpectations(text);
+
   return {
     status: 'success',
     scenarios,
     sourcePath: options.requirementPath,
-    message: `Parsed ${scenarios.length} scenario(s).`,
+    ...(rolesInScope.length > 0 && { rolesInScope }),
+    ...(Object.keys(accessExpectations).length > 0 && { accessExpectations }),
+    message: `Parsed ${scenarios.length} scenario(s)${rolesInScope.length > 0 ? `, roles in scope: ${rolesInScope.join(', ')}` : ''}.`,
   };
 }

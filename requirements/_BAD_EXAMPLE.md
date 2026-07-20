@@ -2,20 +2,25 @@
 
 <!--
   PERINGATAN: Ini contoh requirement yang BURUK.
-  Digunakan untuk对比 supaya QA pemula belajar apa yang harus dihindari.
+  Digunakan untuk perbandingan supaya QA pemula belajar apa yang harus dihindari.
 
   Validasi file ini akan GAGAL dengan banyak error:
   $ npm run validate:requirement -- requirements/_BAD_EXAMPLE.md
-  ✗ Judul terlalu generik
-  ✗ Metadata tidak lengkap
-  ✗ Skenario tidak punya Langkah/Hasil observable
-  ✗ Kriteria penerimaan tidak observable
-  ✗ Skenario @manual tanpa alasan
+
+  Error yang diharapkan:
+  ✗ title_required (format judul salah — tidak ada REQ-XXX yang valid)
+  ✗ metadata_tags_required (Tags kosong)
+  ✗ metadata_auth_required (Auth state tidak diisi)
+  ✗ observable_result (Hasil subjektif, tidak observable)
+  ✗ manual_reason (SC-03 tandai @manual tapi tidak ada alasan)
+
+  Warning yang diharapkan:
+  ✗ failure_scenario_recommended (ada kata "gagal" tapi tidak ada (@failure) tag)
 -->
 
 ## Metadata
 
-<!-- ❌ BURUK: Tags kosong, Prioritas tidak spesifik, Auth state tidak jelas -->
+<!-- ❌ BURUK: Tags kosong, Auth state tidak jelas -->
 
 - **Tags:**
 - **Prioritas:**
@@ -33,7 +38,7 @@
 
 ## Skenario Uji
 
-<!-- ❌ BURUK: Skenario tanpa Prekondisi, Langkah terlalu vague, Hasil tidak observable -->
+<!-- ❌ BURUK: Tidak pakai tag tipe scenario, Langkah vague, Hasil tidak observable -->
 
 ### SC-01: Login
 
@@ -49,12 +54,16 @@
 
 **Hasil:**
 
-<!-- ❌ Hasil subjektif, tidak observable -->
+<!-- ❌ Hasil subjektif, tidak observable — validator akan warn "observable_result" -->
 
 - Login berhasil
 - Sistem bekerja dengan baik
 
+---
+
 ### SC-02: Login Gagal
+
+<!-- ❌ Tidak ada tag (@failure) padahal ini negative path -->
 
 **Langkah:**
 
@@ -66,9 +75,11 @@
 - Muncul error
 - User tau ada masalah
 
-### SC-03: Login dengan Google
+---
 
-<!-- ❌ Tidak ada tag (@manual), padahal OAuth butuh intervensi -->
+### SC-03: Login dengan Google (@manual)
+
+<!-- ❌ Ada tag (@manual) tapi tidak ada alasan di Hasil — validator akan warn "manual_reason" -->
 
 **Langkah:**
 
@@ -80,6 +91,8 @@
 
 - Berhasil login
 
-<!-- ❌ SC-04: Empty heading tanpa konten apa-apa — parser akan reject -->
+---
 
-### SC-04: Edge case
+### SC-04: Edge Case
+
+<!-- ❌ Tidak ada Langkah dan Hasil — parser akan reject "scenario_structure" -->

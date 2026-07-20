@@ -16,15 +16,17 @@
 - Pengguna dapat login dengan email + password valid dan diredirect ke `/dashboard` dalam < 3 detik
 - Setelah login berhasil, header dashboard menampilkan greeting dengan nama user
 - Session cookie tersimpan dengan expiry 24 jam
-- Login gagal dengan kredensial invalid menampilkan error message yang jelas tanpa membocorkan info (misal: "Email atau password salah", BUKAN "Email tidak ditemukan")
+- Login gagal dengan kredensial invalid menampilkan error message yang jelas tanpa membocorkan info
+  (misal: "Email atau password salah", BUKAN "Email tidak ditemukan")
 - Form login menolak submit ketika field email kosong (HTML5 validation atau JS validation)
 - Form login menolak submit ketika field password kosong
 
 ## Skenario Uji
 
-### SC-01: Login Berhasil dengan Email dan Password Valid
+### SC-01: Login Berhasil dengan Email dan Password Valid (@success)
 
-**Prekondisi:** Pengguna berada di halaman `/login`, akun `qa.test@example.com` terdaftar dengan password `Test1234!`, user belum login.
+**Prekondisi:** Pengguna berada di halaman `/login`, akun `qa.test@example.com` terdaftar dengan
+password `Test1234!`, user belum login.
 
 **Langkah:**
 
@@ -39,9 +41,12 @@
 - Tombol "Logout" terlihat di pojok kanan atas header
 - Cookie `session_id` ada di browser DevTools > Application > Cookies
 
-### SC-02: Login Gagal dengan Password Salah
+---
 
-**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` ada, password yang dipakai salah (`WrongPass`).
+### SC-02: Login Gagal dengan Password Salah (@failure)
+
+**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` ada, password yang dipakai salah
+(`WrongPass`).
 
 **Langkah:**
 
@@ -54,9 +59,11 @@
 - URL tetap di `/login` (tidak redirect)
 - Muncul pesan error merah di bawah form: "Email atau password salah"
 - Field password di-clear (kosong kembali)
-- Tombol "Masuk" kembali enabled (gak stuck di loading)
+- Tombol "Masuk" kembali enabled (tidak stuck di loading)
 
-### SC-03: Submit dengan Email Kosong
+---
+
+### SC-03: Submit dengan Email Kosong (@failure)
 
 **Prekondisi:** Pengguna di `/login`, field Email kosong.
 
@@ -72,25 +79,12 @@
 - URL tetap di `/login`
 - Tidak ada request POST ke `/api/login` di Network tab
 
-### SC-04: Login dengan Google OAuth (@manual)
+---
 
-**Prekondisi:** Pengguna di `/login`, punya akun Google aktif, popup OAuth tidak di-block browser.
+### SC-04: Akun Terkunci Setelah 5 Kali Gagal (@failure)
 
-**Langkah:**
-
-1. Klik tombol "Login dengan Google"
-2. Pilih akun Google di popup OAuth
-3. Klik tombol "Allow" di halaman permission Google
-
-**Hasil:**
-
-- URL kembali ke `/dashboard?oauth=success`
-- Session tersimpan, greeting "Selamat datang" tampil
-- Verifikasi manual diperlukan karena OAuth popup + akun Google asli tidak bisa di-automate dari CI
-
-### SC-05: Akun Terkunci Setelah 5 Kali Gagal
-
-**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` sudah pernah gagal login 4 kali berturut-turut.
+**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` sudah pernah gagal login 4 kali
+berturut-turut.
 
 **Langkah:**
 
@@ -104,3 +98,21 @@
 - Muncul pesan error: "Akun terkunci karena 5 kali gagal. Coba lagi dalam 15 menit."
 - Field login disabled (abu-abu, tidak bisa diketik)
 - API call `/api/auth/lock-status` return `{ locked: true, until: <timestamp> }`
+
+---
+
+### SC-05: Login dengan Google OAuth (@manual)
+
+**Prekondisi:** Pengguna di `/login`, punya akun Google aktif, popup OAuth tidak di-block browser.
+
+**Langkah:**
+
+1. Klik tombol "Login dengan Google"
+2. Pilih akun Google di popup OAuth
+3. Klik tombol "Allow" di halaman permission Google
+
+**Hasil:**
+
+- URL kembali ke `/dashboard?oauth=success`
+- Session tersimpan, greeting "Selamat datang" tampil
+- Verifikasi manual diperlukan karena OAuth popup + akun Google asli tidak bisa diotomasi dari CI

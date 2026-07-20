@@ -43,20 +43,22 @@ export enum TAGS {
 ## 3) Register a New MCP Tool
 
 1. Implement the tool in `mcp-server/src/tools/`.
-2. Register in **`mcp-server/src/tools/dispatch.ts`** (`dispatchTool` + `MCP_TOOL_DEFINITIONS`).
-3. HTTP route is wired automatically via `mcp-server/src/index.ts`; stdio via `index-mcp.ts`.
-4. Add/adjust helper utilities in `mcp-server/src/utils/` if needed.
-5. Rebuild and verify:
-   - `npx tsc -p mcp-server/tsconfig.json --noEmit`
-6. Update documentation **before** marking complete:
+2. Register in **`mcp-server/src/tools/registry.ts`** — add an entry to `TOOL_REGISTRY` array (name, description, inputSchema, handler). The HTTP route and MCP definition are derived automatically.
+3. Add/adjust helper utilities in `mcp-server/src/utils/` if needed.
+4. Rebuild and verify:
+   - `npm run mcp:typecheck`
+5. Update documentation **before** marking complete:
    - `CUSTOM-MCP.md` (tool name, input schema, output schema, example invocation)
    - `.github/agents/*.agent.md` if an agent uses the new tool
+   - `AGENTS.md` MCP tools list if the Orchestrator should call the tool
 
 Checklist:
 
-- [ ] Tool endpoint implemented
-- [ ] Tool appears in relevant agent dependencies
+- [ ] Tool implemented in `mcp-server/src/tools/`
+- [ ] Entry added to `TOOL_REGISTRY` in `registry.ts`
+- [ ] `npm run mcp:typecheck` passes
 - [ ] `CUSTOM-MCP.md` updated
+- [ ] Agent instructions updated if applicable
 
 ---
 
@@ -88,21 +90,22 @@ npx tsx src/tests/property/custom-reporter.property.ts
 When extending the QA requirement template (`requirements/_TEMPLATE.md`):
 
 1. Add the field to the template with a short comment explaining its purpose.
-2. Update parser in `mcp-server/src/tools/normalize-requirements.ts` (for `## Metadata` fields) or `parse-requirement-scenarios.ts` (for per-scenario fields).
-3. Update `mcp-server/src/tools/validate-requirement.ts` if the field should be enforced.
-4. Update `CUSTOM-MCP.md` output schema.
+2. Update parser in `mcp-server/src/tools/parse-requirement-scenarios.ts` — add a helper function to extract the new field, then populate it in `parseRequirementScenarios` output.
+3. Update `mcp-server/src/tools/validate-requirement.ts` if the field should trigger a validation rule (error or warn).
+4. Update `CUSTOM-MCP.md` output schema for `parse_requirement_scenarios`.
 5. Update `.github/agents/planner.agent.md` and `generator.agent.md` mapping rules if agents consume the field.
-6. Add a property test case in `src/tests/property/normalize-requirements.property.ts`.
-
-QA-facing docs: update [docs/GUIDE.md](docs/GUIDE.md) if workflow changes for tim QA.
+6. Update `requirements/README.md` and `docs/writing-requirements.md` for QA-facing docs.
+7. Run `npm run mcp:typecheck` to verify types.
 
 Checklist:
 
 - [ ] Template updated
-- [ ] Parser reads new field
-- [ ] Validation rule added (if required)
-- [ ] Agent docs updated
-- [ ] Property test passes
+- [ ] Parser reads new field (`parse-requirement-scenarios.ts`)
+- [ ] Validation rule added if required (`validate-requirement.ts`)
+- [ ] `CUSTOM-MCP.md` output schema updated
+- [ ] Agent docs updated (`planner.agent.md`, `generator.agent.md`)
+- [ ] QA docs updated (`requirements/README.md`, `docs/writing-requirements.md`)
+- [ ] `npm run mcp:typecheck` passes
 
 ---
 

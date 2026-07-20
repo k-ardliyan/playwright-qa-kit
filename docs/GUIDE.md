@@ -2,25 +2,20 @@
 
 Panduan setup, pipeline, dan troubleshooting tim QA.
 
-**Referensi**
+Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [docs/README.md](README.md) · [AGENTS.md](../AGENTS.md)
 
-- [README.md](README.md) — indeks semua dokumen
-- [CUSTOM-MCP.md](../CUSTOM-MCP.md) — kontrak tool MCP
-- [README.md](../README.md) — diagram alur di root repo
-- [FORK-ONBOARDING.md](FORK-ONBOARDING.md) — fork template
+---
 
 ## Mulai di Sini
 
 | Langkah                          | Dokumen                                                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Tulis requirement                | [\_TEMPLATE.md](../requirements/_TEMPLATE.md)<br>[writing-requirements.md](writing-requirements.md)                      |
+| Tulis requirement                | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
 | Rapikan catatan (ChatGPT/Gemini) | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
-| Pipeline AI (Codex)              | Section `Prompt Siap Pakai` di dokumen ini                                                                               |
-| Contoh requirement valid         | [`example-login-extension.md`](../requirements/example-login-extension.md)                                               |
+| Pipeline AI                      | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
+| Contoh requirement valid         | [requirements/example-login-extension.md](../requirements/example-login-extension.md)                                    |
 
 ---
-
-<a id="setup-lokal"></a>
 
 ## Setup Lokal (Sekali per Mesin)
 
@@ -28,7 +23,7 @@ Panduan setup, pipeline, dan troubleshooting tim QA.
 
 - Node.js **>= 20.19.0** (LTS 20.x recommended)
 - Git
-- VS Code dengan ekstensi Codex (Primary) atau Cursor
+- VS Code dengan ekstensi Codex, Cursor, atau Kiro
 
 ### 2. Instalasi
 
@@ -41,85 +36,51 @@ npm run mcp:build
 ### 3. Environment
 
 ```bash
-# Salin template environment
 copy environments\local.env.example environments\local.env   # Windows
-# cp environments/local.env.example environments/local.env     # Mac/Linux
+# cp environments/local.env.example environments/local.env   # Mac/Linux
 ```
 
-Isi `BASE_URL`, kredensial tes di `environments/local.env`. **Jangan commit** file `.env` berisi password.
+Isi `BASE_URL` dan kredensial tes di `environments/local.env`. Jangan commit file `.env` berisi password.
 
-**Browser (opsional):** `HEADLESS=true|false` mengatur mode headless default; `SLOW_MO=<ms>` memperlambat aksi browser lewat `launchOptions.slowMo` (berguna saat demo Healer). Nilai dibaca **setelah** `loadEnvironment()` di `playwright.config.ts` — ubah di `local.env`, tidak perlu restart MCP kecuali Anda mengubah `PLAYWRIGHT_CONFIG` atau kredensial. `npm run test:headed` selalu menampilkan browser (override `HEADLESS`). Di CI, `SLOW_MO` dipaksa `0`.
+**Variabel opsional:**
 
-Untuk menjalankan suite ERPKU contoh, salin juga nilai dari [`example/erpku/environments/erpku.env.example`](../example/erpku/environments/erpku.env.example) ke `environments/local.env` (`AUTH_*`, `TEST_USER_PHONE`).
+- `HEADLESS=true|false` — mode headless browser (default `true`)
+- `SLOW_MO=<ms>` — perlambat aksi browser (berguna saat demo Healer)
+- Ubah di `local.env`, tidak perlu restart MCP kecuali mengubah `PLAYWRIGHT_CONFIG` atau kredensial
+- `npm run test:headed` selalu menampilkan browser (override `HEADLESS`)
 
-<a id="framework-core-vs-adapter"></a>
+Untuk suite ERPKU contoh, salin juga nilai dari `example/erpku/environments/erpku.env.example` ke `environments/local.env`.
 
-### Framework core vs project adapter
-
-|                           | **Path A — template core (disarankan)** | **Path B — ERPKU adapter (demo)**                                                                                     |
-| ------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Tujuan                    | Latihan pipeline AI penuh               | Demo adapter + smoke; jelajah spec referensi                                                                          |
-| App                       | Frontend baru / generic                 | ERPKU reference (`example/erpku/`)                                                                                    |
-| `PLAYWRIGHT_CONFIG`       | `playwright.config.ts` (default)        | `example/erpku/playwright.config.ts`                                                                                  |
-| **Generate AI**           | `src/tests/*.spec.ts`                   | Spec referensi manual — Generator tidak menulis ke folder adapter                                                     |
-| Import fixture (generate) | `@/fixtures/base.fixture`               | —                                                                                                                     |
-| Env tambahan              | —                                       | `AUTH_*`, `TEST_USER_PHONE` dari [`erpku.env.example`](../example/erpku/environments/erpku.env.example) → `local.env` |
-| Sanity run                | `npm test`                              | `npm run test:erpku-example -- --project=smoke`                                                                       |
-
-Setelah ubah `PLAYWRIGHT_CONFIG` atau kredensial → **restart MCP servers**.
-
-Pipeline AI (Planner → Generator) **selalu** menulis ke `src/tests/` — termasuk latihan [`example-login-extension.md`](../requirements/example-login-extension.md). Path B dipakai untuk menjalankan dan mempelajari suite adapter, bukan generate spec baru via AI.
-
-| Perintah harian              | Layer         | Keterangan                           |
-| ---------------------------- | ------------- | ------------------------------------ |
-| `npm test`                   | Template core | Seed + property; `@demo` di-exclude  |
-| `npm run test:erpku-example` | ERPKU adapter | Smoke + regression (butuh env + app) |
-
-Fork proyek baru: checklist di [FORK-ONBOARDING.md](FORK-ONBOARDING.md).
-
-### 4. Verifikasi setup
+### 4. Verifikasi
 
 ```bash
 npm run setup:check
+npm run health:check
 ```
 
-Semua check harus lulus tanpa `ERROR`. Untuk gate lengkap (sama seperti CI PR), jalankan:
+Target: semua check hijau (warning di `json_results` adalah normal sebelum test pertama).
 
-```bash
-npm run test:quality
-```
+---
 
-### 6. Perintah tes — kapan pakai apa
-
-| Perintah                     | Kapan                                                              |
-| ---------------------------- | ------------------------------------------------------------------ |
-| `npm run test:fast`          | Iterasi selector cepat (tanpa lint/typecheck)                      |
-| `npm test`                   | Template core — seed spec (tanpa `@demo`)                          |
-| `npm run test:erpku-example` | Suite ERPKU lengkap (butuh env + app)                              |
-| `npm run test:smoke`         | Hanya `@smoke` (core grep; gunakan `--project=smoke` pada example) |
-| `npm run test:demo`          | Latihan Healer — project `demo`, sengaja gagal (`@demo`)           |
-| `npm run test:quality`       | Sebelum push / sama dengan CI PR                                   |
-
-### 7. Aktifkan 3 MCP Server
-
-Konfigurasi project MCP ada di [`.mcp.json`](../.mcp.json). File [`.vscode/mcp.json`](../.vscode/mcp.json) dipertahankan hanya untuk kompatibilitas editor bila diperlukan:
+## Konfigurasi MCP di IDE
 
 | Server            | Fungsi                                                 |
 | ----------------- | ------------------------------------------------------ |
 | `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`) |
 | `playwright-test` | Menjalankan tes (`run_tests`)                          |
-| `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan            |
+| `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan, archive   |
 
-Di VS Code (Codex): Utamakan file `.mcp.json` di root project. Gunakan `.vscode/mcp.json` hanya bila editor Anda masih membutuhkan workspace MCP config.
-Di Cursor: Settings → MCP → pastikan ketiga server **hijau/connected**.
+**VS Code (Codex):** Utamakan `.mcp.json` di root project. Gunakan `.vscode/mcp.json` hanya bila editor membutuhkan workspace MCP config.
 
-**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/local.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Setelah mengubah env, **restart MCP servers** di IDE agar `playwright-test` dan `playwright-qa` membaca profile yang sama.
+**Cursor / Kiro:** Settings → MCP → pastikan ketiga server connected.
 
-**CLI vs MCP:** `npm run health:check` dan MCP tool `health_check` keduanya mem-bootstrap env dari repo root; hasil seharusnya selaras setelah restart MCP.
+**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/local.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Setelah mengubah env, restart MCP server di IDE.
 
-### Playwright CLI vs MCP (Generator)
+---
 
-- **playwright-cli** (preferred): token-efficient, attach via `npx playwright test --debug=cli src/tests/seed.spec.ts` lalu `npx playwright-cli attach tw-XXXX`. Replay langkah skenario dengan `snapshot`, `click`, `fill`, `press`, lalu pakai output TS sebagai basis spec. Jangan `open`/`goto` URL mentah; selalu attach lewat seed test agar bootstrap auth/fixture tetap benar.
+## Playwright CLI vs MCP (Generator)
+
+- **playwright-cli** (preferred): token-efficient, attach via `npx playwright test --debug=cli src/tests/seed.spec.ts` lalu `npx playwright-cli attach tw-XXXX`. Replay langkah skenario dengan `snapshot`, `click`, `fill`, `press`, lalu pakai output TS sebagai basis spec. Jangan `open`/`goto` URL mentah — selalu attach lewat seed test agar bootstrap auth/fixture tetap benar.
 - **playwright MCP**: fallback exploratory/healing — `browser_snapshot`, `browser_click`, dll. via server `playwright`.
 
 Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum generate tes halaman baru).
@@ -128,24 +89,22 @@ Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum gener
 
 ## Alur Harian QA
 
-Pipeline mengikuti [CUSTOM-MCP.md — Agent pipeline checklist](../CUSTOM-MCP.md):
+Pipeline mengikuti kontrak di [AGENTS.md](../AGENTS.md):
 
 1. `health_check` (playwright-qa)
-2. `validate_requirement` (playwright-qa) — atau CLI: `npm run validate:requirement`
-3. Planner → `specs/*-test-plan.md`
-4. Generator → `src/tests/*.spec.ts`
-5. `validate_generated_tests` (playwright-qa) — atau CLI: `npm run validate`
+2. `validate_requirement` — atau CLI: `npm run validate:requirement`
+3. Planner → `specs/*-test-plan.md` (dengan kolom Role, Auth Context, Type)
+4. Generator → `src/tests/*.spec.ts` (satu file per role jika role-aware)
+5. `validate_generated_tests` — atau CLI: `npm run validate`
 6. `run_tests` (playwright-test)
 7. Jika gagal: `get_test_failures` → Healer → `run_tests` (scoped)
-8. `get_test_summary` (playwright-qa)
-
-Diagram visual: lihat section "Bagaimana Ini Bekerja?" di [README.md](../README.md).
+8. `get_test_summary` → Reporter → `archive_report`
 
 ---
 
-## Validasi Format (Tanpa Buka Agent)
+## Validasi Format
 
-Sebelum jalankan pipeline AI (Codex/Cursor), cek format requirement:
+Sebelum jalankan pipeline AI, cek format requirement:
 
 ```bash
 npm run validate:requirement -- requirements/nama-fitur.md
@@ -154,6 +113,14 @@ npm run validate:requirement -- requirements/nama-fitur.md
 - `status: success` → lanjut pipeline
 - `error` → perbaiki dulu (lihat Troubleshooting)
 - `warn` → bisa lanjut, tapi review saran perbaikan
+
+Warning baru yang mungkin muncul setelah upgrade:
+
+| Warning                        | Artinya                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `role_scope_recommended`       | Auth authenticated tapi tidak ada Role scope — pertimbangkan isi         |
+| `access_expectation_missing`   | Role scope diisi tapi Access expectation belum ada                       |
+| `failure_scenario_recommended` | Ada kata gagal/error di requirement tapi tidak ada `(@failure)` scenario |
 
 ---
 
@@ -165,34 +132,34 @@ Gunakan [`requirements/example-login-extension.md`](../requirements/example-logi
 # 1. Validasi format
 npm run validate:requirement -- requirements/example-login-extension.md
 
-# 2. Di Codex chat (atau Cursor Agent mode), kirim prompt pipeline dari section "Prompt Siap Pakai" di dokumen ini
+# 2. Di IDE, kirim prompt pipeline (lihat section Prompt Siap Pakai)
 
-# 3. Setelah generate, jalankan tes
+# 3. Jalankan tes
 npm test
 
 # 4. Lihat laporan
-#    - reports/custom-dashboard.html (dashboard modern — errors, test steps, screenshot, video, attachments)
-#    - npx playwright show-report
+start reports/custom-dashboard.html   # Windows
+npx playwright show-report            # detail trace + screenshot
 ```
 
 Output yang diharapkan:
 
 - `specs/example-login-extension-test-plan.md` (dibuat Planner)
-- `src/tests/login-empty-fields.spec.ts` atau serupa (dibuat Generator di `src/tests/`)
-- Tes SC-01 dan SC-02 jalan; SC-03 (@manual) di-skip
+- `src/tests/login-empty-fields.spec.ts` (dibuat Generator)
+- SC-01 dan SC-02 jalan; SC-03 `(@manual)` di-skip
 
 ---
 
 ## Prompt Siap Pakai
 
-Gunakan prompt berikut di Codex atau Cursor Agent mode. Ganti `requirements/nama-fitur.md` dengan file Anda.
+Ganti `requirements/nama-fitur.md` dengan file Anda.
 
 ### Validasi format saja
 
 ```
 Validasi requirements/nama-fitur.md menggunakan tool validate_requirement di server playwright-qa.
 Jika ada error severity, perbaiki file requirement lalu validasi ulang.
-Jangan jalankan pipeline - hanya validasi dan perbaikan format.
+Jangan jalankan pipeline — hanya validasi dan perbaikan format.
 ```
 
 ### Pipeline lengkap
@@ -201,15 +168,31 @@ Jangan jalankan pipeline - hanya validasi dan perbaikan format.
 Jalankan pipeline lengkap untuk requirements/nama-fitur.md sesuai kontrak AGENTS.md:
 
 1. Pre-flight dan validasi requirement; berhenti jika ada error.
-2. Buat test plan di specs/nama-fitur-test-plan.md.
-3. Generate spec Playwright di src/tests/ memakai @/fixtures/base.fixture.
-4. Validasi generated tests sebelum eksekusi.
-5. Jalankan tests lewat playwright-test.
-6. Jika gagal (<=10), ambil failure dari JSON hasil run aktif, heal, validasi ulang, lalu re-run scoped.
-7. Ambil summary akhir dan return unresolved failures jika ada.
+2. Buat test plan di specs/nama-fitur-test-plan.md (dengan kolom Role, Auth Context, Type).
+3. Jika requirement punya Role scope, buat satu file spec per role di src/tests/<fitur>-<role>.spec.ts.
+4. Generate spec Playwright memakai @/fixtures/base.fixture.
+5. Validasi generated tests sebelum eksekusi.
+6. Jalankan tests lewat playwright-test.
+7. Jika gagal, ambil failure dari JSON hasil run aktif, heal, validasi ulang, lalu re-run scoped.
+8. Buat pipeline report dan archive ke reports/archive/<runId>/.
+9. Return summary akhir dan unresolved failures jika ada.
 
 Untuk situs publik, boleh gunakan discover_pages/snapshot_page agar selector-catalog bisa dipakai ulang.
-Ikuti format requirement di requirements/_TEMPLATE.md.
+```
+
+### Role-aware pipeline
+
+```
+Jalankan pipeline untuk requirements/nama-fitur.md — fitur ini role-aware.
+Roles in scope: [tulis role, misal: super-admin, finance, hrd].
+
+1. Validasi requirement; pastikan Role scope dan Access expectation sudah ada.
+2. Planner buat scenario per role dengan kolom Role dan Auth Context.
+3. Generator buat satu file per role: src/tests/<fitur>-<role>.spec.ts
+   - Gunakan test.use({ storageState: '.auth/<role>.json' }) per file.
+4. Jalankan semua role files, atau filter dengan: roleFilter: ["<role>"].
+5. Report mencakup summaryByRole per role.
+6. Archive report setelah selesai.
 ```
 
 ### Plan saja
@@ -219,9 +202,10 @@ Plan test scenarios dari requirements/nama-fitur.md:
 
 1. validate_requirement (playwright-qa)
 2. parse_requirement_scenarios + normalize_requirements (playwright-qa)
-3. Tulis specs/nama-fitur-test-plan.md dengan tabel: Scenario Name | Steps | Expected Result
+3. Tulis specs/nama-fitur-test-plan.md dengan kolom: Scenario Name | Steps | Expected Result | Role | Auth Context | Type
+4. Tambah section Coverage Gap untuk scenario yang tidak bisa diplankan.
 
-Jangan generate kode tes - hanya test plan.
+Jangan generate kode tes — hanya test plan.
 ```
 
 ### Generate saja
@@ -229,21 +213,15 @@ Jangan generate kode tes - hanya test plan.
 ```
 Generate Playwright tests dari specs/nama-fitur-test-plan.md:
 
-1. Baca metadata dari normalize_requirements jika perlu
-2. Untuk halaman baru: live verification via playwright-cli (preferred) atau browser_* MCP tools
-   - Untuk halaman yang sudah ada di selector-catalog/<feature>/<page>.json: baca JSON index, copy primary locator ke POM method. Hanya panggil browser_snapshot bila catalog stale (hash mismatch) atau element tidak ada di catalog.
-3. Tulis file di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture)
-4. validate_generated_tests (playwright-qa)
-```
-
-### Snapshot saja
-
-```
-Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login/login-form:
-
-1. snapshot_page (playwright-qa) - url=https://staging.app/login, featureName=login, pageName=login-form
-2. Baca file selector-catalog/login/login-form.json untuk lihat daftar selector + kandidat fallback
-3. Jika perlu crawl banyak halaman, pakai discover_pages sebagai gantinya
+1. Baca kolom Role dan Auth Context per scenario.
+2. Jika role-aware, buat satu file per role (src/tests/<fitur>-<role>.spec.ts).
+3. Untuk halaman baru: live verification via playwright-cli (preferred) atau browser_* MCP tools.
+   Untuk halaman di selector-catalog: baca JSON index, copy primary locator ke POM method.
+4. Tulis file di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture).
+5. Scenario (@access-restriction): assert penolakan akses — redirect, error message, atau elemen tidak ada.
+6. Scenario (@failure): assert pesan error atau state validasi gagal.
+7. Scenario (@manual): test.skip(true, 'Manual: <alasan>').
+8. validate_generated_tests (playwright-qa).
 ```
 
 ### Heal saja
@@ -251,60 +229,67 @@ Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login
 ```
 Heal kegagalan tes:
 
-1. get_test_failures (playwright-qa) dari JSON hasil run aktif sesuai konfigurasi (`PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`)
-2. Perbaiki file spec yang gagal di src/tests/ (gunakan tracePath/screenshotPath jika ada)
-3. validate_generated_tests (playwright-qa)
-4. run_tests (playwright-test) hanya untuk file yang diperbaiki
+1. get_test_failures (playwright-qa) dari JSON hasil run aktif.
+2. Klasifikasikan failure source: app | test | requirement | env | ai_generation.
+3. Perbaiki file spec yang gagal di src/tests/ (gunakan tracePath/screenshotPath jika ada).
+4. validate_generated_tests (playwright-qa).
+5. run_tests (playwright-test) hanya untuk file yang diperbaiki.
 ```
 
-### Contoh konkret
+### Snapshot saja
 
 ```
-Jalankan pipeline lengkap untuk requirements/example-login-extension.md.
-Ikuti prompt "Pipeline lengkap" di atas.
+Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login/login-form:
+
+1. snapshot_page (playwright-qa) — url, featureName=login, pageName=login-form
+2. Baca file selector-catalog/login/login-form.json untuk lihat daftar selector
+3. Jika perlu crawl banyak halaman, pakai discover_pages sebagai gantinya
 ```
 
 ---
 
 ## Kamus Istilah
 
-| Untuk QA (Bahasa Indonesia) | Nama di framework (pakai di prompt/file)                |
+| Untuk QA (Bahasa Indonesia) | Nama di framework                                       |
 | --------------------------- | ------------------------------------------------------- |
-| Dokumen kebutuhan           | `requirements/*.md` (bukan file `_` atau README)        |
+| Dokumen kebutuhan           | `requirements/*.md`                                     |
 | Test plan                   | `specs/*-test-plan.md`                                  |
 | Kode tes                    | `src/tests/**/*.spec.ts`                                |
+| Tes per role                | `src/tests/<fitur>-<role>.spec.ts`                      |
+| Auth state per role         | `.auth/<role>.json`                                     |
 | Server QA custom            | `playwright-qa`                                         |
 | Cek kesehatan               | tool `health_check`                                     |
 | Validasi format             | `validate_requirement` / `npm run validate:requirement` |
 | Validasi kode tes           | `npm run validate`                                      |
+| Arsip laporan               | `archive_report` / `reports/archive/<runId>/`           |
 | Agent perencana             | Planner                                                 |
 | Agent penulis tes           | Generator                                               |
 | Agent perbaikan             | Healer                                                  |
+| Agent pelapor               | Reporter                                                |
 | Koordinator pipeline        | Orchestrator                                            |
 | Maintainer framework        | Tim yang maintain `mcp-server/`, CI, parser             |
 
 ---
 
-<a id="troubleshooting-validate-requirement"></a>
-
 ## Troubleshooting `validate_requirement`
 
-| Rule                       | Severity | Perbaikan                                                               |
-| -------------------------- | -------- | ----------------------------------------------------------------------- |
-| `title_required`           | error    | Tambah baris `# REQ-01: Judul Fitur`                                    |
-| `content_required`         | error    | Tambah bullet di `## Kriteria Penerimaan` atau skenario `###`           |
-| `scenario_structure`       | error    | Setiap `###` wajib punya `**Langkah:**` dan `**Hasil:**` (bold + colon) |
-| `observable_result`        | warn     | Hasil harus menyebut URL, teks, atau visibility — bukan "berjalan baik" |
-| `precondition_recommended` | warn     | Tambah `**Prekondisi:**` untuk skenario auth-sensitive                  |
-| `manual_reason`            | warn     | Skenario `@manual` perlu alasan jelas di **Hasil**                      |
+| Rule                           | Severity | Perbaikan                                                               |
+| ------------------------------ | -------- | ----------------------------------------------------------------------- |
+| `title_required`               | error    | Tambah baris `# REQ-01: Judul Fitur`                                    |
+| `content_required`             | error    | Tambah bullet di `## Kriteria Penerimaan` atau skenario `###`           |
+| `scenario_structure`           | error    | Setiap `###` wajib punya `**Langkah:**` dan `**Hasil:**`                |
+| `observable_result`            | warn     | Hasil harus menyebut URL, teks, atau visibility                         |
+| `precondition_recommended`     | warn     | Tambah `**Prekondisi:**` untuk skenario auth-sensitive                  |
+| `manual_reason`                | warn     | Skenario `(@manual)` perlu alasan jelas di Hasil                        |
+| `role_scope_recommended`       | warn     | Auth authenticated + fitur multi-role → tambah `Role scope` di Metadata |
+| `access_expectation_missing`   | warn     | `Role scope` sudah diisi tapi `Access expectation` belum ada            |
+| `failure_scenario_recommended` | warn     | Ada kata gagal/error tapi tidak ada skenario `(@failure)`               |
 
-Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
+Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 
 ---
 
-<a id="troubleshooting-health-check"></a>
-
-## Troubleshooting `health_check` / `npm run health:check`
+## Troubleshooting `health_check`
 
 | Check             | Status    | Perbaikan                                        |
 | ----------------- | --------- | ------------------------------------------------ |
@@ -316,11 +301,9 @@ Detail tool: [CUSTOM-MCP.md — validate_requirement](../CUSTOM-MCP.md).
 | `base_url`        | warn      | Set `BASE_URL` di file env                       |
 | `json_results`    | warn      | Normal sebelum tes pertama — jalankan `npm test` |
 
-CLI: `npm run health:check` — mem-bootstrap env seperti MCP `health_check`; restart MCP setelah ubah `environments/local.env`.
-
 ---
 
-## Troubleshooting `validate_generated_tests` / `npm run validate`
+## Troubleshooting `validate_generated_tests`
 
 | Rule              | Perbaikan                                                                 |
 | ----------------- | ------------------------------------------------------------------------- |
@@ -335,38 +318,33 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 
 ## Troubleshooting MCP merah di IDE
 
-1. `npm run mcp:build` — wajib setelah clone
-2. Cek [`.mcp.json`](../.mcp.json) sebagai source-of-truth project MCP config. Bila editor Anda masih memakai workspace config, pastikan [`.vscode/mcp.json`](../.vscode/mcp.json) tidak drift dan `playwright-qa` tetap menunjuk `node mcp-server/dist/index-mcp.js`.
-3. **VS Code (Codex):** reload window atau restart extension jika MCP server tidak connect
-4. **Cursor:** Settings → MCP → restart server; pastikan ketiga server hijau/connected
+1. `npm run mcp:build` — wajib setelah clone atau setelah update MCP tools
+2. Cek [`.mcp.json`](../.mcp.json) sebagai source-of-truth project MCP config
+3. VS Code (Codex): reload window atau restart extension
+4. Cursor/Kiro: Settings → MCP → restart server; pastikan ketiga server connected
 
 ---
 
 ## Environment: `APP_ENV` vs `ENV_NAME`
 
-| Variable                                              | Fungsi                                                                         |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `APP_ENV`                                             | Pilih file `environments/{name}.env` (`local`, `dev`, `staging`, `production`) |
-| `ENV_NAME`                                            | Label runtime di test (logging)                                                |
-| `BASE_URL`                                            | URL aplikasi                                                                   |
-| `TEST_USER_EMAIL` / `USERNAME` / `PHONE` / `PASSWORD` | Kredensial QA                                                                  |
+| Variable                                              | Fungsi                                                           |
+| ----------------------------------------------------- | ---------------------------------------------------------------- |
+| `APP_ENV`                                             | Pilih file `environments/{name}.env` (local, dev, staging, prod) |
+| `ENV_NAME`                                            | Label runtime di test (logging)                                  |
+| `BASE_URL`                                            | URL aplikasi                                                     |
+| `TEST_USER_EMAIL` / `USERNAME` / `PHONE` / `PASSWORD` | Kredensial QA                                                    |
+| `PLAYWRIGHT_CONFIG`                                   | Path config Playwright (default `playwright.config.ts`)          |
 
 Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` dari GitHub Secrets.
-
----
-
-## Branch protection (maintainer)
-
-- Required check PR: workflow **Quality Gate** (`quality.yml`)
-- E2E (`e2e.yml`): push main / manual — butuh secrets: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_USERNAME`, `TEST_USER_PASSWORD`, `TEST_USER_PHONE`
 
 ---
 
 ## Batasan Normal (Bukan Bug)
 
 - **Halaman baru** tanpa POM → Generator butuh 1–2 iterasi (`browser_snapshot` + Heal).
-- **`@manual`** → tes di-skip otomatis (CAPTCHA, email nyata).
-- **Healer** → menggunakan prioritization berbasis pattern (tidak ada cap arbitrer).
+- **`(@manual)`** → tes di-skip otomatis (CAPTCHA, email nyata, biometric).
+- **Healer** → menggunakan prioritization berbasis pattern; tidak ada cap arbitrer.
+- **Role auth file** → `.auth/<role>.json` harus dibuat dulu via auth setup test.
 - **Environment** → tiap QA pakai `local.env` sendiri.
 
 ---
@@ -376,8 +354,13 @@ Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` da
 Hubungi maintainer framework jika:
 
 - `npm run setup:check` gagal setelah ikuti panduan ini
-- MCP server tidak bisa connect setelah `npm run mcp:build`
-- `validate_requirement` error pada file yang sudah ikuti template
-- Tool MCP mengembalikan error yang tidak ada di Troubleshooting
+- `npm run mcp:build` gagal dengan error TypeScript
+- Property tests (`npm run test:property`) gagal tanpa ada perubahan di kode QA
+- Ada perilaku aneh di pipeline yang tidak tercakup troubleshooting di atas
 
-Bukan tugas maintainer: selector aplikasi salah, halaman belum ada POM, atau bug di aplikasi yang diuji.
+---
+
+## Branch Protection (Maintainer)
+
+- Required check PR: workflow **Quality Gate** (`quality.yml`)
+- E2E (`e2e.yml`): push main / manual — butuh secrets: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_USERNAME`, `TEST_USER_PASSWORD`, `TEST_USER_PHONE`

@@ -171,12 +171,27 @@ Or:
       "steps": ["..."],
       "expectedResult": "...",
       "precondition": "optional",
-      "automatable": true
+      "automatable": true,
+      "scenarioType": "success | failure | access-restriction | manual | general",
+      "roleScope": "finance",
+      "authContext": ".auth/finance.json"
     }
   ],
-  "message": "Parsed N scenario(s)."
+  "rolesInScope": ["super-admin", "finance"],
+  "accessExpectations": {
+    "super-admin": "bisa approve dan reject",
+    "finance": "bisa approve",
+    "hrd": "tidak bisa mengakses"
+  },
+  "message": "Parsed N scenario(s), roles in scope: finance, super-admin."
 }
 ```
+
+- `scenarioType` — derived from `(@success/@failure/@access-restriction/@manual)` tag in scenario heading; defaults to `general` if untagged.
+- `roleScope` — per-scenario role if mentioned; inherited from `Role scope` metadata.
+- `authContext` — `.auth/<role>.json` for authenticated role scenarios; `unauthenticated` for public flows.
+- `rolesInScope` — only present when `Role scope` is defined in requirement metadata.
+- `accessExpectations` — only present when `Access expectation` is defined in requirement metadata.
 
 ---
 
@@ -326,13 +341,42 @@ Resolves Playwright JSON results in this order:
 
 ## Tool: `get_test_summary`
 
-Reads `reports/test-summary.json` from the custom reporter.
+Reads `reports/test-summary.json` from the custom reporter. Also attempts to build per-role and per-feature breakdowns from test result files when available.
 
 ### Input
 
 ```json
 {}
 ```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "summary": {
+    "total": 10,
+    "passed": 9,
+    "failed": 1,
+    "skipped": 0,
+    "passRate": 90,
+    "timestamp": "2026-07-20T..."
+  },
+  "byRole": {
+    "finance": { "passing": 3, "failing": 0, "skipped": 0 },
+    "super-admin": { "passing": 2, "failing": 1, "skipped": 0 }
+  },
+  "byFeature": {
+    "invoice": { "passing": 4, "failing": 1 },
+    "login": { "passing": 1, "failing": 0 }
+  },
+  "message": "Summary: 9/10 passed (90% pass rate, ...)"
+}
+```
+
+- `byRole` — only present when test files follow `*-<role>.spec.ts` naming convention.
+- `byFeature` — only present when test result files are found under `test-results/`.
+- Both fields are best-effort; absent if no role/feature data can be derived.
 
 ---
 

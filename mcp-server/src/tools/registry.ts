@@ -16,6 +16,7 @@ import { validateGeneratedTests } from './validate-generated-tests';
 import { validateRequirement } from './validate-requirement';
 import { discoverPages } from './discover-pages';
 import { snapshotPage } from './snapshot-page';
+import { archiveReport } from './archive-report';
 import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -246,6 +247,31 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       required: ['rootUrl', 'featureName'],
     },
     handler: (args) => discoverPages(args),
+  },
+  {
+    name: 'archive_report',
+    description:
+      'Archive a pipeline report (Markdown + optional JSON) to reports/archive/<runId>/. Safe to call multiple times — overwrites if already exists. Call this after the Reporter produces the final pipeline report.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        runId: {
+          type: 'string',
+          description: 'The pipeline run ID (alphanumeric, hyphens, underscores only).',
+        },
+        reportPath: {
+          type: 'string',
+          description: 'Repo-relative path to the Markdown pipeline report file.',
+        },
+        jsonReportPath: {
+          type: 'string',
+          description: 'Optional repo-relative path to the JSON pipeline report file.',
+        },
+      },
+      required: ['runId', 'reportPath'],
+    },
+    handler: (args) =>
+      archiveReport(args as { runId: string; reportPath: string; jsonReportPath?: string }),
   },
 ];
 

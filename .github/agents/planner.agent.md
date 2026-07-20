@@ -20,18 +20,15 @@ Golden test plan: [`specs/example-login-extension-test-plan.md`](../../specs/exa
 
 ## MCP Dependencies
 
-| MCP Server        | Tool Name                                                                               |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `playwright-qa`   | `validate_requirement`                                                                  |
-| `playwright-qa`   | `normalize_requirements`                                                                |
-| `playwright-qa`   | `parse_requirement_scenarios`                                                           |
-| `playwright-qa`   | `list_artifacts`                                                                        |
-| `playwright-qa`   | `discover_pages` (optional pre-crawl for public sites)                                  |
-| `playwright-qa`   | `snapshot_page` (optional — capture selector catalog for a known URL)                   |
-| `playwright-test` | `run_tests`                                                                             |
-| `playwright`      | `browser_navigate`, `browser_snapshot`, `browser_take_screenshot` (optional UI explore) |
-
-When planning scenarios for **new pages**, optionally inspect the live UI with `browser_navigate` + `browser_snapshot` before writing steps.
+| Server          | Tool                          | Purpose                                                      |
+| --------------- | ----------------------------- | ------------------------------------------------------------ |
+| `playwright-qa` | `validate_requirement`        | Validate requirement format before planning                  |
+| `playwright-qa` | `parse_requirement_scenarios` | Parse scenarios including role scope and scenario type       |
+| `playwright-qa` | `normalize_requirements`      | Normalize requirement text before planning                   |
+| `playwright-qa` | `snapshot_page`               | Capture ARIA + selector catalog for authenticated pages      |
+| `playwright-qa` | `discover_pages`              | BFS auto-crawl public pages, write per-page catalog          |
+| `playwright`    | `browser_navigate`            | Navigate to pages for snapshot fallback                      |
+| `playwright`    | `browser_snapshot`            | Fallback snapshot when catalog is stale or page is auth-only |
 
 ### Optional Pre-Crawl (Token-Efficient Discovery)
 
@@ -51,84 +48,54 @@ For public sites without authentication, prefer **`discover_pages`** over manual
 | ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/user.json`               | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
 
 - **Generated tests** always land in `src/tests/<name>.spec.ts` with `@/fixtures/base.fixture`.
-- **ERPKU login flows** in `example/erpku/tests/` are reference specs — not Generator output targets.
+- **Role-aware tests** land in `src/tests/<name>-<role>.spec.ts`, one file per role.
+- Auth state files per role: `.auth/<role>.json` (e.g. `.auth/finance.json`, `.auth/super-admin.json`).
 
-Prefer seed-test context over raw navigation when exploring UI for planning.
+## Role-Aware Planning
 
-### MCP environment overrides
+When the requirement has `Role scope` in metadata:
 
-Set in `environments/local.env` when targeting the ERPKU adapter or a custom test root:
+1. **Detect mode** — if `Role scope` is present, switch to role-aware planning.
+2. **Per-role scenarios** — generate scenario groups for each role listed in `Role scope`.
+3. **Access restriction scenarios** — for roles listed in `Access expectation` as restricted, generate `(@access-restriction)` scenarios.
+4. **Auth context** — note which `.auth/<role>.json` storage state each scenario group requires.
+5. **Coverage gaps** — if `Access expectation` names a role but no scenario covers that role, flag it as a gap.
 
-- `PLAYWRIGHT_TEST_ROOT` — default `src/tests` (Generator output)
-- `PLAYWRIGHT_CONFIG` — default `playwright.config.ts`; use `example/erpku/playwright.config.ts` for adapter runs
-- Healer pre-flight (`health_check`) resolves JSON results from `PLAYWRIGHT_CONFIG` (or `PLAYWRIGHT_RESULTS_JSON` override)
+If `Role scope` is **not** present, plan in **general mode** — single auth context, no per-role split.
 
-See [CUSTOM-MCP.md](../../CUSTOM-MCP.md) for MCP pipeline env details.
+## Output Format
 
-## Planner Workflow
-
-### Pre-Planning: Feedback Loop (Ambiguity Detection)
-
-Before generating a test plan, apply the feedback loop to ensure requirement clarity:
-
-1. Call `normalize_requirements` with `requirementPath` to get a `NormalizedRequirement`.
-2. Call `detectAmbiguity(normalizedRequirement)` from `src/agents/planner/feedback.ts`.
-3. Evaluate the returned `AmbiguityReport.confidence` score:
-   - **If confidence >= 0.7**: Proceed to planning (Step 4 onward). No clarification needed.
-   - **If confidence < 0.7**: Route a `ClarificationRequest` to the QA engineer via structured output:
-     - Call `requestClarification(report)` from `src/agents/planner/clarification.ts`.
-     - Output the `ClarificationRequest` as structured JSON in the response so the orchestrator can route it to the QA engineer.
-     - **Halt planning** and wait for clarification response or timeout.
-4. **Timeout fallback (300 seconds)**: If no clarification is received within 300 seconds, call `handleClarificationTimeout(report)` from `src/agents/planner/clarification.ts`. This proceeds with the original requirement and attaches unresolved ambiguities as warnings in the plan output.
-
-### Planning Steps
-
-5. Call `validate_requirement` with `requirementPath`. Fix all `error` severity violations before continuing.
-6. Call `parse_requirement_scenarios` with `requirementPath` for structured scenarios.
-7. Run `run_tests` (playwright-test) scoped to `src/tests/seed.spec.ts` (template bootstrap — unauthenticated, no auth setup in root config).
-8. Optionally inspect target pages with `browser_navigate` + `browser_snapshot` when UI context is needed.
-9. Map each scenario to a table row:
-   - Prefix `Steps` with `Given: <precondition>` when `precondition` is present.
-   - Prefix `Steps` with auth context from `metadata.authState` when no per-scenario precondition exists.
-   - Mark `automatable: false` scenarios with `@manual` in plan notes.
-
-### Post-Planning: Test Plan Validation
-
-10. After generating the test plan, call `validateTestPlan(plan)` from `src/agents/planner/plan-validator.ts` as a post-planning validation step.
-11. Evaluate the `PlanValidationResult.status`:
-    - **"valid"**: Plan is ready. Proceed to save and output.
-    - **"warnings"**: Plan has non-blocking issues. Log warnings, include them in output metadata, and proceed.
-    - **"invalid"**: Plan has errors. Attempt to fix auto-fixable issues (where `autoFixable: true`). For non-auto-fixable errors, report them back to the orchestrator for QA review.
-12. If `coverageGaps` is non-empty, add a "Coverage Gaps" section to the plan output listing uncovered acceptance criteria.
-13. Save output to:
-    - `specs/<feature-name>-test-plan.md`
-
-## Output Format (Mandatory)
-
-Output must use this **hybrid** structure (Playwright Test Agents + scenario table):
+Save to `specs/<feature-name>-test-plan.md`.
 
 ```markdown
-# <Feature Title> Test Plan
-
-**Seed:** `src/tests/seed.spec.ts`
-**Requirement:** `requirements/<feature-name>.md`
+# Test Plan: <Feature Name>
 
 ## Application Overview
 
-(Brief context from requirement metadata, acceptance criteria, and optional browser_snapshot.)
+<Brief description of the feature under test>
 
-## Test Scenarios
+**Mode:** general | role-aware
+**Roles in scope:** <comma-separated list, or "N/A" for general mode>
+**Source requirement:** `requirements/<feature-name>.md`
 
-### SC-01: <scenario title>
+---
 
+## Scenarios
+
+### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual)
+
+**Role:** <role name, or "general">
+**Auth Context:** `.auth/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
 
 | Scenario Name | Steps | Expected Result |
 | ------------- | ----- | --------------- |
 | SC-01: ...    | ...   | ...             |
 
-### SC-02: <scenario title>
+### SC-02: <scenario title> (@failure)
 
+**Role:** <role name, or "general">
+**Auth Context:** `.auth/<role>.json` | `unauthenticated`
 **Seed:** `src/tests/seed.spec.ts`
 
 | Scenario Name | Steps | Expected Result |
@@ -136,14 +103,65 @@ Output must use this **hybrid** structure (Playwright Test Agents + scenario tab
 | SC-02: ...    | ...   | ...             |
 ```
 
-Rules:
+### Required columns
 
-- Keep one scenario per table row (one row per `### SC-XX` section).
-- `Steps` can be numbered or semicolon-separated but must be explicit and executable.
-- `Expected Result` must be observable/assertable.
-- Mark CAPTCHA or non-automatable flows as `@manual` in the plan notes or scenario title.
-- Repeat the **Seed** line under each scenario group for Generator traceability.
+- `Scenario Name` — SC-XX id and title
+- `Steps` — numbered or semicolon-separated, explicit and executable
+- `Expected Result` — observable and assertable
+
+### Required per-scenario fields
+
+- `Role` — which role this scenario runs as, or "general"
+- `Auth Context` — exact storage state path or `unauthenticated`
+- `Seed` — always `src/tests/seed.spec.ts` for Generator traceability
+
+### Scenario type tags in heading
+
+Always suffix the heading with one of:
+
+- `(@success)` — happy path
+- `(@failure)` — negative path, input error, validation failure
+- `(@access-restriction)` — role not permitted, access denied
+- `(@manual)` — cannot be automated (CAPTCHA, OTP, biometric, visual review)
+
+---
+
+## Coverage Gap
+
+> List scenarios that **should** exist based on the requirement but could not be planned because of missing information.
+
+| Gap                  | Reason                    | Suggested Action                    |
+| -------------------- | ------------------------- | ----------------------------------- |
+| SC-XX: <description> | <why it can't be planned> | <what QA should clarify or provide> |
+
+If there are no gaps, write: `No coverage gaps identified.`
+
+---
+
+## Manual Notes
+
+> List scenarios marked `(@manual)` with the reason they cannot be automated.
+
+| Scenario   | Reason                                    |
+| ---------- | ----------------------------------------- |
+| SC-XX: ... | CAPTCHA / OTP / biometric / visual review |
+
+If there are no manual scenarios, write: `No manual scenarios.`
+
+```
+
+## Planning Rules
+
+1. Read and parse the requirement using `parse_requirement_scenarios` — it now returns `roleScope`, `scenarioType`, and `authContext` per scenario.
+2. If `Role scope` metadata exists, generate one scenario group per role.
+3. For each role in `Access expectation` that is restricted, generate an `(@access-restriction)` scenario.
+4. Mark CAPTCHA, OTP, biometric, or non-automatable flows as `(@manual)`.
+5. Populate `Coverage Gap` for any scenario that should exist but cannot be planned.
+6. Repeat the **Role**, **Auth Context**, and **Seed** fields under each scenario for Generator traceability.
+7. Do not invent steps — if the requirement is unclear, put the scenario in Coverage Gap.
 
 ## Example Prompt
 
 - "Plan test scenarios from `requirements/example-login-extension.md` and save to `specs/example-login-extension-test-plan.md`."
+- "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
+```

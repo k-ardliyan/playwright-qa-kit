@@ -29,6 +29,10 @@ const VAGUE_RESULT_PATTERNS = [
   /\bno\s+error\b/i,
 ];
 
+// Regex helpers for new optional metadata fields
+const ROLE_SCOPE_LABEL = /^\s*-\s+\*\*Role\s+scope:\*\*\s*\S+/im;
+const ACCESS_EXPECTATION_LABEL = /^\s*-\s+\*\*Access\s+expectation:\*\*\s*\S+/im;
+
 const OBSERVABLE_INDICATORS = [
   /url/i,
   /tampil/i,
@@ -103,8 +107,8 @@ function validateMetadata(text: string): RequirementViolation[] {
 
 function extractScenarioBlocks(
   text: string,
-): Array<{ name: string; body: string; isManual: boolean }> {
-  const blocks: Array<{ name: string; body: string; isManual: boolean }> = [];
+): Array<{ name: string; heading: string; body: string; isManual: boolean }> {
+  const blocks: Array<{ name: string; heading: string; body: string; isManual: boolean }> = [];
   const regex = /^###\s+(.+)$/gm;
   const matches = [...text.matchAll(regex)];
 
@@ -114,7 +118,10 @@ function extractScenarioBlocks(
     const end = i + 1 < matches.length ? (matches[i + 1].index ?? text.length) : text.length;
     const rawName = match[1].trim();
     blocks.push({
-      name: rawName.replace(/\s*\(@manual\)\s*/gi, ' ').trim(),
+      name: rawName
+        .replace(/\s*\(@(?:manual|success|failure|access-restriction)\)\s*/gi, ' ')
+        .trim(),
+      heading: rawName,
       body: text.slice(start, end),
       isManual: /@manual/i.test(rawName),
     });
@@ -226,6 +233,50 @@ export function validateRequirementText(text: string): ValidateRequirementOutput
         scenarioName: block.name,
       });
     }
+  }
+
+  // Warning: auth=authenticated but no Role scope defined — likely missing role context
+  const metadataSection = extractMetadataSection(text);
+  if (metadataSection) {
+    const isAuthenticated =
+      /auth\s+state.*authenticated/i.test(metadataSection) &&
+      !/unauthenticated/i.test(metadataSection);
+    const hasRoleScope = ROLE_SCOPE_LABEL.test(metadataSection);
+    if (isAuthenticated && !hasRoleScope) {
+      violations.push({
+        ruleName: 'role_scope_recommended',
+        severity: 'warn',
+        message:
+          'Auth state is "authenticated" but no Role scope is defined. If this feature behaves differently per role (e.g. super-admin vs finance vs hrd), add "- **Role scope:** <roles>" to Metadata.',
+      });
+    }
+
+    // Warning: Role scope defined but Access expectation missing
+    if (hasRoleScope && !ACCESS_EXPECTATION_LABEL.test(metadataSection)) {
+      violations.push({
+        ruleName: 'access_expectation_missing',
+        severity: 'warn',
+        message:
+          'Role scope is defined but Access expectation is missing. Add "- **Access expectation:** <role>: <can/cannot do X>" to Metadata so the Generator knows which roles are allowed or restricted.',
+      });
+    }
+  }
+
+  // Warning: no failure scenario found — requirement likely missing negative path
+  const hasFailureScenario = scenarioBlocks.some(
+    (b) => b.isManual === false && /@failure/i.test(b.heading),
+  );
+  const hasNegativeKeywords =
+    /\b(gagal|fail|error|invalid|salah|ditolak|reject|kosong|empty|tidak\s+bisa|tidak\s+boleh|access\s+denied|forbidden)\b/i.test(
+      text,
+    );
+  if (!hasFailureScenario && hasNegativeKeywords) {
+    violations.push({
+      ruleName: 'failure_scenario_recommended',
+      severity: 'warn',
+      message:
+        'Requirement mentions failure/error/rejection keywords but no scenario is tagged (@failure) or (@access-restriction). Consider adding a negative path scenario.',
+    });
   }
 
   const errorCount = violations.filter((v) => v.severity === 'error').length;

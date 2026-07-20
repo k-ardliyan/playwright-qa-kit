@@ -10,21 +10,26 @@
   CONTOH REQUIREMENT YANG BAIK:
   Lihat requirements/_GOOD_EXAMPLE.md
 
-  CONTOH REQUIREMENT YANG BURUK (untuk对比):
+  CONTOH REQUIREMENT YANG BURUK (untuk perbandingan):
   Lihat requirements/_BAD_EXAMPLE.md
 -->
 
 ## Metadata
 
-| Field                 | Wajib?      | Contoh nilai                        | Keterangan                                    |
-| --------------------- | ----------- | ----------------------------------- | --------------------------------------------- |
-| `Tags`                | ✅ Ya       | `#smoke #regression #ui`            | Pisahkan dengan spasi. Dipakai filter test.   |
-| `Prioritas`           | ✅ Ya       | `high` / `medium` / `low`           | Prioritas bisnis.                             |
-| `Auth state`          | ✅ Ya       | `unauthenticated` / `authenticated` | Butuh login atau tidak.                       |
-| `Halaman awal`        | ✅ Ya       | `/login`                            | Path URL halaman pembuka scenario.            |
-| `POM yang dibutuhkan` | ⚪ Opsional | `loginPage, dashboardPage`          | Page Object Model yang akan dibuat Generator. |
+| Field                 | Wajib?      | Contoh nilai                                     | Keterangan                                                                 |
+| --------------------- | ----------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `Tags`                | ✅ Ya       | `#smoke #regression #ui`                         | Pisahkan dengan spasi. Dipakai filter test.                                |
+| `Prioritas`           | ✅ Ya       | `high` / `medium` / `low`                        | Prioritas bisnis.                                                          |
+| `Auth state`          | ✅ Ya       | `unauthenticated` / `authenticated`              | Butuh login atau tidak.                                                    |
+| `Halaman awal`        | ✅ Ya       | `/login`                                         | Path URL halaman pembuka scenario.                                         |
+| `POM yang dibutuhkan` | ⚪ Opsional | `loginPage, dashboardPage`                       | Page Object Model yang akan dibuat Generator.                              |
+| `Role scope`          | ⚪ Opsional | `super-admin, finance` / `semua role`            | Role bisnis yang terlibat. Isi jika fitur berbeda per role.                |
+| `Access expectation`  | ⚪ Opsional | `finance: bisa approve; hrd: tidak bisa approve` | Role mana yang boleh/tidak boleh akses. Wajib diisi jika Role scope diisi. |
+| `Risk level`          | ⚪ Opsional | `high` / `medium` / `low`                        | Dampak jika fitur ini gagal di produksi. Dipakai Healer untuk prioritasi.  |
+| `Environment scope`   | ⚪ Opsional | `staging` / `production` / `all`                 | Environment mana yang relevan untuk requirement ini.                       |
+| `Data scope`          | ⚪ Opsional | `seed data diperlukan: invoice_approved`         | Data khusus yang harus ada sebelum test bisa jalan.                        |
 
-**Contoh Metadata yang baik:**
+**Contoh Metadata yang baik (general flow):**
 
 ```
 - **Tags:** #auth #ui #smoke
@@ -32,6 +37,19 @@
 - **Auth state:** unauthenticated
 - **Halaman awal:** /login
 - **POM yang dibutuhkan:** loginPage
+```
+
+**Contoh Metadata yang baik (role-aware flow):**
+
+```
+- **Tags:** #finance #ui #regression
+- **Prioritas:** high
+- **Auth state:** authenticated
+- **Halaman awal:** /finance/invoices
+- **POM yang dibutuhkan:** invoicePage, dashboardPage
+- **Role scope:** super-admin, finance
+- **Access expectation:** super-admin: bisa approve dan reject; finance: bisa approve; hrd: tidak bisa membuka halaman finance
+- **Risk level:** high
 ```
 
 ## Kriteria Penerimaan
@@ -56,62 +74,86 @@
 
 > Setiap skenario = satu alur user. Pakai heading `### SC-XX: Nama Skenario`.
 > Setiap skenario WAJIB punya `**Langkah:**` (numbered list) dan `**Hasil:**` (bullet observable).
+>
+> **Tipe skenario** — tambahkan tag di judul heading:
+>
+> - `(@success)` — happy path, alur normal berhasil
+> - `(@failure)` — negative path, input salah, validasi gagal
+> - `(@access-restriction)` — role tidak berhak, akses ditolak
+> - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, dsb)
+>
+> Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 
-### SC-01: [Nama Skenario — Happy Path]
+### SC-01: [Nama Skenario — Happy Path] (@success)
 
-**Prekondisi:** [Keadaan awal sebelum scenario. Misal: "Pengguna belum login", "Keranjang kosong", "Akun `test@example.com` sudah terdaftar"]
+**Prekondisi:** [Keadaan awal sebelum skenario dimulai]
 
 **Langkah:**
 
-1. [Aksi konkret yang bisa dilakukan user]
-2. [Aksi konkret berikutnya]
-3. [Aksi konkret berikutnya]
+1. [Langkah pertama]
+2. [Langkah kedua]
+3. [Langkah ketiga]
 
 **Hasil:**
 
-- [Hasil yang bisa DIAMATI — URL, teks, elemen visible, response API]
-- [Hasil observable lainnya]
+- [Kondisi observable yang harus terbukti, misalnya: URL berubah ke /dashboard]
+- [Kondisi observable kedua]
 
-> **💡 Tips "Hasil" yang observable:**
->
-> | ❌ Buruk                   | ✅ Baik                                                                     |
-> | -------------------------- | --------------------------------------------------------------------------- |
-> | "User berhasil login"      | "URL berubah ke `/dashboard`"                                               |
-> | "Sistem menampilkan pesan" | "Muncul teks merah 'Email atau password salah'"                             |
-> | "Data tersimpan"           | "Tombol 'Simpan' berubah jadi disabled, ada toast 'Data berhasil disimpan'" |
-> | "Loading cepat"            | "Halaman `/dashboard` tampil dalam < 2 detik"                               |
+---
 
-### SC-02: [Nama Skenario — Negative Case]
+### SC-02: [Nama Skenario — Negative Path] (@failure)
 
-**Prekondisi:** [State awal]
+**Prekondisi:** [Keadaan awal]
 
 **Langkah:**
 
-1. [Aksi yang seharusnya GAGAL / menampilkan error]
-2. [Aksi]
+1. [Langkah pertama]
+2. [Langkah kedua]
 
 **Hasil:**
 
-- [Observable: error message, URL tetap, validation visible]
-- [Observable lainnya]
+- [Pesan error yang muncul, misalnya: "Email atau password salah" tampil di bawah form]
+- [Kondisi observable lain]
 
-### SC-03: [Nama Skenario Manual] (@manual)
+---
 
-**Prekondisi:** [State awal]
+### SC-03: [Nama Skenario — Access Restriction] (@access-restriction)
+
+> Gunakan skenario ini jika ada role yang tidak berhak mengakses fitur ini.
+
+**Prekondisi:** Login sebagai [role yang tidak berhak], misalnya: HRD
 
 **Langkah:**
 
-1. [Aksi yang butuh intervensi manusia]
+1. Login sebagai [role yang tidak berhak]
+2. Buka halaman [halaman yang dibatasi]
 
 **Hasil:**
 
-- [Observable manual — WAJIB jelaskan kenapa `@manual`. Misal: "Login berhasil — verifikasi manual karena CAPTCHA tidak bisa di-automate"]
+- [Halaman tidak dapat dibuka / redirect ke halaman lain]
+- [Pesan "Akses ditolak" atau tombol tidak tersedia]
 
-> **💡 Kapan pakai `(@manual)`?**
+---
+
+### SC-04: [Nama Skenario — Manual] (@manual)
+
+> Gunakan skenario ini untuk flow yang tidak bisa diotomasi.
+
+**Prekondisi:** [Kondisi awal]
+
+**Langkah:**
+
+1. [Langkah manual pertama]
+2. [Langkah manual kedua]
+
+**Hasil:**
+
+- [Hasil yang harus diverifikasi manual] — tidak bisa diotomasi karena: [alasan, misalnya: butuh CAPTCHA / SMS OTP / verifikasi biometrik]
+
+---
+
+> **Kapan skenario HARUS manual (`@manual`):**
 >
-> Pakai tag ini di judul scenario kalau:
->
-> - Butuh **CAPTCHA** atau reCAPTCHA (gak bisa di-automate tanpa bypass)
 > - Butuh **OTP / SMS / email** verifikasi (butuh akses ke device / inbox asli)
 > - Butuh **payment gateway** asli dengan kartu test + 3DS
 > - Butuh **biometric** (sidik jari, Face ID)
@@ -125,8 +167,11 @@
 
 - [ ] Judul `# REQ-XXX: ...` ada di baris pertama
 - [ ] Section `## Metadata` terisi (minimal Tags, Prioritas, Auth state, Halaman awal)
+- [ ] Jika `Auth state: authenticated`, pertimbangkan mengisi `Role scope` jika fitur berbeda per role
+- [ ] Jika `Role scope` diisi, `Access expectation` juga diisi
 - [ ] Minimal 1 bullet di `## Kriteria Penerimaan` dan semuanya observable
-- [ ] Setiap `### SC-XX` punya `**Prekondisi:**` (kalau relevan), `**Langkah:**` (numbered list), `**Hasil:**` (bullet observable)
+- [ ] Ada minimal 1 skenario `(@success)`
+- [ ] Ada minimal 1 skenario `(@failure)` untuk fitur yang punya validasi atau negative path
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul
 - [ ] `@manual` scenario punya alasan jelas di **Hasil:**
 - [ ] File sudah divalidasi: `npm run validate:requirement -- requirements/nama-fitur.md` (exit 0)

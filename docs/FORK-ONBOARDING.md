@@ -2,6 +2,8 @@
 
 Each QA project gets its own Git repository forked or copied from the `playwright-qa-kit` template core.
 
+> **🚀 QA baru?** Setelah clone, langsung jalankan `npm run setup:wizard` — wizard memandu setup lengkap (kredensial, install, build MCP, auth setup, enkripsi) dalam ~10 menit. Panduan detail: [GETTING-STARTED.md](GETTING-STARTED.md).
+
 ---
 
 ## 1. Create your project repository

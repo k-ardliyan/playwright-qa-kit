@@ -2,6 +2,8 @@
 
 ![Version](https://img.shields.io/badge/version-0.1.0--alpha.2-blue) ![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?logo=node.js&logoColor=white) ![Playwright](https://img.shields.io/badge/playwright-1.61+-45ba63?logo=playwright&logoColor=white) ![TypeScript](https://img.shields.io/badge/typescript-6.x-3178c6?logo=typescript&logoColor=white)
 
+> **⚠️ Prasyarat:** Node.js **>= 20.19.0** (cek: `node --version`), Git, dan VS Code dengan **Hermes Agent**. Cek dulu sebelum lanjut ke wizard — lihat [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) untuk panduan lengkap.
+
 Framework Playwright berbantuan AI untuk alur **requirement → test plan → automated test → report**. QA mulai dari kebutuhan pengujian, bukan dari kode.
 
 ---
@@ -18,33 +20,49 @@ Jika test gagal, framework mendukung alur failure → heal → rerun secara teri
 
 ## Setup
 
+### 🚀 Setup via Wizard (Direkomendasikan untuk QA Baru)
+
+Untuk QA yang baru clone/download repo ini, gunakan wizard interaktif:
+
 ```bash
-# Install
+npm install
+npm run setup:wizard
+```
+
+Wizard akan membimbing kamu langkah demi langkah:
+
+- Konfigurasi URL aplikasi dan kredensial test
+- Install semua dependency dan browser
+- Build MCP server untuk Hermes Agent
+- Verifikasi koneksi Hermes + MCP di VS Code
+- Setup autentikasi session (auth.setup.ts)
+- Enkripsi kredensial secara otomatis
+
+### Setup Manual (Opsional)
+
+Jika kamu sudah familiar dengan framework ini:
+
+```bash
 npm install
 npx playwright install --with-deps chromium
 npm run mcp:build
-
-# Siapkan environment
 cp environments/local.env.example environments/local.env
 # Isi BASE_URL dan kredensial test di local.env
-
-# Verifikasi
 npm run setup:check
 npm run health:check
 ```
 
-### Keamanan kredensial
+### Keamanan Kredensial
 
-Framework memakai `dotenvx` untuk enkripsi otomatis. Saat `npm test` atau `setup:check` dijalankan, kredensial di `local.env` dienkripsi dan kunci dekripsi dipindahkan ke luar project (`~/.dotenvx-keys/playwright-qa-kit/`).
+Framework memakai `dotenvx` untuk enkripsi otomatis. Setelah wizard atau `setup:check` dijalankan, nilai di `local.env` berubah menjadi `encrypted:BA+84DB/...` — ini **normal dan aman**. Kunci dekripsi disimpan di `~/.dotenvx-keys/playwright-qa-kit/`.
 
 Untuk edit ulang nilai di `local.env`:
 
 ```bash
-# Salin .env.keys ke environments/, lalu dekripsi
-npx @dotenvx/dotenvx decrypt -f environments/local.env
-# Setelah selesai edit, jalankan setup:check agar otomatis diamankan kembali
-npm run setup:check
+npm run env:edit
 ```
+
+> **Stuck di setup?** Cek [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) untuk 10 error paling umum + solusinya. Atau mulai dari panduan pemula di [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 ---
 
@@ -139,7 +157,7 @@ Error umum:
 
 ### 3. Jalankan pipeline
 
-Buka AI agent (Claude, Cursor, Kiro, dsb.) dan gunakan prompt:
+Buka **Hermes Agent** di VS Code (sidebar atau `Ctrl+Shift+H`) dan gunakan prompt:
 
 > Jalankan pipeline lengkap untuk `requirements/nama-fitur.md` sesuai kontrak `AGENTS.md`: validasi requirement, buat test plan, generate test, run, heal jika gagal, lalu return summary dan unresolved failures.
 
@@ -249,16 +267,12 @@ Generated test dari Template Core masuk ke `src/tests/`. Contoh adapter ada di `
 
 ## Dokumentasi
 
-| Saya ingin...                         | Buka ini                          |
-| ------------------------------------- | --------------------------------- |
-| Setup QA pertama kali                 | `docs/GUIDE.md`                   |
-| Menulis requirement yang valid        | `docs/writing-requirements.md`    |
-| Tipe skenario dan role-aware testing  | `requirements/README.md`          |
-| Setup auth per role                   | `docs/AUTH-CONTEXT-CONVENTION.md` |
-| Memahami keputusan QA setelah report  | `docs/QA-DECISION-MODEL.md`       |
-| Klasifikasi failure (app/test/env/AI) | `docs/FAILURE-TRIAGE.md`          |
-| Baseline dan regression testing       | `docs/BASELINE-REGRESSION.md`     |
-| Indeks semua dokumen                  | `docs/README.md`                  |
-| Fork repo ini ke project lain         | `docs/FORK-ONBOARDING.md`         |
-| Referensi tool MCP                    | `CUSTOM-MCP.md`                   |
-| Kontrak pipeline agent                | `AGENTS.md`                       |
+| Saya ingin...                        | Buka ini                          |
+| ------------------------------------ | --------------------------------- |
+| Setup QA pertama kali                | `docs/GUIDE.md`                   |
+| Menulis requirement yang valid       | `docs/writing-requirements.md`    |
+| Tipe skenario dan role-aware testing | `requirements/README.md`          |
+| Setup auth per role                  | `docs/AUTH-CONTEXT-CONVENTION.md` |
+| Fork repo ini ke project lain        | `docs/FORK-ONBOARDING.md`         |
+| Referensi tool MCP                   | `CUSTOM-MCP.md`                   |
+| Kontrak pipeline agent               | `AGENTS.md`                       |

@@ -83,15 +83,13 @@ open reports/custom-dashboard.html     # Mac
 
 ## Referensi Cepat
 
-| Dokumen                  | Link                                                              |
-| ------------------------ | ----------------------------------------------------------------- |
-| Panduan lengkap          | [docs/GUIDE.md](GUIDE.md)                                         |
-| Template requirement     | [requirements/_TEMPLATE.md](../requirements/_TEMPLATE.md)         |
-| Contoh requirement baik  | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |
-| Panduan `@manual`        | [docs/MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md)                   |
-| Keputusan QA post-report | [docs/QA-DECISION-MODEL.md](QA-DECISION-MODEL.md)                 |
-| Auth per role            | [docs/AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)     |
-| Exit codes               | [docs/EXIT-CODES.md](EXIT-CODES.md)                               |
+| Dokumen                 | Link                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| Panduan lengkap         | [docs/GUIDE.md](GUIDE.md)                                         |
+| Template requirement    | [requirements/_TEMPLATE.md](../requirements/_TEMPLATE.md)         |
+| Contoh requirement baik | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |
+| Panduan `@manual`       | [docs/MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md)                   |
+| Auth per role           | [docs/AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)     |
 
 ---
 

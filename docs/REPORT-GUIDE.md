@@ -166,7 +166,7 @@ interface CollectedTestCase {
 
 ### Scenario 3: Triage Failed Test — Tentukan Root Cause
 
-Gunakan **QA Decision Model** (`docs/QA-DECISION-MODEL.md`) untuk classify failure:
+Untuk classify failure, lihat failure source di pesan error test (`result.errors`) — heuristic: app/test/env/requirement.
 
 | Kondisi Actual Result                                   | Decision                  | Action                                                 |
 | ------------------------------------------------------- | ------------------------- | ------------------------------------------------------ |

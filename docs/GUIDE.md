@@ -2,7 +2,11 @@
 
 Panduan setup, pipeline, dan troubleshooting tim QA.
 
-Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [docs/README.md](README.md) · [AGENTS.md](../AGENTS.md)
+> **🆕 Baru pertama kali setup?** Mulai dari [GETTING-STARTED.md](GETTING-STARTED.md) — panduan step-by-step untuk QA baru.
+>
+> **🆘 Setup error?** Cek [TROUBLESHOOTING.md](TROUBLESHOOTING.md) untuk 10 error paling umum + solusinya.
+
+Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [AGENTS.md](../AGENTS.md)
 
 ---
 
@@ -19,46 +23,17 @@ Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [docs/README.md](README.md) �
 
 ## Setup Lokal (Sekali per Mesin)
 
-### 1. Prasyarat
+**Setup lengkap ada di [GETTING-STARTED.md](GETTING-STARTED.md)** — termasuk prasyarat, wizard step-by-step, troubleshooting.
 
-- Node.js **>= 20.19.0** (LTS 20.x recommended)
-- Git
-- VS Code dengan ekstensi Codex, Cursor, atau Kiro
-
-### 2. Instalasi
+Quick reference:
 
 ```bash
-npm install
-npx playwright install --with-deps chromium
-npm run mcp:build
+npm install                 # install dependencies
+npm run setup:wizard        # interactive setup (7 phases)
+npm run setup:check         # verify setup setelah selesai
 ```
 
-### 3. Environment
-
-```bash
-copy environments\local.env.example environments\local.env   # Windows
-# cp environments/local.env.example environments/local.env   # Mac/Linux
-```
-
-Isi `BASE_URL` dan kredensial tes di `environments/local.env`. Jangan commit file `.env` berisi password.
-
-**Variabel opsional:**
-
-- `HEADLESS=true|false` — mode headless browser (default `true`)
-- `SLOW_MO=<ms>` — perlambat aksi browser (berguna saat demo Healer)
-- Ubah di `local.env`, tidak perlu restart MCP kecuali mengubah `PLAYWRIGHT_CONFIG` atau kredensial
-- `npm run test:headed` selalu menampilkan browser (override `HEADLESS`)
-
-Untuk suite ERPKU contoh, salin juga nilai dari `example/erpku/environments/erpku.env.example` ke `environments/local.env`.
-
-### 4. Verifikasi
-
-```bash
-npm run setup:check
-npm run health:check
-```
-
-Target: semua check hijau (warning di `json_results` adalah normal sebelum test pertama).
+> **Setup error?** Cek [TROUBLESHOOTING.md](TROUBLESHOOTING.md) untuk 10 error paling umum + solusinya.
 
 ---
 

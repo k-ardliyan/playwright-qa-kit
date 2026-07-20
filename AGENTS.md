@@ -165,7 +165,7 @@ List every tool explicitly by server:
 
 ## QA Exit Decisions
 
-After Report is produced, one of these decisions must be taken. See `docs/QA-DECISION-MODEL.md` for full criteria and triage guide.
+After Report is produced, one of these decisions must be taken. See `AGENTS.md` exit-criteria and triage guide.
 
 | Decision                  | Condition                                    | Follow-up action                                    |
 | ------------------------- | -------------------------------------------- | --------------------------------------------------- |

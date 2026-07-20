@@ -41,6 +41,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - `get_test_summary` MCP tool — response now includes `testCases[]`, `reportMode`, `rolesInScope`
 - `get_test_failures` MCP tool — `TestFailure` interface extended with `testId`, `role`, `priority`, `expectedResult`, `actualResult`
 
+### Setup & Onboarding
+
+- **Interactive setup wizard** (`scripts/setup-wizard.ts`, 7 phases): Welcome → Project Info → Credentials → Install → MCP+Hermes → Auth Setup → Verify+Encrypt → Next Steps
+  - State resume via `.wizard-state.json` (Ctrl+C safe)
+  - Generic auth setup template generated per role (`src/support/auth.setup.ts`)
+- **Wizard CLI flags**:
+  - `--dry-run` — preview without writing files or running commands
+  - `--from-phase=N` — resume from specific phase (0-7)
+  - `--help` — usage info
+- **OS detection + sudo prompt** — automatically detects Linux/macOS/Windows and prompts for sudo on `npx playwright install --with-deps`
+- **Dotenvx warning block** added to `environments/local.env.example` for credential encryption awareness
+- **Two new docs**:
+  - `docs/GETTING-STARTED.md` — single entry point for new QA (prerequisites, 3-step setup, verification, next steps)
+  - `docs/TROUBLESHOOTING.md` — 10 most common errors with fixes (Node version, permission, sudo, esbuild crash, encryption key loss, auth selector, MCP, MODULE_NOT_FOUND, etc.)
+- **Documentation cleanup** — removed 5 redundant/agent-only docs:
+  - `docs/README.md` (replaced by GETTING-STARTED.md)
+  - `docs/EXIT-CODES.md` (developer reference, not QA)
+  - `docs/BASELINE-REGRESSION.md` (overlap with failure-triage content)
+  - `docs/QA-DECISION-MODEL.md` (agent guidance, not QA)
+  - `docs/FAILURE-TRIAGE.md` (agent guidance, not QA)
+- **`docs/GUIDE.md` compacted** — setup section reduced from ~60 lines to ~10 (redirects to GETTING-STARTED.md) to eliminate duplication
+- **All broken doc links fixed** across `README.md`, `AGENTS.md`, `CHEATSHEET.md`, `REPORT-GUIDE.md`, `CHANGELOG.md`
+- **`.gitattributes` restored** with CRLF/LF normalization rules for cross-platform consistency
+- **`setup-check.ts` requirements updated** — `requirements/_TEMPLATE.md`, `QA guide` checks verified
+- **`npm run env:edit`** — script to decrypt `local.env`, open in editor, re-encrypt automatically
+
 ## [Unreleased — snapshot/discovery]
 
 ### Added
@@ -86,7 +112,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - Reference Adapter under `example/erpku/` (POMs, auth setup, adapter env overlay)
 - MCP adapter path seam (`PLAYWRIGHT_ADAPTER_*`) and Playwright profile bootstrap (#16/#19)
 - `createFrameworkReporters()` for Healer JSON gate (#15)
-- Alpha workshop docs: `docs/WORKSHOP.md`, `docs/ALPHA-LIMITATIONS.md`
+- Alpha workshop docs: `docs/WORKSHOP.md`, `docs/GETTING-STARTED.md`
 - ADRs 0001–0003, `docs/FORK-ONBOARDING.md`, `CONTEXT.md`
 
 ### Changed
@@ -101,7 +127,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Known limitations (alpha)
 
-See [docs/ALPHA-LIMITATIONS.md](docs/ALPHA-LIMITATIONS.md).
+See [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 [0.1.0-alpha.2]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.1.0-alpha.1

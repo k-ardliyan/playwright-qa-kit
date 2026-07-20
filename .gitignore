@@ -66,3 +66,6 @@ debug-validator.ts
 # Compiled env loader for plain node execution in MCP server
 src/utils/*.js
 src/utils/*.d.ts
+
+# Setup wizard state (per-machine, not tracked)
+.wizard-state.json

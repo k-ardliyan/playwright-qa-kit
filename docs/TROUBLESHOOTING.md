@@ -1,0 +1,250 @@
+# Troubleshooting — 10 Error Paling Umum
+
+> **Quick reference** untuk error yang paling sering muncul saat setup atau menjalankan framework. Jika error Anda tidak ada di sini, tanya langsung ke **Hermes Agent** di VS Code — dia bisa akses semua dokumen di repo ini.
+
+---
+
+## 🔴 Blocker (Setup Tidak Bisa Lanjut)
+
+### Error #1: `Node.js terlalu lama: v18.x.x`
+
+**Gejala:** Wizard langsung keluar di Phase 0.
+
+**Root cause:** Framework butuh Node.js >= 20.19.0 karena dependency `playwright 1.61+` dan TypeScript 6.x.
+
+**Fix:**
+
+1. Buka <https://nodejs.org/>
+2. Download versi LTS (20.x atau lebih baru)
+3. Install, restart terminal
+4. Verifikasi: `node --version`
+5. Jalankan ulang: `npm run setup:wizard`
+
+---
+
+### Error #2: `npm install` Gagal — `EACCES` atau `EPERM`
+
+**Gejala:** Permission denied saat install package.
+
+**Root cause:** Folder project dimiliki user lain (misal setup awal dengan `sudo`), atau ada antivirus yang block.
+
+**Fix (Windows):**
+
+- Jalankan terminal **sebagai Administrator**
+- Disable antivirus sementara saat install
+- Hapus `node_modules` lalu coba lagi: `rm -rf node_modules && npm install`
+
+**Fix (Mac/Linux):**
+
+- Jangan pernah jalankan `npm install` dengan `sudo`
+- Jika pernah: `sudo chown -R $USER:$USER .` lalu `rm -rf node_modules && npm install`
+
+---
+
+### Error #3: `npx playwright install` Gagal dengan `sudo: unable to resolve host`
+
+**Gejala:** `playwright install --with-deps` butuh akses admin untuk install system packages (libnss3, dll).
+
+**Fix (Mac/Linux):**
+
+```bash
+sudo npx playwright install --with-deps chromium
+# Masukkan password Anda
+```
+
+**Fix (Windows):**
+
+- Buka terminal sebagai Administrator (klik kanan PowerShell → "Run as administrator")
+- Jalankan ulang `npm run setup:wizard`
+
+> **Alternatif tanpa sudo:** Jalankan `npx playwright install chromium` (tanpa `--with-deps`). Browser akan jalan tapi beberapa fitur mungkin terbatas.
+
+---
+
+## 🟠 Setup Wizard Stuck atau Gagal
+
+### Error #4: Wizard Crash dengan `Unterminated string literal`
+
+**Gejala:** Error dari esbuild/tsx saat menjalankan `npm run setup:wizard`.
+
+**Root cause:** File `scripts/setup-wizard.ts` corrupt (ada karakter atau line ending yang salah).
+
+**Fix:**
+
+```bash
+# Lihat detail error
+npm run setup:wizard 2>&1 | head -20
+
+# Lapor ke maintainer jika persistent — sertakan:
+# - Node.js version (node --version)
+# - OS (Windows/Mac/Linux)
+# - Output error lengkap
+```
+
+---
+
+### Error #5: `local.env` Sudah Dienkripsi Tapi Kunci Hilang
+
+**Gejala:** Setup di mesin baru, file `local.env` isinya `encrypted:BA+84...` tapi `.env.keys` tidak ada.
+
+**Root cause:** Kunci dekripsi dotenvx disimpan lokal di `~/.dotenvx-keys/` — tidak ikut ke Git.
+
+**Fix:**
+
+1. **Opsi A** — Minta kunci dari anggota tim yang punya akses (share `.env.keys` via 1Password/Vault yang aman)
+2. **Opsi B** — Buat ulang dari nol:
+   ```bash
+   rm environments/local.env
+   cp environments/local.env.example environments/local.env
+   # Edit file: isi BASE_URL dan kredensial
+   npm run env:edit  # atau edit manual lalu encrypt manual:
+   npx @dotenvx/dotenvx encrypt -f environments/local.env
+   ```
+
+---
+
+### Error #6: Auth Setup Gagal — `selector not found` / `timeout`
+
+**Gejala:** Phase 5 wizard exit dengan error selector tidak ditemukan.
+
+**Root cause:** Selector form login aplikasi Anda berbeda dari default (`input[type=email]`, `input[type=password]`).
+
+**Fix:**
+
+1. Buka `src/support/auth.setup.ts` yang baru di-generate
+2. Ganti selector dengan selector aplikasi Anda. Contoh untuk React app:
+   ```typescript
+   await page.fill('[data-testid="email-input"]', email);
+   await page.fill('[data-testid="password-input"]', password);
+   await page.click('[data-testid="login-button"]');
+   ```
+3. **Atau minta Hermes Agent:**
+   ```
+   Tolong perbaiki src/support/auth.setup.ts untuk login page di https://staging.myapp.com/login.
+   Pakai snapshot_page dulu untuk lihat selector yang ada.
+   ```
+4. Jalankan ulang: `npx playwright test src/support/auth.setup.ts --project=setup`
+
+---
+
+## 🟡 MCP Server / Hermes Issue
+
+### Error #7: MCP Status Bar Tidak Menampilkan `3 servers`
+
+**Gejala:** Status bar bawah VS Code menunjukkan `MCP ● 0 servers` atau tidak ada indikator MCP.
+
+**Root cause:** Hermes Agent belum load `.mcp.json` atau `mcp:build` belum dijalankan.
+
+**Fix (berurutan):**
+
+1. Pastikan `mcp:build` sukses:
+   ```bash
+   ls mcp-server/dist/index-mcp.js  # harus ada
+   # Jika tidak ada:
+   npm run mcp:build
+   ```
+2. Restart VS Code **sepenuhnya** (bukan hanya reload window) — `Ctrl+Shift+P` → "Reload Window"
+3. Cek lagi status bar: `MCP ● 3 servers`
+4. Jika masih 0: klik status bar → "Reload MCP Servers"
+
+---
+
+### Error #8: `Cannot find module '@playwright/test'`
+
+**Gejala:** Saat run test atau `qa:run`, error `MODULE_NOT_FOUND`.
+
+**Root cause:** `node_modules` belum terinstall atau corrupt.
+
+**Fix:**
+
+```bash
+rm -rf node_modules package-lock.json
+npm install
+npx playwright install --with-deps chromium
+```
+
+---
+
+## 🟢 Operational Issues (Setelah Setup)
+
+### Error #9: `reports/custom-dashboard.html` Tidak Ada
+
+**Gejala:** `start reports/custom-dashboard.html` error "file not found".
+
+**Root cause:** Folder `reports/` baru dibuat setelah test pertama dijalankan.
+
+**Fix:**
+
+```bash
+# Jalankan test dulu (meskipun demo)
+npm run test:demo
+
+# Sekarang reports/ ada isinya
+start reports/custom-dashboard.html
+```
+
+---
+
+### Error #10: Test Gagal Massal dengan `ERR_CONNECTION_REFUSED`
+
+**Gejala:** Semua test fail di step `goto(BASE_URL)`.
+
+**Root cause:** Aplikasi target tidak bisa diakses — down, salah URL, atau firewall block.
+
+**Fix:**
+
+1. Cek manual di browser: buka `BASE_URL` (lihat di `environments/local.env`)
+2. Jika down → tunggu aplikasi up lagi
+3. Jika salah URL → edit:
+   ```bash
+   npm run env:edit
+   # Update BASE_URL, save, tutup editor
+   ```
+4. Jika firewall (umum di kantor) → hubungi IT untuk whitelist
+
+---
+
+## 🔧 Cara Mendapatkan Help Lebih Lanjut
+
+**Sebelum tanya, kumpulkan info ini:**
+
+```bash
+node --version
+npm --version
+npx playwright --version
+cat .mcp.json | head -20
+ls -la environments/
+```
+
+Lalu tanya ke **Hermes Agent** di VS Code:
+
+```
+Saya dapat error ini saat setup:
+[paste error message lengkap]
+
+Environment saya:
+- OS: [Windows 11 / macOS 14 / Ubuntu 22.04]
+- Node: [output dari node --version]
+- Sudah coba: [apa yang sudah Anda coba]
+
+Tolong bantu diagnose.
+```
+
+Hermes bisa akses semua file di repo ini termasuk log, env, dan config.
+
+---
+
+## 📞 Escalation ke Maintainer
+
+**Lapor ke maintainer** hanya jika:
+
+- Wizard masih crash setelah fix #1-#10
+- Bug muncul setelah update framework (`git pull upstream main`)
+- Ingin tambah fitur baru ke wizard
+
+Sertakan:
+
+- Output `npm run setup:check`
+- Output `npm run health:check`
+- Versi Node, OS, dan Playwright (`npx playwright --version`)
+- Step reproduksi error

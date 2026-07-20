@@ -52,7 +52,9 @@
     "snapshot:page": "tsx scripts/snapshot-page-cli.ts",
     "discover:pages": "tsx scripts/discover-pages-cli.ts",
     "qa:run": "tsx scripts/qa-run.ts",
-    "manual:check": "tsx scripts/manual-check.ts"
+    "manual:check": "tsx scripts/manual-check.ts",
+    "setup:wizard": "tsx scripts/setup-wizard.ts",
+    "env:edit": "tsx scripts/env-edit.ts"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^2.14.0",

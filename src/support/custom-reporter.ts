@@ -283,7 +283,7 @@ export default class CustomReporter implements Reporter {
     const actualResultAnnotation = getAnnotation(test, 'actualResult');
     const actualResult =
       result.status === 'passed'
-        ? actualResultAnnotation || '-'
+        ? actualResultAnnotation || 'Sesuai dengan expected result'
         : actualResultAnnotation || result.error?.message || result.errors?.[0]?.message || '-';
 
     this.collectedTests.push({

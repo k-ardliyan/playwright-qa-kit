@@ -16,6 +16,8 @@
 
   Warning yang diharapkan:
   ✗ failure_scenario_recommended (ada kata "gagal" tapi tidak ada (@failure) tag)
+  ✗ test_id_missing (tidak ada Test ID per skenario)
+  ✗ expected_result_format (pakai "Hasil:" bukan "Hasil yang Diharapkan:")
 -->
 
 ## Metadata
@@ -39,10 +41,11 @@
 ## Skenario Uji
 
 <!-- ❌ BURUK: Tidak pakai tag tipe scenario, Langkah vague, Hasil tidak observable -->
+<!-- ❌ BURUK: Tidak ada Test ID, tidak ada Input Data, pakai "Hasil:" bukan "Hasil yang Diharapkan:" -->
 
 ### SC-01: Login
 
-<!-- ❌ Tidak ada Prekondisi -->
+<!-- ❌ Tidak ada Prekondisi, tidak ada Test ID -->
 
 **Langkah:**
 
@@ -55,6 +58,7 @@
 **Hasil:**
 
 <!-- ❌ Hasil subjektif, tidak observable — validator akan warn "observable_result" -->
+<!-- ❌ Pakai "Hasil:" bukan "Hasil yang Diharapkan:" -->
 
 - Login berhasil
 - Sistem bekerja dengan baik
@@ -64,6 +68,7 @@
 ### SC-02: Login Gagal
 
 <!-- ❌ Tidak ada tag (@failure) padahal ini negative path -->
+<!-- ❌ Tidak ada Test ID, tidak ada Input Data -->
 
 **Langkah:**
 
@@ -79,7 +84,8 @@
 
 ### SC-03: Login dengan Google (@manual)
 
-<!-- ❌ Ada tag (@manual) tapi tidak ada alasan di Hasil — validator akan warn "manual_reason" -->
+<!-- ❌ Ada tag (@manual) tapi tidak ada alasan di Hasil yang Diharapkan -->
+<!-- ❌ Tidak ada Test ID -->
 
 **Langkah:**
 
@@ -96,3 +102,4 @@
 ### SC-04: Edge Case
 
 <!-- ❌ Tidak ada Langkah dan Hasil — parser akan reject "scenario_structure" -->
+<!-- ❌ Tidak ada Test ID -->

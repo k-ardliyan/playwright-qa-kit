@@ -62,42 +62,39 @@ The Reporter produces two outputs:
   "summary": {
     "scenariosPlanned": 5,
     "testsGenerated": 5,
-    "testsPassing": 4,
-    "testsFailing": 0,
+    "testsPassing": 3,
+    "testsFailing": 1,
     "testsHealed": 1,
     "testsSkipped": 0
   },
   "summaryByRole": {
     "finance": { "passing": 2, "failing": 0, "skipped": 0 },
-    "super-admin": { "passing": 1, "failing": 0, "skipped": 0 },
-    "hrd": { "passing": 1, "failing": 0, "skipped": 0 }
+    "super-admin": { "passing": 1, "failing": 1, "skipped": 0 }
   },
-  "summaryByFeature": {
-    "login": { "passing": 2, "failing": 0 },
-    "invoice-approve": { "passing": 2, "failing": 0 }
-  },
-  "coverage": [
+  "testCases": [
     {
+      "testId": "TC-LOGIN-001",
       "scenarioId": "SC-01",
-      "scenarioName": "Valid login",
-      "scenarioType": "success",
-      "role": "general",
-      "status": "passed"
-    },
-    {
-      "scenarioId": "SC-02",
-      "scenarioName": "Invalid credentials",
-      "scenarioType": "failure",
-      "role": "general",
-      "status": "healed"
+      "title": "Login dengan kredensial valid",
+      "role": "super-admin",
+      "status": "passed",
+      "priority": "high",
+      "duration": 5700,
+      "inputData": { "email": "valid", "password": "valid" },
+      "expectedResult": "Toast muncul; redirect ke /dashboard",
+      "actualResult": "Toast muncul, redirect ke /dashboard confirmed",
+      "affectedLayer": ["FE"],
+      "attachmentCount": 0,
+      "hasTrace": false
     }
   ],
   "unresolvedFailures": [
     {
       "scenarioId": "SC-03",
-      "stage": "planner | generator | healer",
+      "testId": "TC-DASH-001",
+      "stage": "healer",
       "errorMessage": "...",
-      "failureSource": "app | test | requirement | env | ai_generation",
+      "failureSource": "app",
       "tracePath": "test-results/.../trace.zip",
       "screenshotPath": "test-results/.../screenshot.png"
     }
@@ -106,10 +103,9 @@ The Reporter produces two outputs:
 }
 ```
 
-- `summaryByRole` — only present if `rolesInScope` is non-empty
-- `summaryByFeature` — always present
-- `coverage[].scenarioType` — from the scenario tag: `success`, `failure`, `access-restriction`, `manual`, `general`
-- `coverage[].role` — role the scenario ran as, or `"general"`
+- `summaryByRole` present only when `mode: "role-aware"`.
+- `testCases` array always present — populated from `test-summary.json` via `get_test_summary`.
+- `testId` per `unresolvedFailure` — mapped from annotations or derived from test title.
 - `unresolvedFailures[].failureSource` — classify each unresolved failure into one of:
   - `app` — the application has a bug; the test is correct
   - `test` — the test code is wrong or stale; the app behavior is correct
@@ -121,6 +117,112 @@ The Reporter produces two outputs:
 ### 2. Markdown Pipeline Report
 
 Save to `reports/pipeline-report-<runId>.md`:
+
+**General mode** includes a flat test case table after the Coverage section:
+
+```markdown
+## Test Cases
+
+| Test ID      | Description                   | Status    | Priority | Duration | Notes    |
+| ------------ | ----------------------------- | --------- | -------- | -------- | -------- |
+| TC-LOGIN-001 | Login dengan kredensial valid | ✅ PASSED | High     | 5.70s    | [FE]     |
+| TC-LOGIN-002 | Login password salah          | ✅ PASSED | High     | 4.71s    | [FE][BE] |
+```
+
+**Role-aware mode** groups test cases per role:
+
+```markdown
+## Test Cases
+
+### ROLE: finance
+
+| Test ID        | Description     | Status    | Priority | Duration | Notes    |
+| -------------- | --------------- | --------- | -------- | -------- | -------- |
+| TC-INVOICE-001 | Approve invoice | ✅ PASSED | High     | 4.10s    | [BE][FE] |
+
+### ROLE: super-admin
+
+| Test ID        | Description       | Status    | Priority | Duration | Notes      |
+| -------------- | ----------------- | --------- | -------- | -------- | ---------- |
+| TC-INVOICE-003 | View all invoices | ❌ FAILED | Medium   | 1.05s    | [FE] trace |
+```
+
+Full markdown template:
+
+```markdown
+# Pipeline Report — <Feature Name>
+
+**Run ID:** `<runId>`
+**Requirement:** `requirements/<feature-name>.md`
+**Mode:** general | role-aware
+**Roles in scope:** <comma-separated, or N/A>
+**Timestamp:** <ISO 8601>
+**Duration:** <Xs>
+
+---
+
+## Summary
+
+| Metric            | Value |
+| ----------------- | ----- |
+| Scenarios planned | N     |
+| Tests generated   | N     |
+| Tests passing     | N     |
+| Tests failing     | N     |
+| Tests healed      | N     |
+| Tests skipped     | N     |
+
+### By Role (if role-aware)
+
+| Role        | Passing | Failing | Skipped |
+| ----------- | ------- | ------- | ------- |
+| finance     | 2       | 0       | 0       |
+| super-admin | 1       | 0       | 0       |
+| hrd         | 1       | 0       | 0       |
+
+---
+
+## Test Cases
+
+<!-- flat table (general) or grouped by ROLE: <role> section (role-aware) -->
+
+---
+
+## Unresolved Failures
+
+> These failures require QA action before the pipeline can be approved.
+
+### SC-XX: <scenario name>
+
+- **Test ID:** `TC-XXX-NNN`
+- **Failure source:** `app` | `test` | `requirement` | `env` | `ai_generation`
+- **Error:** `<error message>`
+- **Stage:** planner | generator | healer
+- **Trace:** `test-results/.../trace.zip`
+- **Screenshot:** `test-results/.../screenshot.png`
+
+---
+
+## QA Decision
+
+> Review the results above and pick one decision. Delete the options you did not choose.
+
+**[ ] ✅ APPROVE** — All scenarios pass. Requirement validated. Mark tests as regression baseline.
+
+**[ ] 🐛 FILE BUG** — Failure source: `app`. Create defect ticket. Keep test as regression guard.
+
+**[ ] 📝 REVISE REQUIREMENT** — Failure source: `requirement`. Update requirement → scenario → plan → regenerate → rerun.
+
+**[ ] 🔧 FIX TEST / GENERATOR** — Failure source: `test` or `ai_generation`. Fix test code or generator input.
+
+**[ ] 🔧 FIX ENVIRONMENT** — Failure source: `env`. Fix auth setup, seed data, or env config → rerun.
+
+**[ ] 🚫 MARK BLOCKED** — Cannot resolve now. Keep trace/screenshot. Continue triage later.
+
+---
+
+_Generated by Reporter Agent — Playwright QA Framework_
+```
 
 ```markdown
 # Pipeline Report — <Feature Name>

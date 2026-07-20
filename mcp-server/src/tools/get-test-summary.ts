@@ -11,6 +11,30 @@ export interface TestSummary {
   skipped: number;
   passRate: number;
   timestamp: string;
+  // === Table View extensions (populated by custom reporter) ===
+  /** 'general' = no role scope; 'role-aware' = tests grouped by role */
+  reportMode?: 'general' | 'role-aware';
+  /** Roles found in scope across all collected tests */
+  rolesInScope?: string[];
+  /** Full per-test case data for Reporter Agent and pipeline report */
+  testCases?: CollectedTestCase[];
+}
+
+/** Flat per-test-case record written to test-summary.json by custom reporter */
+export interface CollectedTestCase {
+  testId: string;
+  scenarioId: string;
+  title: string;
+  role: string;
+  status: string;
+  priority: 'high' | 'medium' | 'low';
+  duration: number;
+  inputData: Record<string, string>;
+  expectedResult: string;
+  actualResult: string;
+  affectedLayer: Array<'FE' | 'BE' | 'DB' | 'API'>;
+  attachmentCount: number;
+  hasTrace: boolean;
 }
 
 export interface RoleSummary {
@@ -31,6 +55,12 @@ export interface GetTestSummaryOutput {
   byRole?: Record<string, RoleSummary>;
   /** Per-feature breakdown — grouped by feature name prefix in spec file names */
   byFeature?: Record<string, FeatureSummary>;
+  /** Full per-test-case data from custom reporter — only present when reportMode is set */
+  testCases?: CollectedTestCase[];
+  /** Report mode from custom reporter — 'general' or 'role-aware' */
+  reportMode?: 'general' | 'role-aware';
+  /** Roles in scope from custom reporter */
+  rolesInScope?: string[];
   message: string;
 }
 
@@ -176,6 +206,15 @@ export function getTestSummary(): GetTestSummaryOutput {
 
     if (Object.keys(byRole).length > 0) result.byRole = byRole;
     if (Object.keys(byFeature).length > 0) result.byFeature = byFeature;
+
+    // Expose table-view extensions from custom reporter if present
+    if (summary.reportMode) result.reportMode = summary.reportMode;
+    if (summary.rolesInScope && summary.rolesInScope.length > 0) {
+      result.rolesInScope = summary.rolesInScope;
+    }
+    if (Array.isArray(summary.testCases) && summary.testCases.length > 0) {
+      result.testCases = summary.testCases;
+    }
 
     return result;
   } catch (error) {

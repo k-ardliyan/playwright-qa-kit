@@ -6,6 +6,48 @@ import { getJsonResultsPath } from '../utils/playwright-paths';
 import { getRepoRoot } from '../utils/safety';
 import { logger } from '../utils/logger';
 
+// ---------------------------------------------------------------------------
+// test-summary.json cross-reference types (mirrors custom reporter output)
+// ---------------------------------------------------------------------------
+
+interface SummaryTestCase {
+  testId?: string;
+  title?: string;
+  role?: string;
+  priority?: 'high' | 'medium' | 'low';
+  expectedResult?: string;
+  actualResult?: string;
+}
+
+interface TestSummaryFile {
+  testCases?: SummaryTestCase[];
+}
+
+/**
+ * Build a lookup map keyed by test title from reports/test-summary.json.
+ * Returns an empty map when the file is absent or unparseable — callers
+ * treat a missing entry as "no annotation data available" and fall back to
+ * leaving the optional fields undefined.
+ */
+function loadSummaryAnnotationMap(repoRoot: string): Map<string, SummaryTestCase> {
+  const summaryPath = path.resolve(repoRoot, 'reports', 'test-summary.json');
+  if (!fs.existsSync(summaryPath)) return new Map();
+
+  try {
+    const raw = fs.readFileSync(summaryPath, 'utf-8');
+    const parsed = safeJsonParse<TestSummaryFile>(raw);
+    if (!parsed.ok || !Array.isArray(parsed.data.testCases)) return new Map();
+
+    const map = new Map<string, SummaryTestCase>();
+    for (const tc of parsed.data.testCases) {
+      if (tc.title) map.set(tc.title, tc);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 export interface TestFailure {
   testTitle: string;
   filePath: string;
@@ -15,6 +57,17 @@ export interface TestFailure {
   stackTrace?: string;
   tracePath?: string;
   screenshotPath?: string;
+  // === Table View metadata (from test.info().annotations) ===
+  /** Test ID from annotation — TC-XXX-NNN */
+  testId?: string;
+  /** Role the test ran as — from annotation */
+  role?: string;
+  /** Priority from annotation — high | medium | low */
+  priority?: 'high' | 'medium' | 'low';
+  /** Expected result from annotation */
+  expectedResult?: string;
+  /** Actual result from annotation or error message */
+  actualResult?: string;
 }
 
 export interface GetTestFailuresOutput {
@@ -149,6 +202,7 @@ function traverseSuites(
   suiteNode: ParsedSuite,
   inheritedTitle: string,
   failures: TestFailure[],
+  annotationMap: Map<string, SummaryTestCase> = new Map(),
 ): void {
   const suiteTitle = [inheritedTitle, suiteNode.title].filter(Boolean).join(' > ');
 
@@ -197,16 +251,31 @@ function traverseSuites(
       }
 
       failures.push(failure);
+
+      // Cross-reference with test-summary.json to enrich annotation fields.
+      // Playwright JSON reporter does not store custom annotations, so we
+      // look up the test title in the map built from the custom reporter output.
+      const annotation = annotationMap.get(testTitle || '');
+      if (annotation) {
+        if (annotation.testId) failure.testId = annotation.testId;
+        if (annotation.role) failure.role = annotation.role;
+        if (annotation.priority) failure.priority = annotation.priority;
+        if (annotation.expectedResult) failure.expectedResult = annotation.expectedResult;
+        if (annotation.actualResult) failure.actualResult = annotation.actualResult;
+      }
     }
   }
 
   const childSuites = Array.isArray(suiteNode.suites) ? suiteNode.suites : [];
   for (const child of childSuites) {
-    traverseSuites(child, suiteTitle, failures);
+    traverseSuites(child, suiteTitle, failures, annotationMap);
   }
 }
 
-function parsePlaywrightResult(content: unknown): TestFailure[] {
+function parsePlaywrightResult(
+  content: unknown,
+  annotationMap: Map<string, SummaryTestCase> = new Map(),
+): TestFailure[] {
   if (
     typeof content === 'object' &&
     content !== null &&
@@ -249,7 +318,7 @@ function parsePlaywrightResult(content: unknown): TestFailure[] {
   const failures: TestFailure[] = [];
 
   for (const suite of rootSuites) {
-    traverseSuites(suite, '', failures);
+    traverseSuites(suite, '', failures, annotationMap);
   }
 
   return failures;
@@ -284,7 +353,7 @@ export function getTestFailures(resultsDir: string = DEFAULT_RESULTS_DIR): GetTe
       };
     }
 
-    const failures = parsePlaywrightResult(parsed.data);
+    const failures = parsePlaywrightResult(parsed.data, loadSummaryAnnotationMap(getRepoRoot()));
     const hasSuites =
       typeof parsed.data === 'object' &&
       parsed.data !== null &&

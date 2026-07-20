@@ -19,7 +19,7 @@
 | Field                 | Wajib?      | Contoh nilai                                     | Keterangan                                                                 |
 | --------------------- | ----------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
 | `Tags`                | ✅ Ya       | `#smoke #regression #ui`                         | Pisahkan dengan spasi. Dipakai filter test.                                |
-| `Prioritas`           | ✅ Ya       | `high` / `medium` / `low`                        | Prioritas bisnis.                                                          |
+| `Prioritas`           | ✅ Ya       | `high` / `medium` / `low`                        | Prioritas bisnis default untuk semua skenario.                             |
 | `Auth state`          | ✅ Ya       | `unauthenticated` / `authenticated`              | Butuh login atau tidak.                                                    |
 | `Halaman awal`        | ✅ Ya       | `/login`                                         | Path URL halaman pembuka scenario.                                         |
 | `POM yang dibutuhkan` | ⚪ Opsional | `loginPage, dashboardPage`                       | Page Object Model yang akan dibuat Generator.                              |
@@ -73,7 +73,7 @@
 ## Skenario Uji
 
 > Setiap skenario = satu alur user. Pakai heading `### SC-XX: Nama Skenario`.
-> Setiap skenario WAJIB punya `**Langkah:**` (numbered list) dan `**Hasil:**` (bullet observable).
+> Setiap skenario WAJIB punya `**Langkah:**` (numbered list) dan `**Hasil yang Diharapkan:**` (bullet observable).
 >
 > **Tipe skenario** — tambahkan tag di judul heading:
 >
@@ -83,10 +83,27 @@
 > - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, dsb)
 >
 > Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
+>
+> **Field per skenario untuk Table View report:**
+>
+> - `Test ID` — wajib, format `TC-<MODUL>-<NNN>` (contoh: `TC-LOGIN-001`)
+> - `Prioritas skenario` — opsional, override `Prioritas` global untuk skenario ini
+> - `Layer terdampak` — opsional, komponen yang diuji: `FE` / `BE` / `DB` / `API`
+> - `Input Data` — opsional, data input yang dipakai dalam skenario ini
+> - `Hasil yang Diharapkan` — wajib (menggantikan `Hasil:`)
 
 ### SC-01: [Nama Skenario — Happy Path] (@success)
 
+- **Test ID:** `TC-XXX-001`
+- **Prioritas skenario:** `high`
+- **Layer terdampak:** `FE`
+
 **Prekondisi:** [Keadaan awal sebelum skenario dimulai]
+
+**Input Data:**
+
+- field: value
+- field: value
 
 **Langkah:**
 
@@ -94,7 +111,7 @@
 2. [Langkah kedua]
 3. [Langkah ketiga]
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - [Kondisi observable yang harus terbukti, misalnya: URL berubah ke /dashboard]
 - [Kondisi observable kedua]
@@ -103,14 +120,22 @@
 
 ### SC-02: [Nama Skenario — Negative Path] (@failure)
 
+- **Test ID:** `TC-XXX-002`
+- **Prioritas skenario:** `high`
+- **Layer terdampak:** `FE`
+
 **Prekondisi:** [Keadaan awal]
+
+**Input Data:**
+
+- field: value invalide
 
 **Langkah:**
 
 1. [Langkah pertama]
 2. [Langkah kedua]
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - [Pesan error yang muncul, misalnya: "Email atau password salah" tampil di bawah form]
 - [Kondisi observable lain]
@@ -121,6 +146,10 @@
 
 > Gunakan skenario ini jika ada role yang tidak berhak mengakses fitur ini.
 
+- **Test ID:** `TC-XXX-003`
+- **Prioritas skenario:** `medium`
+- **Layer terdampak:** `FE` `BE`
+
 **Prekondisi:** Login sebagai [role yang tidak berhak], misalnya: HRD
 
 **Langkah:**
@@ -128,7 +157,7 @@
 1. Login sebagai [role yang tidak berhak]
 2. Buka halaman [halaman yang dibatasi]
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - [Halaman tidak dapat dibuka / redirect ke halaman lain]
 - [Pesan "Akses ditolak" atau tombol tidak tersedia]
@@ -139,6 +168,9 @@
 
 > Gunakan skenario ini untuk flow yang tidak bisa diotomasi.
 
+- **Test ID:** `TC-XXX-004`
+- **Prioritas skenario:** `low`
+
 **Prekondisi:** [Kondisi awal]
 
 **Langkah:**
@@ -146,7 +178,7 @@
 1. [Langkah manual pertama]
 2. [Langkah manual kedua]
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - [Hasil yang harus diverifikasi manual] — tidak bisa diotomasi karena: [alasan, misalnya: butuh CAPTCHA / SMS OTP / verifikasi biometrik]
 
@@ -173,5 +205,7 @@
 - [ ] Ada minimal 1 skenario `(@success)`
 - [ ] Ada minimal 1 skenario `(@failure)` untuk fitur yang punya validasi atau negative path
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul
-- [ ] `@manual` scenario punya alasan jelas di **Hasil:**
+- [ ] `@manual` scenario punya alasan jelas di **Hasil yang Diharapkan:**
+- [ ] Setiap skenario punya `- **Test ID:** \`TC-XXX-NNN\``
+- [ ] Setiap skenario punya `**Hasil yang Diharapkan:**` (bukan `**Hasil:**`)
 - [ ] File sudah divalidasi: `npm run validate:requirement -- requirements/nama-fitur.md` (exit 0)

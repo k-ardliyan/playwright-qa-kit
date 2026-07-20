@@ -229,6 +229,19 @@ export function renderStatusPill(status: string): string {
   return `<span class="status-pill ${cls}">${safe}</span>`;
 }
 
+export function renderPriorityBadge(priority: string): string {
+  const p = (priority || 'medium').toLowerCase();
+  const cls = `priority-badge priority-badge--${p}`;
+  return `<span class="${cls}">${(priority || 'MEDIUM').toUpperCase()}</span>`;
+}
+
+export function renderLayerBadges(layers: string[]): string {
+  if (layers.length === 0) return '-';
+  return layers
+    .map((l) => `<span class="layer-badge layer-badge--${l.toLowerCase()}">${escapeHtml(l)}</span>`)
+    .join(' ');
+}
+
 function getVerdict(summary: TestSummary): {
   label: string;
   tone: 'healthy' | 'warning' | 'critical';
@@ -269,6 +282,35 @@ function countAttachmentsByKind(
   );
 }
 
+export function formatDisplayTime(raw: string): string {
+  try {
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw;
+    const day = d.getDate();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const mon = months[d.getMonth()];
+    const yr = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${mon} ${yr}, ${hh}:${mm}`;
+  } catch {
+    return raw;
+  }
+}
+
 export function renderHero(
   mode: 'local' | 'ci',
   summary: TestSummary,
@@ -279,35 +321,46 @@ export function renderHero(
     UNHEALTHY_STATUSES.has(testData.status),
   ).length;
 
+  const displayTime = formatDisplayTime(summary.timestamp);
+
   return `
     <header class="hero hero--${verdict.tone}">
-      <div class="hero__copy">
+      <div class="hero__top-row">
         <span class="hero__eyebrow">${mode === 'ci' ? 'CI execution report' : 'Local execution report'}</span>
-        <h1 class="hero__title">${verdict.label}</h1>
-        <p class="hero__subtitle">${verdict.summaryLine}</p>
-      </div>
-      <div class="hero__meta">
-        <div class="hero__top-row">
+        <div class="hero__top-actions">
           <span class="badge ${mode === 'ci' ? 'badge--ci' : 'badge--local'}">${mode === 'ci' ? 'CI mode' : 'Local mode'}</span>
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
             <span class="theme-toggle__icon" aria-hidden="true">☀</span>
             <span class="theme-toggle__label">Light</span>
           </button>
         </div>
-        <div class="hero__meta-grid">
-          <div>
+      </div>
+      <div class="hero__body">
+        <div class="hero__copy">
+          <h1 class="hero__title">${verdict.label}</h1>
+          <p class="hero__subtitle">${verdict.summaryLine}</p>
+        </div>
+        <div class="hero__meta-inline">
+          <div class="hero__meta-item">
             <span class="hero__meta-label">Generated</span>
-            <strong>${escapeHtml(summary.timestamp)}</strong>
+            <strong>${escapeHtml(displayTime)}</strong>
           </div>
-          <div>
+          <div class="hero__meta-item">
             <span class="hero__meta-label">Tests</span>
             <strong>${summary.total}</strong>
           </div>
-          <div>
+          <div class="hero__meta-item">
             <span class="hero__meta-label">Unhealthy</span>
             <strong>${unhealthyCount}</strong>
           </div>
         </div>
+      </div>
+      <div class="hero-stat-bar">
+        <div class="hero-stat"><span class="hero-stat__num">${summary.total}</span><span class="hero-stat__lbl">Total</span></div>
+        <div class="hero-stat hero-stat--passed"><span class="hero-stat__num">${summary.passed}</span><span class="hero-stat__lbl">Passed</span></div>
+        <div class="hero-stat hero-stat--failed"><span class="hero-stat__num">${summary.failed}</span><span class="hero-stat__lbl">Failed</span></div>
+        <div class="hero-stat hero-stat--skipped"><span class="hero-stat__num">${summary.skipped}</span><span class="hero-stat__lbl">Skipped</span></div>
+        <div class="hero-stat hero-stat--accent"><span class="hero-stat__num">${summary.passRate}%</span><span class="hero-stat__lbl">Rate</span></div>
       </div>
     </header>
   `;
@@ -609,12 +662,32 @@ export function renderDocumentShell(options: {
     <div class="page-backdrop"></div>
     <main class="page">
       ${renderHero(mode, summary, collectedTests)}
-      ${renderStatGrid(summary)}
       ${body}
     </main>
   </div>
   ${themeScript}
   ${chartScript}
+  <script>
+  (function () {
+    /* ---- View toggle (Accordion ↔ Table) ---- */
+    document.querySelectorAll('.toggle-btn[data-view]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var view = btn.getAttribute('data-view');
+        document.querySelectorAll('.view-panel').forEach(function (panel) {
+          var active = panel.id === 'view-' + view;
+          panel.classList.toggle('view-panel--active', active);
+          panel.classList.toggle('view-panel--hidden', !active);
+          panel.setAttribute('aria-hidden', String(!active));
+        });
+        document.querySelectorAll('.toggle-btn[data-view]').forEach(function (b) {
+          var isActive = b === btn;
+          b.classList.toggle('toggle-btn--active', isActive);
+          b.setAttribute('aria-selected', String(isActive));
+        });
+      });
+    });
+  })();
+  </script>
 </body>
 </html>`;
 }

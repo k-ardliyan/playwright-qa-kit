@@ -8,6 +8,10 @@ import {
 
 export type ScenarioType = 'success' | 'failure' | 'access-restriction' | 'manual' | 'general';
 
+export type ScenarioPriority = 'high' | 'medium' | 'low';
+
+export type AffectedLayer = 'FE' | 'BE' | 'DB' | 'API';
+
 export interface RequirementScenario {
   id: string;
   name: string;
@@ -21,6 +25,17 @@ export interface RequirementScenario {
   roleScope?: string;
   /** Auth context hint: storage state path or 'unauthenticated' */
   authContext?: string;
+  // === Table view metadata (new) ===
+  /** Test ID from `- **Test ID:** \`TC-XXX-NNN\`` in scenario block */
+  testId: string;
+  /** Per-scenario priority override. Falls back to requirement global priority. */
+  priority: ScenarioPriority;
+  /** Structured input data from `**Input Data:**` bullet list */
+  inputData: Record<string, string>;
+  /** Joined expected result string from `**Hasil yang Diharapkan:**` bullets */
+  expectedResultFormatted: string;
+  /** Affected system layers from `**Layer terdampak:**` field */
+  affectedLayer: AffectedLayer[];
 }
 
 export interface ParseRequirementScenariosOutput {
@@ -36,15 +51,19 @@ export interface ParseRequirementScenariosOutput {
 }
 
 const LABEL_KEYWORDS =
-  'Langkah|Steps?|Prekondisi|Precondition|Given|Hasil|Expected(?:\\s+Result)?|Outcome';
+  'Langkah|Steps?|Prekondisi|Precondition|Given|Hasil(?:\\s+yang\\s+Diharapkan)?|Expected(?:\\s+Result)?|Outcome|Input\\s+Data|Layer\\s+terdampak';
 
 function buildLabelRegex(keywords: string): RegExp {
   return new RegExp(`^\\*\\*(?:${keywords}):\\*\\*`, 'i');
 }
 
 const STEPS_LABEL = buildLabelRegex('Langkah|Steps?');
-const RESULT_LABEL = buildLabelRegex('Hasil|Expected(?:\\s+Result)?|Outcome');
+const RESULT_LABEL = buildLabelRegex(
+  'Hasil(?:\\s+yang\\s+Diharapkan)?|Expected(?:\\s+Result)?|Outcome',
+);
 const PRECONDITION_LABEL = buildLabelRegex('Prekondisi|Precondition|Given');
+const INPUT_DATA_LABEL = buildLabelRegex('Input\\s+Data');
+const LAYER_LABEL = buildLabelRegex('Layer\\s+terdampak');
 const BLOCK_TERMINATOR = buildLabelRegex(LABEL_KEYWORDS);
 const HEADING_REGEX = /^#{2,3}\s+/;
 const SCENARIO_HEADING_REGEX = /^###\s+/;
@@ -167,9 +186,119 @@ function stripLabel(trimmed: string, labelRegex: RegExp): string | null {
   return stripped;
 }
 
+/**
+ * Parse global priority from requirement metadata.
+ * Used as fallback when per-scenario priority is not set.
+ */
+function parseGlobalPriority(text: string): ScenarioPriority {
+  const match = text.match(/^\s*-\s+\*\*Prioritas:\*\*\s*(\S+)/im);
+  if (!match) return 'medium';
+  const raw = match[1].toLowerCase().trim();
+  if (raw === 'high' || raw === 'tinggi') return 'high';
+  if (raw === 'low' || raw === 'rendah') return 'low';
+  return 'medium';
+}
+
+/**
+ * Parse `- **Test ID:** \`TC-XXX-NNN\`` from lines within a scenario block.
+ * Returns empty string if not found.
+ */
+function parseTestId(scenarioLines: string[]): string {
+  for (const line of scenarioLines) {
+    const m = line.match(/^\s*-\s+\*\*Test\s+ID:\*\*\s*`?(TC-[A-Z0-9-]+)`?/i);
+    if (m) return m[1].trim();
+  }
+  return '';
+}
+
+/**
+ * Parse `- **Prioritas skenario:** high|medium|low` from scenario lines.
+ * Returns null if not found (caller falls back to global priority).
+ */
+function parseScenarioPriority(scenarioLines: string[]): ScenarioPriority | null {
+  for (const line of scenarioLines) {
+    const m = line.match(/^\s*-\s+\*\*Prioritas\s+skenario:\*\*\s*`?(\S+)`?/i);
+    if (!m) continue;
+    const raw = m[1].toLowerCase().trim();
+    if (raw === 'high' || raw === 'tinggi') return 'high';
+    if (raw === 'low' || raw === 'rendah') return 'low';
+    return 'medium';
+  }
+  return null;
+}
+
+/**
+ * Parse `- **Layer terdampak:** FE | BE | DB | API` from scenario lines.
+ * Accepts combinations like `FE BE` or `FE | BE` or backtick-wrapped tokens.
+ */
+function parseAffectedLayer(scenarioLines: string[]): AffectedLayer[] {
+  const validLayers = new Set<string>(['FE', 'BE', 'DB', 'API']);
+  for (const line of scenarioLines) {
+    const m = line.match(/^\s*-\s+\*\*Layer\s+terdampak:\*\*\s*(.+)$/i);
+    if (!m) continue;
+    const raw = m[1].replace(/`/g, '');
+    const tokens = raw.split(/[\s|,]+/).map((t) => t.trim().toUpperCase());
+    return tokens.filter((t) => validLayers.has(t)) as AffectedLayer[];
+  }
+  return [];
+}
+
+/**
+ * Parse `**Input Data:**` bullet list into a key→value record.
+ * Handles `- key: value` and `- key: value with spaces`.
+ */
+function parseInputDataBlock(
+  lines: string[],
+  startIndex: number,
+): {
+  inputData: Record<string, string>;
+  nextIndex: number;
+} {
+  const inputData: Record<string, string> = {};
+  let i = startIndex;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (BLOCK_TERMINATOR.test(trimmed) || HEADING_REGEX.test(trimmed)) break;
+    const m = trimmed.match(/^[-*]\s+([^:]+):\s*(.*)$/);
+    if (m) {
+      const key = m[1].trim();
+      const value = m[2].trim();
+      if (key.length > 0) inputData[key] = value;
+    }
+    i += 1;
+  }
+  return { inputData, nextIndex: i };
+}
+
+/**
+ * Parse `**Hasil yang Diharapkan:**` bullets into a joined string.
+ * Also handles legacy `**Hasil:**` label for backward compatibility.
+ */
+function parseExpectedResultFormatted(
+  lines: string[],
+  startIndex: number,
+): {
+  formatted: string;
+  nextIndex: number;
+} {
+  const items: string[] = [];
+  let i = startIndex;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (BLOCK_TERMINATOR.test(trimmed) || HEADING_REGEX.test(trimmed)) break;
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    const numbered = trimmed.match(/^\d+\.\s+(.+)$/);
+    const text = bullet ? bullet[1].trim() : numbered ? numbered[1].trim() : null;
+    if (text && !/^\*\*/.test(text)) items.push(text);
+    i += 1;
+  }
+  return { formatted: items.join('; '), nextIndex: i };
+}
+
 export function parseRequirementScenariosFromText(text: string): RequirementScenario[] {
   const lines = text.split(/\r?\n/);
   const scenarios: RequirementScenario[] = [];
+  const globalPriority = parseGlobalPriority(text);
   let i = 0;
 
   while (i < lines.length) {
@@ -182,10 +311,30 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
     const rawName = heading[1].trim();
     const automatable = !isManualScenario(rawName);
     const name = cleanScenarioName(rawName);
-    i += 1;
+
+    // Collect all lines in this scenario block (until next ### or ##)
+    const scenarioStartIdx = i + 1;
+    let scanIdx = scenarioStartIdx;
+    while (
+      scanIdx < lines.length &&
+      !SCENARIO_HEADING_REGEX.test(lines[scanIdx]) &&
+      !/^##\s+/.test(lines[scanIdx])
+    ) {
+      scanIdx += 1;
+    }
+    const scenarioLines = lines.slice(scenarioStartIdx, scanIdx);
+
+    // Parse table-view metadata from scenario header lines (before first **label:**)
+    const testId = parseTestId(scenarioLines);
+    const scenarioPriority = parseScenarioPriority(scenarioLines);
+    const affectedLayer = parseAffectedLayer(scenarioLines);
+
+    i = scenarioStartIdx;
 
     const steps: string[] = [];
     let expectedResult = '';
+    let expectedResultFormatted = '';
+    let inputData: Record<string, string> = {};
     let precondition: string | undefined;
 
     while (i < lines.length && !SCENARIO_HEADING_REGEX.test(lines[i]) && !/^##\s+/.test(lines[i])) {
@@ -212,17 +361,30 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
         continue;
       }
 
+      if (INPUT_DATA_LABEL.test(trimmed)) {
+        const parsed = parseInputDataBlock(lines, i + 1);
+        inputData = parsed.inputData;
+        i = parsed.nextIndex;
+        continue;
+      }
+
+      if (LAYER_LABEL.test(trimmed)) {
+        // Layer was already parsed from scenarioLines; skip the block
+        i += 1;
+        while (i < lines.length) {
+          const t = lines[i].trim();
+          if (BLOCK_TERMINATOR.test(t) || HEADING_REGEX.test(t)) break;
+          i += 1;
+        }
+        continue;
+      }
+
       if (STEPS_LABEL.test(trimmed)) {
         const inline = stripLabel(trimmed, STEPS_LABEL);
         if (inline !== null) {
-          // Inline step (rare) — append as a single step
           steps.push(inline);
           i += 1;
         } else {
-          // Walk from after `**Langkah:**` until the next block terminator or
-          // heading, collecting numbered/bullet items as steps. Non-list
-          // lines are folded onto the previous step. Multiple Langkah blocks
-          // within a single scenario ACCUMULATE rather than overwrite.
           let j = i + 1;
           while (j < lines.length) {
             const t = lines[j].trim();
@@ -246,10 +408,16 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
       if (RESULT_LABEL.test(trimmed)) {
         const inline = stripLabel(trimmed, RESULT_LABEL);
         if (inline !== null) {
-          // Inline result — overwrite (later results replace earlier)
           expectedResult = inline;
+          expectedResultFormatted = inline;
           i += 1;
         } else {
+          // Parse both the joined paragraph (legacy expectedResult) and
+          // the formatted bullet-list version (new expectedResultFormatted)
+          const bulletResult = parseExpectedResultFormatted(lines, i + 1);
+          if (bulletResult.formatted) {
+            expectedResultFormatted = bulletResult.formatted;
+          }
           const block = parseBlock(lines, i + 1, {
             terminator: BLOCK_TERMINATOR,
             mode: 'paragraph',
@@ -270,6 +438,11 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
     if (name.length > 0 && steps.length > 0 && expectedResult.length > 0) {
       const scenarioType = extractScenarioType(rawName);
       const authContext = deriveAuthContext(text);
+
+      // Derive testId fallback: TC-<FEATURETAG>-<NNN> from scenario index
+      const resolvedTestId =
+        testId.length > 0 ? testId : `TC-UNKNOWN-${String(scenarios.length + 1).padStart(3, '0')}`;
+
       const scenario: RequirementScenario = {
         id: `SC-${scenarios.length + 1}`,
         name,
@@ -277,6 +450,12 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
         expectedResult,
         automatable,
         scenarioType,
+        // New table-view fields
+        testId: resolvedTestId,
+        priority: scenarioPriority ?? globalPriority,
+        inputData,
+        expectedResultFormatted: expectedResultFormatted || expectedResult,
+        affectedLayer,
         ...(authContext !== undefined && { authContext }),
       };
       if (precondition) {

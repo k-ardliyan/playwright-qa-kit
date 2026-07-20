@@ -18,6 +18,12 @@ Read [`requirements/_TEMPLATE.md`](../../requirements/_TEMPLATE.md) as the canon
 Example: [`requirements/example-login-extension.md`](../../requirements/example-login-extension.md).
 Golden test plan: [`specs/example-login-extension-test-plan.md`](../../specs/example-login-extension-test-plan.md).
 
+> **Table View fields:** Each scenario in a requirement now carries `testId`, `priority`,
+> `inputData`, `expectedResultFormatted`, and `affectedLayer` parsed by
+> `parse_requirement_scenarios`. These fields MUST flow through to the test plan columns so the
+> Generator can embed them as `test.info().annotations` and the custom reporter can render the
+> Table View dashboard.
+
 ## MCP Dependencies
 
 | Server          | Tool                          | Purpose                                                      |
@@ -92,6 +98,14 @@ Save to `specs/<feature-name>-test-plan.md`.
 | ------------- | ----- | --------------- |
 | SC-01: ...    | ...   | ...             |
 
+For **general mode**, the table per scenario is:
+
+| Test ID    | Scenario Name | Priority | Steps          | Input Data | Expected Result    | Layer |
+| ---------- | ------------- | -------- | -------------- | ---------- | ------------------ | ----- |
+| TC-XXX-001 | SC-01: ...    | high     | 1. ...; 2. ... | key: value | observable outcome | FE    |
+
+For **role-aware mode**, group rows under `## Role: <role>` header and use the same columns above.
+
 ### SC-02: <scenario title> (@failure)
 
 **Role:** <role name, or "general">
@@ -105,9 +119,15 @@ Save to `specs/<feature-name>-test-plan.md`.
 
 ### Required columns
 
+- `Test ID` — TC-XXX-NNN from scenario metadata
 - `Scenario Name` — SC-XX id and title
+- `Priority` — `high` / `medium` / `low` per scenario
 - `Steps` — numbered or semicolon-separated, explicit and executable
+- `Input Data` — key: value pairs, or `-` if none
 - `Expected Result` — observable and assertable
+- `Role` — which role this scenario runs as, or "general"
+- `Auth Context` — exact storage state path or `unauthenticated`
+- `Layer` — affected layers: FE / BE / DB / API, or `-` if none
 
 ### Required per-scenario fields
 

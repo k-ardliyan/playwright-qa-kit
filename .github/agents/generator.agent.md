@@ -16,6 +16,11 @@ Required table columns:
 
 Also read per-scenario fields:
 
+- `Test ID` — TC-XXX-NNN from scenario metadata (used for `setTestMetadata`)
+- `Priority` — `high` / `medium` / `low` per scenario
+- `Input Data` — key: value pairs from requirement (used for `setTestMetadata`)
+- `Expected Result` — observable outcome (used for `setTestMetadata`)
+- `Layer` — affected layers FE / BE / DB / API (used for `setTestMetadata`)
 - `Role` — which role this scenario runs as, or "general"
 - `Auth Context` — storage state path (e.g. `.auth/finance.json`) or `unauthenticated`
 - `Seed` — always `src/tests/seed.spec.ts`
@@ -98,7 +103,65 @@ These files are created by auth setup tests (e.g. `src/tests/auth.setup.ts`). If
 
 See `docs/AUTH-CONTEXT-CONVENTION.md` for full convention and setup guide.
 
-## Skeleton Fallback
+## Table View Metadata — Mandatory Annotation Block
+
+Every generated `test()` MUST include a metadata annotation block as the **first statement** in the test body. This feeds the custom reporter's Table View dashboard and export functions.
+
+Import helpers at the top of each spec file:
+
+```typescript
+import { setTestMetadata, captureActualResult } from '@/support/test-metadata';
+```
+
+### Annotation block pattern
+
+```typescript
+test('TC-LOGIN-001: Login berhasil dengan kredensial valid', async ({ page }, testInfo) => {
+  // WAJIB: metadata block — baris pertama sebelum langkah apapun
+  setTestMetadata({
+    testId: 'TC-LOGIN-001', // dari kolom Test ID di test plan
+    scenarioId: 'SC-01', // dari SC-XX di judul skenario
+    priority: 'high', // dari kolom Priority di test plan
+    expectedResult: 'Toast "Berhasil Login" muncul; URL berubah ke /dashboard',
+    inputData: { email: 'valid', password: 'valid' }, // opsional, dari Input Data
+    role: 'super-admin', // opsional, hanya untuk role-aware spec
+    affectedLayer: ['FE'], // opsional, dari kolom Layer di test plan
+  });
+
+  // ... langkah-langkah test ...
+
+  // WAJIB: capture actual result setelah semua assertion berhasil (satu kali per test)
+  captureActualResult('Toast muncul, URL berubah ke /dashboard confirmed');
+});
+```
+
+### Rules
+
+1. `setTestMetadata()` dipanggil **satu kali**, sebagai statement pertama di dalam test body.
+2. `testId` wajib — ambil dari kolom `Test ID` di test plan.
+3. `priority` wajib — ambil dari kolom `Priority` di test plan.
+4. `expectedResult` wajib — ambil dari kolom `Expected Result` di test plan.
+5. `role` opsional — isi hanya untuk role-aware spec, sesuai role yang dijalankan.
+6. `inputData` opsional — isi jika kolom `Input Data` di test plan tidak kosong/`-`.
+7. `affectedLayer` opsional — isi jika kolom `Layer` di test plan tidak kosong/`-`.
+8. `captureActualResult()` dipanggil **setelah assertion terakhir berhasil** — satu kali per test.
+9. Untuk `test.skip` (manual/skeleton): tetap panggil `setTestMetadata()`, skip `captureActualResult()`.
+10. Jika test gagal sebelum `captureActualResult()` terpanggil, reporter otomatis pakai error message sebagai actual result.
+
+### Skeleton pattern (tetap wajib annotation block)
+
+```typescript
+test.skip('TC-XXX-001: SC-XX: <scenario> — SKELETON: <reason>', async ({ page }, testInfo) => {
+  setTestMetadata({
+    testId: 'TC-XXX-001',
+    scenarioId: 'SC-XX',
+    priority: 'medium',
+    expectedResult: '<expected result from plan>',
+  });
+  // SKELETON — not yet implemented
+  // Reason: <why>
+});
+```
 
 When a scenario cannot be generated fully (unclear steps, missing selector catalog, ambiguous expected result, or auth setup not yet available), generate a **skeleton** instead of skipping silently.
 

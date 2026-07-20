@@ -8,6 +8,43 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Table View dashboard** — custom dashboard now has a toggle between Accordion and Table view
+  - General mode: flat 9-column table (Test ID, Description, Test Step, Input Data, Expected Result, Actual Result, Status, Priority, Notes)
+  - Role-aware mode: table grouped per `ROLE: <role>` section header with row numbering reset per role
+  - Layer badges in Notes column: `FE`, `BE`, `DB`, `API`
+- **Export functions** — three export buttons on Table View toolbar:
+  - Copy for Confluence (wiki markup table)
+  - Copy Data (TSV — paste directly to Google Sheets)
+  - Download CSV (RFC 4180 file download)
+- **`test-metadata.ts`** — new helper module (`src/support/test-metadata.ts`)
+  - `setTestMetadata()` — push table-view annotations at start of test
+  - `captureActualResult()` — record actual result after assertions pass
+- **Requirement format v2** — updated `requirements/_TEMPLATE.md` and examples with new per-scenario fields:
+  - `- **Test ID:** \`TC-XXX-NNN\`` (required)
+  - `**Hasil yang Diharapkan:**` replaces `**Hasil:**` (backward-compat preserved)
+  - `- **Prioritas skenario:**` (optional, per-scenario override)
+  - `- **Layer terdampak:**` (optional, FE/BE/DB/API)
+  - `**Input Data:**` bullet list (optional, structured key: value)
+- **`parse_requirement_scenarios` v2** — parser extracts `testId`, `priority`, `inputData`, `expectedResultFormatted`, `affectedLayer` per scenario
+- **`types.ts` extensions** — `CollectedTestData` gains `testId`, `scenarioId`, `role`, `priority`, `inputData`, `expectedResult`, `actualResult`, `affectedLayer`; `TestSummary` gains `reportMode`, `rolesInScope`, `testCases[]`
+- **Agent instruction updates**:
+  - `planner.agent.md` — test plan table now includes Test ID, Priority, Input Data, Layer columns; role-aware mode groups under `## Role: <role>` headers
+  - `generator.agent.md` — mandatory annotation block pattern with `setTestMetadata()` and `captureActualResult()` in every generated test
+  - `reporter.agent.md` — `PipelineReport` JSON schema adds `testCases[]` array; markdown report adds Test Cases table section (flat for general, grouped for role-aware)
+
+### Changed
+
+- `custom-reporter.ts` — `onTestEnd()` now extracts 6 new annotation fields; `onEnd()` writes extended `TestSummary` including `testCases[]` to `test-summary.json`
+- `build-local-html.ts` / `build-ci-html.ts` — dual panel (Accordion + Table) with ARIA-compliant toggle tabs
+- `shared.ts` — inline JS toggle handler + export button event delegation added to document shell
+- `styles.ts` — new CSS: view toggle, table layout, role section header (teal), priority badges, layer badges, actual result coloring, toolbar
+- `get_test_summary` MCP tool — response now includes `testCases[]`, `reportMode`, `rolesInScope`
+- `get_test_failures` MCP tool — `TestFailure` interface extended with `testId`, `role`, `priority`, `expectedResult`, `actualResult`
+
+## [Unreleased — snapshot/discovery]
+
+### Added
+
 - `snapshot_page` and `discover_pages` MCP tools to capture ARIA snapshots and generate/manage selector catalogs
 - `npm run snapshot:page` and `npm run discover:pages` CLI scripts under `scripts/` to run page snapshotting and discovery from command line
 - Property tests for page snapshotting and discovery tools (`snapshot-page.property.ts`, `discover-pages.property.ts`)

@@ -28,6 +28,10 @@
     "test": "npx playwright test --grep-invert @demo",
     "test:fast": "npm run test",
     "test:demo": "npx playwright test --project=demo --workers=1",
+    "test:demo:roles": "npx playwright test --project=demo --grep @role --workers=1",
+    "test:demo:roles:finance": "npx playwright test --project=demo --grep @finance --workers=1",
+    "test:demo:roles:hrd": "npx playwright test --project=demo --grep @hrd --workers=1",
+    "test:demo:roles:superadmin": "npx playwright test --project=demo --grep @super-admin --workers=1",
     "test:ci": "npm run test",
     "test:property": "tsx scripts/run-property-tests.ts",
     "mcp:build": "npm run install:mcp-server && npx tsc src/utils/env-loader.ts --outDir src/utils --module commonjs --target es2020 --esModuleInterop --declaration --skipLibCheck --ignoreConfig --types node && cd mcp-server && npm run build",
@@ -51,22 +55,22 @@
     "manual:check": "tsx scripts/manual-check.ts"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.75.1",
+    "@dotenvx/dotenvx": "^2.14.0",
     "@eslint/js": "^10.0.1",
-    "@playwright/mcp": "^0.0.77",
+    "@playwright/mcp": "^0.0.78",
     "@playwright/test": "^1.61.1",
     "@types/node": "^20.19.43",
     "@types/prompts": "^2.4.9",
-    "eslint": "^10.6.0",
+    "eslint": "^10.7.0",
     "eslint-plugin-playwright": "^2.10.5",
-    "fast-check": "^4.8.0",
+    "fast-check": "^4.9.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.9.4",
+    "prettier": "^3.9.5",
     "prompts": "^2.4.2",
-    "tsx": "^4.23.0",
+    "tsx": "^4.23.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.63.0"
+    "typescript-eslint": "^8.64.0"
   },
   "lint-staged": {
     "*.ts": [

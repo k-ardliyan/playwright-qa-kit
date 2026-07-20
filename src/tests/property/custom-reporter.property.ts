@@ -38,6 +38,9 @@ interface ReporterRunOutput {
     skipped: number;
     passRate: number;
     timestamp: string;
+    reportMode?: string;
+    rolesInScope?: string[];
+    testCases?: unknown[];
   };
 }
 
@@ -49,12 +52,16 @@ function toReportRelativePath(absolutePath: string): string {
   return path.relative(REPORT_DIR, absolutePath).replace(/\\/g, '/');
 }
 
-function makeSyntheticTest(index: number): TestCase {
+function makeSyntheticTest(
+  index: number,
+  annotations?: Array<{ type: string; description: string }>,
+): TestCase {
   const file = path.join(process.cwd(), 'example/erpku/tests/ui/smoke/smoke.spec.ts');
   return {
-    title: `synthetic-${index}`,
+    title: `TC-SMOKE-${String(index + 1).padStart(3, '0')}: synthetic-${index}`,
     titlePath: () => ['Property Suite', `synthetic-${index}`],
     location: { file },
+    annotations: annotations ?? [],
   } as unknown as TestCase;
 }
 
@@ -125,7 +132,6 @@ async function runReporter(cases: SyntheticCase[], ciValue?: string): Promise<Re
   }
 
   await reporter.onEnd({} as unknown as FullResult);
-
   const html = fs.readFileSync(DASHBOARD_PATH, 'utf8');
   const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf8')) as ReporterRunOutput['summary'];
 
@@ -136,6 +142,215 @@ async function runReporter(cases: SyntheticCase[], ciValue?: string): Promise<Re
   }
 
   return { html, summary };
+}
+
+// ---------------------------------------------------------------------------
+// Property 9: Annotation extraction — testId, priority, role
+// ---------------------------------------------------------------------------
+
+async function property9AnnotationExtraction(): Promise<void> {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.record({
+        testId: fc.constantFrom('TC-LOGIN-001', 'TC-AUTH-002', 'TC-DASH-099'),
+        priority: fc.constantFrom('high', 'medium', 'low'),
+        role: fc.constantFrom('', 'finance', 'super-admin', 'hrd'),
+      }),
+      async ({ testId, priority, role }) => {
+        const reporter = new CustomReporter();
+        reporter.onBegin(
+          {} as unknown as FullConfig,
+          {
+            allTests: () => [{}],
+          } as unknown as Suite,
+        );
+
+        const annotations: Array<{ type: string; description: string }> = [
+          { type: 'testId', description: testId },
+          { type: 'priority', description: priority },
+          { type: 'expectedResult', description: 'Expected outcome' },
+          ...(role ? [{ type: 'role', description: role }] : []),
+        ];
+
+        reporter.onTestEnd(
+          makeSyntheticTest(0, annotations),
+          makeSyntheticResult(0, { status: 'passed', duration: 100 }),
+        );
+
+        await reporter.onEnd({} as unknown as FullResult);
+
+        const summary = JSON.parse(
+          fs.readFileSync(SUMMARY_PATH, 'utf8'),
+        ) as ReporterRunOutput['summary'];
+
+        assert.ok(summary.testCases, 'testCases should be present in summary');
+        assert.strictEqual(summary.testCases!.length, 1);
+
+        const tc = summary.testCases![0] as {
+          testId: string;
+          priority: string;
+          role: string;
+          actualResult: string;
+        };
+
+        assert.strictEqual(tc.testId, testId, 'testId should match annotation');
+        assert.strictEqual(tc.priority, priority, 'priority should match annotation');
+        assert.strictEqual(
+          tc.role,
+          role,
+          'role should match annotation (empty string for general)',
+        );
+        assert.strictEqual(
+          tc.actualResult,
+          'Sesuai dengan expected result',
+          'passed test actualResult fallback',
+        );
+      },
+    ),
+    { numRuns: 8, verbose: false },
+  );
+  console.log('Property 9 passed: annotation extraction — testId, priority, role');
+}
+
+// ---------------------------------------------------------------------------
+// Property 10: reportMode detection
+// ---------------------------------------------------------------------------
+
+async function property10ReportModeDetection(): Promise<void> {
+  // With role annotations → role-aware
+  {
+    const reporter = new CustomReporter();
+    reporter.onBegin(
+      {} as unknown as FullConfig,
+      {
+        allTests: () => [{}, {}],
+      } as unknown as Suite,
+    );
+
+    reporter.onTestEnd(
+      makeSyntheticTest(0, [{ type: 'role', description: 'finance' }]),
+      makeSyntheticResult(0, { status: 'passed', duration: 100 }),
+    );
+    reporter.onTestEnd(
+      makeSyntheticTest(1, [{ type: 'role', description: 'super-admin' }]),
+      makeSyntheticResult(1, { status: 'passed', duration: 100 }),
+    );
+    await reporter.onEnd({} as unknown as FullResult);
+
+    const summary = JSON.parse(
+      fs.readFileSync(SUMMARY_PATH, 'utf8'),
+    ) as ReporterRunOutput['summary'];
+    assert.strictEqual(
+      summary.reportMode,
+      'role-aware',
+      'should be role-aware when role annotations present',
+    );
+    assert.ok(summary.rolesInScope?.includes('finance'), 'rolesInScope should include finance');
+    assert.ok(
+      summary.rolesInScope?.includes('super-admin'),
+      'rolesInScope should include super-admin',
+    );
+  }
+
+  // Without role annotations → general
+  {
+    const reporter = new CustomReporter();
+    reporter.onBegin(
+      {} as unknown as FullConfig,
+      {
+        allTests: () => [{}],
+      } as unknown as Suite,
+    );
+
+    reporter.onTestEnd(
+      makeSyntheticTest(0, []),
+      makeSyntheticResult(0, { status: 'passed', duration: 100 }),
+    );
+    await reporter.onEnd({} as unknown as FullResult);
+
+    const summary = JSON.parse(
+      fs.readFileSync(SUMMARY_PATH, 'utf8'),
+    ) as ReporterRunOutput['summary'];
+    assert.strictEqual(summary.reportMode, 'general', 'should be general when no role annotations');
+    assert.deepStrictEqual(
+      summary.rolesInScope,
+      [],
+      'rolesInScope should be empty for general mode',
+    );
+  }
+
+  console.log('Property 10 passed: reportMode detection (general vs role-aware)');
+}
+
+// ---------------------------------------------------------------------------
+// Property 11: actualResult fallback — failed test uses error message
+// ---------------------------------------------------------------------------
+
+async function property11ActualResultFallback(): Promise<void> {
+  const reporter = new CustomReporter();
+  reporter.onBegin(
+    {} as unknown as FullConfig,
+    {
+      allTests: () => [{}],
+    } as unknown as Suite,
+  );
+
+  // No actualResult annotation + failed status → should use errorMessage
+  reporter.onTestEnd(
+    makeSyntheticTest(0, [
+      { type: 'testId', description: 'TC-FAIL-001' },
+      { type: 'expectedResult', description: 'Should have worked' },
+    ]),
+    makeSyntheticResult(0, { status: 'failed', duration: 200 }),
+  );
+
+  await reporter.onEnd({} as unknown as FullResult);
+
+  const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf8')) as ReporterRunOutput['summary'];
+  const tc = summary.testCases![0] as { actualResult: string; testId: string };
+
+  assert.strictEqual(tc.testId, 'TC-FAIL-001');
+  assert.notStrictEqual(tc.actualResult, '', 'failed test actualResult should not be empty');
+  assert.notStrictEqual(
+    tc.actualResult,
+    'Sesuai dengan expected result',
+    'failed test should not use passed fallback',
+  );
+
+  console.log('Property 11 passed: actualResult fallback for failed tests');
+}
+
+// ---------------------------------------------------------------------------
+// Property 12: testId derive from title when annotation absent
+// ---------------------------------------------------------------------------
+
+async function property12TestIdDeriveFromTitle(): Promise<void> {
+  const reporter = new CustomReporter();
+  reporter.onBegin(
+    {} as unknown as FullConfig,
+    {
+      allTests: () => [{}],
+    } as unknown as Suite,
+  );
+
+  // Title starts with TC-XXX pattern but no testId annotation
+  reporter.onTestEnd(
+    makeSyntheticTest(0, []), // annotations = [], title = 'TC-SMOKE-001: synthetic-0'
+    makeSyntheticResult(0, { status: 'passed', duration: 50 }),
+  );
+
+  await reporter.onEnd({} as unknown as FullResult);
+
+  const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf8')) as ReporterRunOutput['summary'];
+  const tc = summary.testCases![0] as { testId: string };
+
+  assert.strictEqual(
+    tc.testId,
+    'TC-SMOKE-001',
+    'testId should be derived from title prefix when annotation absent',
+  );
+
+  console.log('Property 12 passed: testId derived from title when annotation absent');
 }
 
 async function property5ReporterOutputCompleteness(): Promise<void> {
@@ -305,6 +520,10 @@ async function main(): Promise<void> {
     await property6ReporterTraceLinkGeneration();
     await property7ReporterCiModeSelection();
     await property8ReporterAttachmentRendering();
+    await property9AnnotationExtraction();
+    await property10ReportModeDetection();
+    await property11ActualResultFallback();
+    await property12TestIdDeriveFromTitle();
   } finally {
     cleanReportArtifacts();
   }

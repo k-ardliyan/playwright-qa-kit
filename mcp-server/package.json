@@ -14,7 +14,7 @@
     "dev:http": "tsx src/index.ts"
   },
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.75.1",
+    "@dotenvx/dotenvx": "^2.14.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "^1.61.1",
     "playwright": "^1.61.1"

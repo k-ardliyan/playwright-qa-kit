@@ -52,7 +52,9 @@ const OBSERVABLE_INDICATORS = [
 ];
 
 const STEPS_LABEL = /^\*\*(?:Langkah|Steps?):\*\*/im;
-const RESULT_LABEL = /^\*\*(?:Hasil|Expected(?:\s+Result)?|Outcome):\*\*/im;
+const RESULT_LABEL =
+  /^\*\*(?:Hasil(?:\s+yang\s+Diharapkan)?|Expected(?:\s+Result)?|Outcome):\*\*/im;
+const TEST_ID_LABEL = /^\s*-\s+\*\*Test\s+ID:\*\*\s*`?(TC-[A-Z0-9-]+)`?/im;
 const PRECONDITION_LABEL = /^\*\*(?:Prekondisi|Precondition|Given):\*\*/im;
 
 function hasTitle(text: string): boolean {
@@ -191,13 +193,22 @@ export function validateRequirementText(text: string): ValidateRequirementOutput
   for (const block of scenarioBlocks) {
     const hasSteps = STEPS_LABEL.test(block.body);
     const hasResult = RESULT_LABEL.test(block.body);
+    const hasTestId = TEST_ID_LABEL.test(block.body);
 
     if (!hasSteps || !hasResult) {
       violations.push({
         ruleName: 'scenario_structure',
         severity: 'error',
-        message: `Scenario "${block.name}" must include **Langkah:** (or **Steps:**) and **Hasil:** (or **Expected Result:**).`,
-        scenarioName: block.name,
+        message: `Scenario "${block.name}" must include **Langkah:** (or **Steps:**) and **Hasil yang Diharapkan:** (or **Expected Result:**).`,
+      });
+      continue;
+    }
+
+    if (!hasTestId) {
+      violations.push({
+        ruleName: 'missing_test_id',
+        severity: 'warn',
+        message: `Scenario "${block.name}" is missing a Test ID. Add \`- **Test ID:** \\\`TC-<MODUL>-NNN\\\`\` for Table View report support.`,
       });
     }
 

@@ -25,8 +25,17 @@
 
 ### SC-01: Login Berhasil dengan Email dan Password Valid (@success)
 
+- **Test ID:** `TC-AUTH-001`
+- **Prioritas skenario:** `high`
+- **Layer terdampak:** `FE` `BE`
+
 **Prekondisi:** Pengguna berada di halaman `/login`, akun `qa.test@example.com` terdaftar dengan
 password `Test1234!`, user belum login.
+
+**Input Data:**
+
+- email: qa.test@example.com
+- password: Test1234!
 
 **Langkah:**
 
@@ -34,7 +43,7 @@ password `Test1234!`, user belum login.
 2. Ketik `Test1234!` di field Password
 3. Klik tombol "Masuk"
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - URL browser berubah ke `/dashboard`
 - Header dashboard menampilkan teks "Selamat datang, QA Test"
@@ -45,8 +54,16 @@ password `Test1234!`, user belum login.
 
 ### SC-02: Login Gagal dengan Password Salah (@failure)
 
-**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` ada, password yang dipakai salah
-(`WrongPass`).
+- **Test ID:** `TC-AUTH-002`
+- **Prioritas skenario:** `high`
+- **Layer terdampak:** `FE` `BE`
+
+**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` ada, password yang dipakai salah.
+
+**Input Data:**
+
+- email: qa.test@example.com
+- password: WrongPass
 
 **Langkah:**
 
@@ -54,7 +71,7 @@ password `Test1234!`, user belum login.
 2. Ketik `WrongPass` di field Password
 3. Klik tombol "Masuk"
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - URL tetap di `/login` (tidak redirect)
 - Muncul pesan error merah di bawah form: "Email atau password salah"
@@ -65,7 +82,16 @@ password `Test1234!`, user belum login.
 
 ### SC-03: Submit dengan Email Kosong (@failure)
 
+- **Test ID:** `TC-AUTH-003`
+- **Prioritas skenario:** `medium`
+- **Layer terdampak:** `FE`
+
 **Prekondisi:** Pengguna di `/login`, field Email kosong.
+
+**Input Data:**
+
+- email: (kosong)
+- password: Test1234!
 
 **Langkah:**
 
@@ -73,18 +99,27 @@ password `Test1234!`, user belum login.
 2. Ketik `Test1234!` di field Password
 3. Klik tombol "Masuk"
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
-- Submit form ter-block (HTML5 validation muncul: "Please fill out this field" di field Email)
+- Submit form ter-block (validasi muncul di field Email)
 - URL tetap di `/login`
-- Tidak ada request POST ke `/api/login` di Network tab
+- Tidak ada request POST ke `/api/login`
 
 ---
 
 ### SC-04: Akun Terkunci Setelah 5 Kali Gagal (@failure)
 
+- **Test ID:** `TC-AUTH-004`
+- **Prioritas skenario:** `medium`
+- **Layer terdampak:** `FE` `BE`
+
 **Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` sudah pernah gagal login 4 kali
 berturut-turut.
+
+**Input Data:**
+
+- email: qa.test@example.com
+- password: WrongPass
 
 **Langkah:**
 
@@ -92,7 +127,7 @@ berturut-turut.
 2. Ketik `WrongPass` di field Password
 3. Klik tombol "Masuk" (ini kegagalan ke-5)
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - URL tetap di `/login`
 - Muncul pesan error: "Akun terkunci karena 5 kali gagal. Coba lagi dalam 15 menit."
@@ -103,6 +138,9 @@ berturut-turut.
 
 ### SC-05: Login dengan Google OAuth (@manual)
 
+- **Test ID:** `TC-AUTH-005`
+- **Prioritas skenario:** `low`
+
 **Prekondisi:** Pengguna di `/login`, punya akun Google aktif, popup OAuth tidak di-block browser.
 
 **Langkah:**
@@ -111,7 +149,7 @@ berturut-turut.
 2. Pilih akun Google di popup OAuth
 3. Klik tombol "Allow" di halaman permission Google
 
-**Hasil:**
+**Hasil yang Diharapkan:**
 
 - URL kembali ke `/dashboard?oauth=success`
 - Session tersimpan, greeting "Selamat datang" tampil

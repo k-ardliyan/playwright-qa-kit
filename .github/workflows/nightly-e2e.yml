@@ -84,10 +84,10 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -132,7 +132,7 @@ jobs:
             --shard=${{ matrix.shardIndex }}/$SHARD_TOTAL
 
       - name: Upload Playwright HTML Report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
@@ -140,7 +140,7 @@ jobs:
           retention-days: 30
 
       - name: Upload test results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
@@ -162,10 +162,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Download all report artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
           pattern: playwright-report-*
           path: downloaded-reports/
@@ -321,7 +321,7 @@ jobs:
 
       - name: Fallback - Upload reports as workflow artifacts
         if: steps.deployment.outcome == 'failure' || steps.upload-pages.outcome == 'failure'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-reports-${{ steps.prepare-reports.outputs.run_date }}-run${{ github.run_number }}
           path: pages-site/${{ steps.prepare-reports.outputs.report_dir }}/

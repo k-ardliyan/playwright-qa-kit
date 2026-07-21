@@ -39,11 +39,11 @@ npm run setup:check         # verify setup setelah selesai
 
 ## Konfigurasi MCP di IDE
 
-| Server            | Fungsi                                                 |
-| ----------------- | ------------------------------------------------------ |
-| `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`) |
-| `playwright-test` | Menjalankan tes (`run_tests`)                          |
-| `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan, archive   |
+| Server            | Fungsi                                                                                                          |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`)                                                          |
+| `playwright-test` | Menjalankan tes (`run_tests`)                                                                                   |
+| `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
 
 **VS Code (Codex):** Utamakan `.mcp.json` di root project. Gunakan `.vscode/mcp.json` hanya bila editor membutuhkan workspace MCP config.
 
@@ -191,7 +191,10 @@ Generate Playwright tests dari specs/nama-fitur-test-plan.md:
 1. Baca kolom Role dan Auth Context per scenario.
 2. Jika role-aware, buat satu file per role (src/tests/<fitur>-<role>.spec.ts).
 3. Untuk halaman baru: live verification via playwright-cli (preferred) atau browser_* MCP tools.
-   Untuk halaman di selector-catalog: baca JSON index, copy primary locator ke POM method.
+   Untuk halaman di selector-catalog: cek apakah `src/pages/<PomName>.ts` sudah ada.
+   - Ada → import via fixture, gunakan langsung.
+   - Belum ada → jalankan `generate_page_object` (playwright-qa) untuk scaffold otomatis, lalu QA register di project.fixture.ts.
+   - Tidak ada catalog → `snapshot_page` dulu, baru `generate_page_object`.
 4. Tulis file di src/tests/ (kebab-case .spec.ts, import @/fixtures/base.fixture).
 5. Scenario (@access-restriction): assert penolakan akses — redirect, error message, atau elemen tidak ada.
 6. Scenario (@failure): assert pesan error atau state validasi gagal.
@@ -221,6 +224,26 @@ Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login
 3. Jika perlu crawl banyak halaman, pakai discover_pages sebagai gantinya
 ```
 
+### Snapshot + Generate POM scaffold (Path B)
+
+```
+Buat POM scaffold dari halaman https://staging.app/login:
+
+1. snapshot_page (playwright-qa) — url, featureName=login, pageName=login-form
+2. generate_page_object (playwright-qa) — featureName=login, pageName=login-form
+   → Hasilkan src/pages/LoginForm.ts (scaffold, tidak overwrite file yang sudah ada)
+3. QA review scaffold: rename locator, tambah goto(), tambah business methods (doLogin dll)
+4. Register POM di src/fixtures/project.fixture.ts:
+   import { LoginForm } from '@/pages/LoginForm';
+   export const projectTest = base.extend({
+     loginForm: async ({ page }, use) => { await use(new LoginForm(page)); }
+   });
+5. Tambah "POM yang dibutuhkan: LoginForm" di requirement
+6. Jalankan pipeline normal — Generator akan import LoginForm otomatis
+```
+
+> **Catatan:** `generate_page_object` skip otomatis jika file sudah ada. Gunakan `force=true` untuk regenerate (file lama di-backup ke `src/pages/.bak/`).
+
 ---
 
 ## Kamus Istilah
@@ -232,6 +255,9 @@ Snapshot halaman https://staging.app/login lalu simpan ke selector-catalog/login
 | Kode tes                    | `src/tests/**/*.spec.ts`                                |
 | Tes per role                | `src/tests/<fitur>-<role>.spec.ts`                      |
 | Auth state per role         | `.auth/<role>.json`                                     |
+| Katalog selector            | `selector-catalog/<fitur>/<halaman>.json`               |
+| Scaffold POM                | `src/pages/<NamaHalaman>.ts`                            |
+| Daftarkan POM               | `src/fixtures/project.fixture.ts`                       |
 | Server QA custom            | `playwright-qa`                                         |
 | Cek kesehatan               | tool `health_check`                                     |
 | Validasi format             | `validate_requirement` / `npm run validate:requirement` |
@@ -316,11 +342,12 @@ Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` da
 
 ## Batasan Normal (Bukan Bug)
 
-- **Halaman baru** tanpa POM → Generator butuh 1–2 iterasi (`browser_snapshot` + Heal).
+- **Halaman baru** tanpa POM → Generator pakai inline locators dari selector-catalog. POM opsional — lihat [Path A vs Path B](writing-requirements.md#path-a-vs-path-b-kapan-pakai-pom).
 - **`(@manual)`** → tes di-skip otomatis (CAPTCHA, email nyata, biometric).
 - **Healer** → menggunakan prioritization berbasis pattern; tidak ada cap arbitrer.
 - **Role auth file** → `.auth/<role>.json` harus dibuat dulu via auth setup test.
 - **Environment** → tiap QA pakai `local.env` sendiri.
+- **Selector catalog** → di-cache per-hash. `snapshot_page` skip re-capture kalau UI tidak berubah — aman di-run berulang.
 
 ---
 

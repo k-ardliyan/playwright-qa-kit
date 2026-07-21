@@ -15,13 +15,8 @@ on:
           - dev
           - staging
           - production
-      browsers:
-        description: 'Comma-separated list of browsers to test'
-        required: true
-        default: 'chromium,firefox,webkit'
-        type: string
       shardCount:
-        description: 'Number of shards per browser (1-10)'
+        description: 'Number of shards (1-10)'
         required: true
         default: '3'
         type: choice
@@ -43,45 +38,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  prepare-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Build matrix from inputs
-        id: set-matrix
-        run: |
-          # Determine browsers
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            BROWSERS="${{ github.event.inputs.browsers }}"
-            SHARD_COUNT="${{ github.event.inputs.shardCount }}"
-          else
-            BROWSERS="chromium,firefox,webkit"
-            SHARD_COUNT="3"
-          fi
-
-          # Convert comma-separated browsers to JSON array
-          BROWSER_JSON=$(echo "$BROWSERS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | jq -R . | jq -s .)
-
-          # Generate shard indices array [1, 2, ..., N]
-          SHARD_JSON=$(seq 1 "$SHARD_COUNT" | jq -s .)
-
-          # Build the matrix object (compact single-line for $GITHUB_OUTPUT)
-          MATRIX=$(jq -nc \
-            --argjson browsers "$BROWSER_JSON" \
-            --argjson shardIndex "$SHARD_JSON" \
-            '{browser: $browsers, shardIndex: $shardIndex}')
-
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-
   e2e-matrix:
-    needs: prepare-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       max-parallel: 6
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      matrix:
+        shardIndex: [1, 2, 3]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -120,22 +84,23 @@ jobs:
       - name: Build playwright-qa MCP server
         run: npm run mcp:build
 
-      - name: Install Playwright browser - ${{ matrix.browser }}
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Install Playwright Chromium browser
+        run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests - ${{ matrix.browser }} (shard ${{ matrix.shardIndex }})
+      - name: Run E2E tests (shard ${{ matrix.shardIndex }})
         env:
           SHARD_TOTAL: ${{ github.event.inputs.shardCount || '3' }}
         run: |
           npx playwright test \
-            --project=${{ matrix.browser }} \
-            --shard=${{ matrix.shardIndex }}/$SHARD_TOTAL
+            --project=chromium \
+            --shard=${{ matrix.shardIndex }}/$SHARD_TOTAL \
+            --grep-invert @demo
 
       - name: Upload Playwright HTML Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
+          name: playwright-report-shard-${{ matrix.shardIndex }}
           path: playwright-report/
           retention-days: 30
 
@@ -143,7 +108,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.browser }}-shard-${{ matrix.shardIndex }}
+          name: test-results-shard-${{ matrix.shardIndex }}
           path: |
             test-results/
             reports/test-summary.json

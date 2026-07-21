@@ -35,6 +35,19 @@ Also read metadata from the source requirement via `normalize_requirements` when
 | `playwright-qa` | `validate_generated_tests` | Validate generated spec files after generation                |
 | `playwright-qa` | `snapshot_page`            | Capture ARIA + selector catalog for a specific page           |
 
+### POM Decision (Before Generating Spec)
+
+Check if `metadata.pomRequired` lists a POM. If yes:
+
+1. Check if `src/pages/<PomName>.ts` exists
+   - Exists → import and use it (current behavior)
+   - Missing:
+     a. Check if `selector-catalog/<feature>/<page>.json` exists
+     b. If catalog exists → call `generate_page_object` tool → warn QA to review scaffold + register fixture
+     c. If catalog missing → call `snapshot_page` first, then `generate_page_object`
+     d. Output: "⚠️ POM scaffold created. Review TODOs and register in src/fixtures/project.fixture.ts before running."
+2. If no `pomRequired` → generate with inline locators (default behavior)
+
 ### Selector Catalog Reuse (Token-Efficient Locator Discovery)
 
 Before calling `browser_snapshot` for live verification, check `selector-catalog/<featureName>/<pageName>.json`. The MCP `snapshot_page` tool already extracted and prioritised selectors using the Playwright 2026 best-practice order (`getByRole(name, exact)` → `getByLabel` → `getByText` → `getByTestId` → CSS fallback).

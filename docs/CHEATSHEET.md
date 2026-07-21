@@ -19,15 +19,20 @@ npm run setup:check && npm run health:check
 ## Daily Flow
 
 ```bash
-# 1. Tulis requirement
+# PATH A — langsung pipeline (default, untuk QA pemula)
 cp requirements/_TEMPLATE.md requirements/fitur-saya.md
-
-# 2. Validasi + dapat prompt agent
 npm run qa:run -- requirements/fitur-saya.md
+start reports/custom-dashboard.html   # Windows
+open  reports/custom-dashboard.html   # Mac
 
-# 3. Buka report
-start reports/custom-dashboard.html    # Windows
-open reports/custom-dashboard.html     # Mac
+# PATH B — dengan POM (untuk fitur reusable atau role-aware)
+# 1. Snapshot halaman (sekali, di-cache)
+# snapshot_page (playwright-qa) — url, featureName, pageName
+# 2. Generate scaffold
+# generate_page_object (playwright-qa) — featureName, pageName
+# 3. Edit src/pages/<Class>.ts + register di src/fixtures/project.fixture.ts
+# 4. Lanjut pipeline normal
+npm run qa:run -- requirements/fitur-saya.md
 ```
 
 ---
@@ -42,6 +47,25 @@ open reports/custom-dashboard.html     # Mac
 | `npm test`                          | Jalankan semua test                              |
 | `npm run test:smoke`                | Cuma smoke test                                  |
 | `npm run health:check`              | Cek MCP + env                                    |
+
+---
+
+## POM Workflow (Path B — opsional)
+
+```
+# 1. Snapshot halaman → catalog tersimpan permanen
+snapshot_page (playwright-qa) — url, featureName, pageName
+
+# 2. Generate scaffold dari catalog
+generate_page_object (playwright-qa) — featureName, pageName
+→ src/pages/<ClassName>.ts (skip jika sudah ada)
+
+# 3. Edit scaffold + register di src/fixtures/project.fixture.ts
+
+# 4. Pipeline berjalan normal — Generator auto-import POM
+```
+
+> Path A (tanpa POM): langsung pipeline, Generator pakai inline locators — cukup untuk QA pemula.
 
 ---
 

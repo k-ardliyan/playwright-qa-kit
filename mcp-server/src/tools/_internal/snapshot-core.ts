@@ -111,8 +111,9 @@ const INTERACTIVE_ROLES = new Set([
   'heading',
 ]);
 
+// Captures: [1] role token, [2] quoted name, [3] unquoted name (no brackets)
 const FRAGMENT_LINE_RE =
-  /^\s*-\s+(?:(?:(?:[a-zA-Z][\w-]*)\s*)?(?:"([^"]+)"|([^\s[]+)))?(?:\s+\[([^\]]+)\])?/;
+  /^\s*-\s+([a-zA-Z][\w-]*)(?:\s+(?:"([^"]+)"|([^\s["]+)))?(?:\s+\[[^\]]*\])?/;
 
 interface AriaNode {
   raw: string;
@@ -129,13 +130,12 @@ function parseAriaTree(yaml: string): AriaNode[] {
     if (trimmed.length === 0) continue;
     const match = trimmed.match(FRAGMENT_LINE_RE);
     if (!match) continue;
-    const name = match[1] ?? match[2] ?? null;
-    const role = match[3] ?? null;
-    if (!role && !name) continue;
+    const role = match[1].toLowerCase();
+    const name = match[2] ?? match[3] ?? null;
     nodes.push({
       raw: trimmed,
       indent: line.search(/\S/),
-      role: role ? role.trim().toLowerCase() : null,
+      role,
       name: name ? name.trim() : null,
     });
   }

@@ -17,6 +17,7 @@ import { validateRequirement } from './validate-requirement';
 import { discoverPages } from './discover-pages';
 import { snapshotPage } from './snapshot-page';
 import { archiveReport } from './archive-report';
+import { generatePageObject } from './generate-page-object';
 import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -272,6 +273,38 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     },
     handler: (args) =>
       archiveReport(args as { runId: string; reportPath: string; jsonReportPath?: string }),
+  },
+  {
+    name: 'generate_page_object',
+    description:
+      'Generate TypeScript POM scaffold from selector catalog JSON. Never overwrites existing files unless force=true. Returns scaffold with grouped locators, TODO markers for business methods, and warnings for fragile selectors.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        featureName: {
+          type: 'string',
+          description: 'Feature name (folder in selector-catalog/).',
+        },
+        pageName: {
+          type: 'string',
+          description: 'Page name (JSON file in selector-catalog/<feature>/).',
+        },
+        className: {
+          type: 'string',
+          description: 'Optional class name (default: PascalCase of pageName).',
+        },
+        outputPath: {
+          type: 'string',
+          description: 'Optional output path (default: src/pages/<ClassName>.ts).',
+        },
+        force: {
+          type: 'boolean',
+          description: 'Overwrite existing file (default: false).',
+        },
+      },
+      required: ['featureName', 'pageName'],
+    },
+    handler: (args) => generatePageObject(args),
   },
 ];
 

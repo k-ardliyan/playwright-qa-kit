@@ -6,6 +6,16 @@ Setup mesin dan pipeline: [GUIDE.md](GUIDE.md)
 
 ---
 
+## Path A vs Path B: Kapan Pakai POM?
+
+**Path A (default — tanpa POM):** Fitur baru, skenario sederhana, QA pemula. Generator pakai inline locators dari catalog → test langsung jalan. Tidak perlu buat POM sama sekali.
+
+**Path B (reusable — dengan POM):** Fitur dipakai >2 spec, role-aware, atau butuh maintainability jangka panjang. QA jalankan `snapshot_page` → `generate_page_object` → edit scaffold → register di `src/fixtures/project.fixture.ts` → tambah field "POM yang dibutuhkan" di requirement.
+
+Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
+
+---
+
 ## Alur kerja
 
 1. Duplikat [`_TEMPLATE.md`](../requirements/_TEMPLATE.md) → `requirements/nama-fitur.md`.

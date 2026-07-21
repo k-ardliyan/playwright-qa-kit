@@ -265,6 +265,7 @@ async function phase0(_state: WizardState): Promise<boolean> {
   } else {
     printError({
       title: 'Node.js terlalu lama: ' + process.versions.node,
+      detail: 'Versi Node.js harus >= 20.19.0',
       hint: 'Install Node.js >= 20.19.0 dari https://nodejs.org/',
       exitCode: EXIT.FIXABLE,
     });
@@ -640,7 +641,8 @@ async function phase4(state: WizardState): Promise<void> {
   } else {
     printError({
       title: '.mcp.json tidak ditemukan',
-      hint: 'File ini seharusnya ada di root project. Restore dari git.',
+      detail: 'File ini seharusnya ada di root project.',
+      hint: 'Restore dari git.',
       exitCode: EXIT.ESCALATE,
     });
   }
@@ -988,6 +990,8 @@ async function main(): Promise<void> {
     await phase2(state);
   } else if (state.completedPhases.includes(2)) {
     printOk('[Phase 2] Kredensial sudah dikonfigurasi — skip');
+    printInfo('Mau ganti / tambah role? Jalankan: npm run env:edit');
+    printInfo('Atau ulang Phase 2: npm run setup:wizard -- --from-phase=2');
   }
 
   // Phase 3: Install

@@ -333,10 +333,13 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 | `APP_ENV`                                             | Pilih file `environments/{name}.env` (local, dev, staging, prod) |
 | `ENV_NAME`                                            | Label runtime di test (logging)                                  |
 | `BASE_URL`                                            | URL aplikasi                                                     |
-| `TEST_USER_EMAIL` / `USERNAME` / `PHONE` / `PASSWORD` | Kredensial QA                                                    |
+| `TEST_USER_EMAIL` / `USERNAME` / `PHONE` / `PASSWORD` | Kredensial QA default                                            |
+| `{ROLE}_EMAIL` / `{ROLE}_PASSWORD`                    | Kredensial multi-role (mis. `FINANCE_EMAIL`)                     |
 | `PLAYWRIGHT_CONFIG`                                   | Path config Playwright (default `playwright.config.ts`)          |
 
 Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` dari GitHub Secrets.
+
+**Day-2 (ganti password / tambah role):** `npm run env:edit` — lihat **[CREDENTIALS.md](CREDENTIALS.md)**.
 
 ---
 

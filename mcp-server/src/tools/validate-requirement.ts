@@ -12,6 +12,7 @@ export interface RequirementViolation {
   severity: 'error' | 'warn';
   message: string;
   scenarioName?: string;
+  suggestion?: string;
 }
 
 export interface ValidateRequirementOutput {

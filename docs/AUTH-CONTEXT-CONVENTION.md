@@ -2,6 +2,11 @@
 
 Dokumen ini mendefinisikan konvensi penyimpanan auth state per role untuk framework Playwright QA ini.
 
+> **Kelola kredensial (password, tambah/hapus role, encrypt):** lihat **[CREDENTIALS.md](CREDENTIALS.md)** — `npm run env:edit`.
+>
+> **Path auth setup (template core):** `src/support/auth.setup.ts` (di-generate `setup:wizard` / menu env:edit).  
+> Adapter ERPKU sample: `example/erpku/support/auth.setup.ts`.
+
 ---
 
 ## Struktur Direktori
@@ -39,13 +44,22 @@ Untuk role baru: gunakan nama role lowercase dengan hyphen, simpan di `.auth/<ro
 
 ## Cara Membuat Auth Setup Test
 
-Buat file `src/tests/auth.setup.ts` untuk setiap role yang dibutuhkan:
+**Disarankan:** generate lewat `npm run setup:wizard` (Phase 5) atau `npm run env:edit` → _Regenerasi auth.setup.ts_.  
+File default: **`src/support/auth.setup.ts`**.
+
+Jalankan:
+
+```bash
+npx playwright test src/support/auth.setup.ts --project=setup
+```
+
+Contoh manual (multi-role) di `src/support/auth.setup.ts`:
 
 ```typescript
 import { test as setup } from '@playwright/test';
 
 // Setup untuk role finance
-setup('authenticate as finance', async ({ page }) => {
+setup('authenticate:finance', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(process.env.FINANCE_EMAIL!);
   await page.getByLabel('Password').fill(process.env.FINANCE_PASSWORD!);
@@ -57,7 +71,7 @@ setup('authenticate as finance', async ({ page }) => {
 });
 
 // Setup untuk role super-admin
-setup('authenticate as super-admin', async ({ page }) => {
+setup('authenticate:super-admin', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(process.env.SUPER_ADMIN_EMAIL!);
   await page.getByLabel('Password').fill(process.env.SUPER_ADMIN_PASSWORD!);
@@ -179,12 +193,12 @@ export default defineConfig({
 
 ## Environment Variables
 
-Simpan kredensial per role di `.env` (jangan commit):
+Simpan kredensial di `environments/local.env` (jangan commit). Naming framework:
 
 ```env
-# Default user
-USER_EMAIL=user@example.com
-USER_PASSWORD=password123
+# Default user (wajib untuk single-role)
+TEST_USER_EMAIL=user@example.com
+TEST_USER_PASSWORD=password123
 
 # Super Admin
 SUPER_ADMIN_EMAIL=superadmin@example.com
@@ -198,6 +212,8 @@ FINANCE_PASSWORD=financepassword
 HRD_EMAIL=hrd@example.com
 HRD_PASSWORD=hrdpassword
 ```
+
+Edit aman setelah encrypt: `npm run env:edit` — lihat [CREDENTIALS.md](CREDENTIALS.md).
 
 ---
 
@@ -224,8 +240,8 @@ Jika file `.auth/<role>.json` belum ada, Generator akan menambahkan komentar:
 
 ## Checklist Sebelum Jalankan Role-Aware Test
 
-- [ ] `.env` sudah diisi dengan kredensial per role
-- [ ] Auth setup test sudah ada di `src/tests/auth.setup.ts`
-- [ ] File `.auth/<role>.json` sudah dibuat (`npx playwright test auth.setup.ts`)
-- [ ] `playwright.config.ts` sudah punya setup projects dan dependencies
+- [ ] `environments/local.env` sudah diisi kredensial per role (`TEST_USER_*` / `{ROLE}_*`)
+- [ ] Auth setup ada di `src/support/auth.setup.ts` (wizard / env:edit)
+- [ ] File `.auth/<role>.json` sudah dibuat: `npx playwright test src/support/auth.setup.ts --project=setup`
+- [ ] Project `setup` ada di `playwright.config.ts` (template core sudah include)
 - [ ] Test file menggunakan `test.use({ storageState: '.auth/<role>.json' })` di level describe

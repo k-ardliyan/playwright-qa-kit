@@ -119,7 +119,8 @@ copy environments\local.env.example environments\local.env
 cp environments/local.env.example environments/local.env
 ```
 
-2. Fill universal keys: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, etc.
+2. Fill universal keys: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, etc.  
+   Day-2 edits (password / multi-role): `npm run env:edit` — see [CREDENTIALS.md](CREDENTIALS.md).
 
 3. **Adapter env overlay (forks with a Reference Adapter):** commit `{adapter}/environments/{name}.env.example` with app-specific non-secret defaults (e.g. `AUTH_*` paths). In the adapter `playwright.config.ts`, call:
 

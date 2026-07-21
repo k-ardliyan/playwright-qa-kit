@@ -56,11 +56,15 @@ npm run health:check
 
 Framework memakai `dotenvx` untuk enkripsi otomatis. Setelah wizard atau `setup:check` dijalankan, nilai di `local.env` berubah menjadi `encrypted:BA+84DB/...` — ini **normal dan aman**. Kunci dekripsi disimpan di `~/.dotenvx-keys/playwright-qa-kit/`.
 
-Untuk edit ulang nilai di `local.env`:
-
 ```bash
+# Ganti password / tambah / hapus role (day-2)
 npm run env:edit
+
+# Refresh session login
+npx playwright test src/support/auth.setup.ts --project=setup
 ```
+
+Panduan lengkap: **[docs/CREDENTIALS.md](docs/CREDENTIALS.md)**.
 
 > **Stuck di setup?** Cek [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) untuk 10 error paling umum + solusinya. Atau mulai dari panduan pemula di [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 

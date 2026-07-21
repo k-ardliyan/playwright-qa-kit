@@ -8,6 +8,15 @@
 
 ```bash
 npm install
+npm run setup:wizard
+npm run setup:check && npm run health:check
+# ganti kredensial nanti: npm run env:edit
+# refresh session: npx playwright test src/support/auth.setup.ts --project=setup
+```
+
+Manual (tanpa wizard):
+
+```bash
 npx playwright install --with-deps chromium
 npm run mcp:build
 cp environments/local.env.example environments/local.env   # isi BASE_URL + kredensial
@@ -43,6 +52,7 @@ npm run qa:run -- requirements/fitur-saya.md
 | ----------------------------------- | ------------------------------------------------ |
 | `npm run qa:run -- X`               | Happy path 1-command (validate + prompt + smoke) |
 | `npm run validate:requirement -- X` | Cek requirement saja                             |
+| `npm run env:edit`                  | Ganti password / tambah / hapus role             |
 | `npm run manual:check`              | List semua skenario `(@manual)`                  |
 | `npm test`                          | Jalankan semua test                              |
 | `npm run test:smoke`                | Cuma smoke test                                  |
@@ -114,6 +124,7 @@ generate_page_object (playwright-qa) — featureName, pageName
 | Contoh requirement baik | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |
 | Panduan `@manual`       | [docs/MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md)                   |
 | Auth per role           | [docs/AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)     |
+| Kredensial day-2        | [docs/CREDENTIALS.md](CREDENTIALS.md)                             |
 
 ---
 

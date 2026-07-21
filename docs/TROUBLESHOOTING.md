@@ -91,15 +91,30 @@ npm run setup:wizard 2>&1 | head -20
 
 **Fix:**
 
-1. **Opsi A** — Minta kunci dari anggota tim yang punya akses (share `.env.keys` via 1Password/Vault yang aman)
+1. **Opsi A** — Minta kunci dari anggota tim yang punya akses (share `.env.keys` via 1Password/Vault yang aman). Simpan ke `~/.dotenvx-keys/playwright-qa-kit/.env.keys`
 2. **Opsi B** — Buat ulang dari nol:
    ```bash
    rm environments/local.env
    cp environments/local.env.example environments/local.env
-   # Edit file: isi BASE_URL dan kredensial
-   npm run env:edit  # atau edit manual lalu encrypt manual:
+   # Isi BASE_URL + kredensial (boleh lewat editor — masih plaintext)
+   npm run env:edit          # buka menu → Simpan & encrypt
+   # fallback manual:
    npx @dotenvx/dotenvx encrypt -f environments/local.env
    ```
+
+Panduan lengkap day-2: [CREDENTIALS.md](CREDENTIALS.md).
+
+---
+
+### Error #5b: Mau ganti password / tambah role
+
+**Jangan** edit baris `encrypted:…` di editor. Gunakan:
+
+```bash
+npm run env:edit
+# menu → Edit kredensial role / Tambah role → Simpan & encrypt
+npx playwright test src/support/auth.setup.ts --project=setup
+```
 
 ---
 

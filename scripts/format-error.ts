@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Friendly error formatter untuk semua CLI scripts.
  *

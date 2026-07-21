@@ -90,6 +90,17 @@ npm run health:check
 
 ---
 
+## 🔐 Setelah Setup — Ganti Kredensial / Role
+
+```bash
+npm run env:edit          # ganti password, tambah/hapus role
+npx playwright test src/support/auth.setup.ts --project=setup   # refresh session
+```
+
+Detail: **[CREDENTIALS.md](CREDENTIALS.md)**.
+
+---
+
 ## 🎯 Mulai Testing
 
 ```bash
@@ -128,6 +139,7 @@ Hermes akan otomatis:
 
 | Setelah Setup                   | Baca                                                     |
 | ------------------------------- | -------------------------------------------------------- |
+| Ganti password / multi-role     | [CREDENTIALS.md](CREDENTIALS.md)                         |
 | Ingin tulis requirement pertama | [writing-requirements.md](writing-requirements.md)       |
 | Ingin lihat command penting     | [CHEATSHEET.md](CHEATSHEET.md)                           |
 | Ingin paham pipeline lengkap    | [GUIDE.md](GUIDE.md)                                     |

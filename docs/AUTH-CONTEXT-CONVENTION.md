@@ -4,8 +4,13 @@ Dokumen ini mendefinisikan konvensi penyimpanan auth state per role untuk framew
 
 > **Kelola kredensial (password, tambah/hapus role, encrypt):** lihat **[CREDENTIALS.md](CREDENTIALS.md)** — `npm run env:edit`.
 >
-> **Path auth setup (template core):** `src/support/auth.setup.ts` (di-generate `setup:wizard` / menu env:edit).  
+> **Path auth setup (template core):** `src/support/auth.setup.ts` (ada di repo; juga bisa di-generate ulang lewat `setup:wizard` / menu env:edit).  
 > Adapter ERPKU sample: `example/erpku/support/auth.setup.ts`.
+>
+> **Root Playwright wiring (official):** project `setup` → `chromium` memakai `dependencies: ['setup']`.  
+> Default `storageState` di project chromium **kosong** (unauthenticated). Spec terautentikasi **wajib** override:
+> `test.use({ storageState: '.auth/<role>.json' })`.  
+> Tanpa kredensial, setup menulis `.auth/user.json` kosong agar suite tidak gagal (demo tetap hijau).
 
 ---
 

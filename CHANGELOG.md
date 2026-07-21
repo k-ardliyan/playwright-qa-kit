@@ -8,6 +8,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Playwright power helpers** (`src/support/pw/`):
+  - `network-mock.ts` — `mockJson`, `mockServerError`, `mockAbort`, `unmockAll` (official `page.route`)
+  - `api-seed.ts` — `apiJson`, `apiSeed`, `apiCleanup` (official `request` / `APIRequestContext`)
+  - `aria-snapshot.ts` — `expectAriaMatchesCatalog`, `expectAriaSnapshot` (`toMatchAriaSnapshot`)
+  - `soft-forms.ts` — `expectAllVisible`, `expectSoftFieldErrors` (`expect.soft`)
+  - `visual.ts` — `expectVisual` / `expectPageVisual` (`toHaveScreenshot`)
+  - `clock.ts` — `freezeTime` / `advanceTime` (`page.clock`)
+  - `role-projects.ts` — `buildRoleProject` / `buildRoleProjects` for multi-role project matrix
+- **`src/support/auth.setup.ts`** — template-core auth setup (safe empty state without credentials)
+- **`playwright.cross-browser.config.ts`** — chromium + firefox + webkit via `buildMultiBrowserProjects`
+- **`playwright.mobile.config.ts`** — Pixel 5 + iPhone 13 device projects
+- **Demo** `demo-pw-power.spec.ts` + `demo-pw-power-extended.spec.ts` (`@demo @pw-power`)
+- **Requirement** `requirements/example-network-hybrid.md` (`@network` `@hybrid` `@aria`)
+- **Capability tags** in requirements/planner/generator + **validator capability rules**
+- **Healer** `ensurePowerSeedPatterns()` for network / hybrid / auth failures
+- **Optional blob reporter** — `createFrameworkReporters({ includeBlob })` when `CI=true` and `PW_BLOB=1`
+- **Nightly** `merge-blob-reports` + `cross-browser` job; **PR e2e** optional `shardCount` 1–4 + blob merge
+- **Recipe** `docs/recipes/playwright.role-projects.recipe.ts`
+
+### Changed
+
+- Root `playwright.config.ts` — `chromium` now `dependencies: ['setup']`; default storage remains empty
+- PR `e2e.yml` artifact path `reports/html/`; optional matrix shards
+- Nightly shards upload `blob-report/` + merge via `playwright merge-reports`
+- Generator/Planner/Healer agent instructions document official Playwright power patterns
+- `requirements/_TEMPLATE.md` — capability scenario tags
+- `validate_generated_tests` — capability tag ↔ API usage enforcement (demo/seed exempt)
+
+### Added (prior)
+
 - **Table View dashboard** — custom dashboard now has a toggle between Accordion and Table view
   - General mode: flat 9-column table (Test ID, Description, Test Step, Input Data, Expected Result, Actual Result, Status, Priority, Notes)
   - Role-aware mode: table grouped per `ROLE: <role>` section header with row numbering reset per role
@@ -32,7 +62,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
   - `generator.agent.md` — mandatory annotation block pattern with `setTestMetadata()` and `captureActualResult()` in every generated test
   - `reporter.agent.md` — `PipelineReport` JSON schema adds `testCases[]` array; markdown report adds Test Cases table section (flat for general, grouped for role-aware)
 
-### Changed
+### Changed (prior)
 
 - `custom-reporter.ts` — `onTestEnd()` now extracts 6 new annotation fields; `onEnd()` writes extended `TestSummary` including `testCases[]` to `test-summary.json`
 - `build-local-html.ts` / `build-ci-html.ts` — dual panel (Accordion + Table) with ARIA-compliant toggle tabs

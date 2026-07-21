@@ -51,7 +51,7 @@ The Healer uses a learning system (`src/agents/healer/`) that stores and retriev
 On first use (or when `reports/heal-patterns.json` is missing), the system automatically creates an empty database:
 
 ```typescript
-import { loadDatabase, saveDatabase, storePattern } from '@/agents/healer';
+import { loadDatabase, saveDatabase, storePattern, ensurePowerSeedPatterns } from '@/agents/healer';
 import { lookupPattern } from '@/agents/healer';
 import { prioritizeFailures } from '@/agents/healer';
 
@@ -59,7 +59,10 @@ import { prioritizeFailures } from '@/agents/healer';
 // - File not found → creates fresh empty database (no backup, no warning)
 // - JSON parse error or schema invalid → backs up corrupted file as
 //   heal-patterns.backup.json, logs warning, initializes fresh database
-const db = loadDatabase();
+let db = loadDatabase();
+// Seed official Playwright power patterns (network / hybrid / auth) — idempotent
+db = ensurePowerSeedPatterns(db);
+saveDatabase(db);
 ```
 
 ### Step 1: Prioritize Failures with `prioritizeFailures()`
@@ -180,6 +183,10 @@ Pattern storage behavior:
 5. If a case is unsafe or ambiguous (CAPTCHA, real email reset), return `cannotFix` — do not bypass security controls.
 6. After patching, call `validate_generated_tests` then re-run `run_tests` for the affected file only.
 7. **Always store the fix outcome** (success or failure) in the pattern database after each attempt.
+8. **Network failures** (`rootCause: network`, Failed to fetch, 5xx): prefer `mockJson` / `mockServerError` / `unmockAll` from `@/support/pw` rather than lengthening timeouts.
+9. **Missing seed / empty list / 404 test data** (`data_state`): prefer hybrid `apiSeed` + cleanup via `request` fixture when the requirement documents an API.
+10. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: '.auth/<role>.json' })`; re-run setup project — do not skip auth checks.
+11. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
 
 ## Guardrails (Mandatory)
 

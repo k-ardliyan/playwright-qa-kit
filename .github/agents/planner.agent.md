@@ -48,10 +48,10 @@ For public sites without authentication, prefer **`discover_pages`** over manual
 
 ## Seed and auth context
 
-| Context                    | Seed                                                                      | Auth                                                                           | POM fixtures                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Template core (`npm test`) | `src/tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts) has no setup project | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it        |
-| ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/user.json`               | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
+| Context                    | Seed                                                                      | Auth                                                                                                                                                                                                                                                 | POM fixtures                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Template core (`npm test`) | `src/tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `src/support/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: '.auth/<role>.json' })` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it        |
+| ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/user.json`                                                                                                                                                                                     | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
 
 - **Generated tests** always land in `src/tests/<name>.spec.ts` with `@/fixtures/base.fixture`.
 - **Role-aware tests** land in `src/tests/<name>-<role>.spec.ts`, one file per role.
@@ -88,15 +88,16 @@ Save to `specs/<feature-name>-test-plan.md`.
 
 ## Scenarios
 
-### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual)
+### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @hybrid | @aria | @visual)
 
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
+**Capabilities:** <none | network | hybrid | aria | visual — derived from title tags / requirement Tags>
 
-| Scenario Name | Steps | Expected Result |
-| ------------- | ----- | --------------- |
-| SC-01: ...    | ...   | ...             |
+| Scenario Name | Steps | Expected Result | Capabilities         |
+| ------------- | ----- | --------------- | -------------------- |
+| SC-01: ...    | ...   | ...             | network, soft-assert |
 
 For **general mode**, the table per scenario is:
 
@@ -137,12 +138,45 @@ For **role-aware mode**, group rows under `## Role: <role>` header and use the s
 
 ### Scenario type tags in heading
 
-Always suffix the heading with one of:
+Always suffix the heading with at least one primary type, and optional capability tags:
 
 - `(@success)` — happy path
 - `(@failure)` — negative path, input error, validation failure
 - `(@access-restriction)` — role not permitted, access denied
 - `(@manual)` — cannot be automated (CAPTCHA, OTP, biometric, visual review)
+- `(@network)` — needs `page.route` / `@/support/pw` network helpers
+- `(@hybrid)` — API seed/cleanup via `request` + UI assert
+- `(@aria)` — ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
+- `(@visual)` — screenshot comparison (`toHaveScreenshot` / `expectVisual`)
+
+Combinations are valid: `(@failure @network)`, `(@success @hybrid @aria)`.
+
+### Catalog → @aria recommendation
+
+After `snapshot_page` / `discover_pages`:
+
+1. If `selector-catalog/<feature>/<page>.aria.yml` exists for a page under test, **prefer** adding an `(@aria)` structural scenario (or capability column `aria`) for that page's smoke/list view.
+2. Put the catalog path in scenario notes / Expected Result so Generator can call `expectAriaMatchesCatalog`.
+3. If catalog is missing, either call `snapshot_page` first or use a small inline `expectAriaSnapshot` baseline — do not invent a large YAML tree.
+
+### Capabilities column
+
+Populate plan **Capabilities** from title tags and metadata `#network #hybrid #aria #visual` so Generator emits the matching `@/support/pw` imports.
+
+---
+
+## Planning Rules
+
+1. Read and parse the requirement using `parse_requirement_scenarios` — it now returns `roleScope`, `scenarioType`, and `authContext` per scenario.
+2. If `Role scope` metadata exists, generate one scenario group per role.
+3. For each role in `Access expectation` that is restricted, generate an `(@access-restriction)` scenario.
+4. Mark CAPTCHA, OTP, biometric, or non-automatable flows as `(@manual)`.
+5. Populate `Coverage Gap` for any scenario that should exist but cannot be planned.
+6. Repeat the **Role**, **Auth Context**, and **Seed** fields under each scenario for Generator traceability.
+7. Do not invent steps — if the requirement is unclear, put the scenario in Coverage Gap.
+8. When `Data scope` mentions API seed/endpoints, mark scenarios `(@hybrid)` and list the endpoint in Steps.
+9. When failure depends on HTTP status / offline, mark `(@network)` and name the URL glob.
+10. When `selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
 
 ---
 
@@ -168,20 +202,8 @@ If there are no gaps, write: `No coverage gaps identified.`
 
 If there are no manual scenarios, write: `No manual scenarios.`
 
-```
-
-## Planning Rules
-
-1. Read and parse the requirement using `parse_requirement_scenarios` — it now returns `roleScope`, `scenarioType`, and `authContext` per scenario.
-2. If `Role scope` metadata exists, generate one scenario group per role.
-3. For each role in `Access expectation` that is restricted, generate an `(@access-restriction)` scenario.
-4. Mark CAPTCHA, OTP, biometric, or non-automatable flows as `(@manual)`.
-5. Populate `Coverage Gap` for any scenario that should exist but cannot be planned.
-6. Repeat the **Role**, **Auth Context**, and **Seed** fields under each scenario for Generator traceability.
-7. Do not invent steps — if the requirement is unclear, put the scenario in Coverage Gap.
-
 ## Example Prompt
 
 - "Plan test scenarios from `requirements/example-login-extension.md` and save to `specs/example-login-extension-test-plan.md`."
 - "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
-```
+- "Plan capability scenarios from `requirements/example-network-hybrid.md` including @network @hybrid @aria."

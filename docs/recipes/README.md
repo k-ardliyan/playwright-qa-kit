@@ -7,6 +7,12 @@ See [FORK-ONBOARDING.md → Integration into an existing frontend repo](../../FO
 | Recipe                                                                             | Use when                                                                                  |
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [`playwright.config.nextjs-e2e.recipe.ts`](playwright.config.nextjs-e2e.recipe.ts) | Integrating the kit into a Next.js app under `/e2e` with auth setup project + `webServer` |
+| [`playwright.role-projects.recipe.ts`](playwright.role-projects.recipe.ts)         | Multi-role projects via `buildRoleProjects` + `.auth/<role>.json`                         |
+
+Related runtime configs (runnable, not recipes):
+
+- `playwright.cross-browser.config.ts` — chromium/firefox/webkit matrix
+- `playwright.mobile.config.ts` — Pixel 5 + iPhone 13 device projects
 
 When copying a recipe to your fork:
 

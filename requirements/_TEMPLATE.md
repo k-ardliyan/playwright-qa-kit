@@ -81,6 +81,13 @@
 > - `(@failure)` — negative path, input salah, validasi gagal
 > - `(@access-restriction)` — role tidak berhak, akses ditolak
 > - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, dsb)
+> - `(@network)` — butuh intercept/mock network (`page.route` / helper `@/support/pw`)
+> - `(@hybrid)` — seed/cleanup via API (`request` fixture) + assert di UI
+> - `(@aria)` — assert struktur ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
+> - `(@visual)` — visual regression (`toHaveScreenshot`)
+>
+> Capability tags boleh digabung, contoh: `(@failure @network)`, `(@success @hybrid)`.
+> Alternatif di Metadata Tags: `#network #hybrid #aria #visual`.
 >
 > Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 >

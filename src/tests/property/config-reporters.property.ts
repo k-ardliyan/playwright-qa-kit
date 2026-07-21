@@ -30,4 +30,20 @@ assert.deepEqual(htmlReporter, ['html', { outputFolder: './reports/html', open: 
 const customReporter = reporters[3];
 assert.deepEqual(customReporter, ['./e2e/support/custom-reporter.ts']);
 
-process.stdout.write('✓ Property: createFrameworkReporters tuple shape\n');
+// Optional blob reporter (CI shard merge path)
+const withBlob = createFrameworkReporters({
+  jsonOutput: 'test-results/results.json',
+  htmlFolder: './reports/html',
+  customReporterPath: './src/support/custom-reporter.ts',
+  includeBlob: true,
+  blobOutputDir: 'blob-report',
+});
+
+if (!withBlob) {
+  throw new Error('createFrameworkReporters(includeBlob) returned undefined');
+}
+
+assert.equal(withBlob.length, 5);
+assert.deepEqual(withBlob[4], ['blob', { outputDir: 'blob-report' }]);
+
+process.stdout.write('✓ Property: createFrameworkReporters tuple shape (+ optional blob)\n');

@@ -25,3 +25,6 @@ export { lookupPattern, computeMatchScore } from './pattern-matcher';
 
 // Failure Prioritizer — intelligent ranking
 export { prioritizeFailures } from './failure-prioritizer';
+
+// Official Playwright power failure seeds (network / hybrid / auth)
+export { ensurePowerSeedPatterns, listPowerSeedSignatures } from './power-seed-patterns';

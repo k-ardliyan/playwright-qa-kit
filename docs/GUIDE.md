@@ -62,6 +62,54 @@ Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum gener
 
 ---
 
+## Fitur Resmi Playwright yang Dipakai Framework
+
+Helper tipis di `src/support/pw/` membungkus API resmi (bukan abstraksi berat):
+
+| Kebutuhan                     | Tag skenario              | Helper / API                                                      |
+| ----------------------------- | ------------------------- | ----------------------------------------------------------------- |
+| Mock HTTP / error API         | `(@network)` / `#network` | `mockJson`, `mockServerError`, `unmockAll` → `page.route`         |
+| Seed data via API + assert UI | `(@hybrid)` / `#hybrid`   | `apiSeed`, `apiCleanup` + fixture `request`                       |
+| Struktur accessibility        | `(@aria)` / `#aria`       | `expectAriaMatchesCatalog` → `toMatchAriaSnapshot`                |
+| Visual regression             | `(@visual)` / `#visual`   | `expectVisual` → `toHaveScreenshot`                               |
+| Multi-field validation        | `(@failure)` multi-error  | `expect.soft` / `expectSoftFieldErrors`                           |
+| Time-sensitive UI             | date/countdown            | `freezeTime` / `advanceTime` → `page.clock`                       |
+| Multi-role projects           | Role scope                | `buildRoleProjects` + recipe `playwright.role-projects.recipe.ts` |
+
+**Validator capability:** `npm run validate` gagal jika file memakai tag `@network`/`@hybrid`/`@aria`/`@visual` tanpa API terkait.
+
+**Visual baselines:**
+
+```bash
+npx playwright test --update-snapshots src/tests/path/to/visual.spec.ts
+```
+
+Jangan update snapshot hanya untuk menutupi product bug.
+
+**Service Worker + mock:** jika `page.route` tidak menangkap request, set `test.use({ serviceWorkers: 'block' })`.
+
+Demo self-contained:
+
+```bash
+npx playwright test src/tests/demo/demo-pw-power.spec.ts --project=demo
+npx playwright test src/tests/demo/demo-pw-power-extended.spec.ts --project=demo
+```
+
+Contoh requirement capability: `requirements/example-network-hybrid.md`.
+
+Auth resmi: project `setup` + `dependencies: ['setup']`. Lihat [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
+
+Cross-browser / mobile:
+
+```bash
+npx playwright test -c playwright.cross-browser.config.ts --grep-invert @demo
+npx playwright test -c playwright.mobile.config.ts --grep-invert @demo
+```
+
+CI shard merge: set `PW_BLOB=1` (nightly; PR e2e saat `shardCount` > 1) → `blob-report/` → `npx playwright merge-reports`.
+
+---
+
 ## Alur Harian QA
 
 Pipeline mengikuti kontrak di [AGENTS.md](../AGENTS.md):

@@ -208,6 +208,78 @@ Mark skeletons with `// SKELETON` so they're easy to find and complete later.
 8. For role-specific files, always include `test.use({ storageState: '.auth/<role>.json' })` at the describe level.
 9. After all scenarios are processed, call `validate_generated_tests` (all specs or per `filePath`).
 10. If a scenario is blocked (auth missing, unclear steps), generate skeleton — do not silently skip.
+11. Prefer **web-first assertions** (`toBeVisible`, `toHaveURL`, `toHaveText`). Never use `page.$`, `page.$$`, or fixed `waitForTimeout` sleeps.
+12. Locator priority: `getByRole` → `getByLabel` → `getByText` → `getByTestId` → CSS last resort.
+
+## Playwright Power Features (official APIs)
+
+Import helpers from `@/support/pw` when scenario capability tags require them:
+
+```typescript
+import {
+  mockJson,
+  mockServerError,
+  unmockAll,
+  apiJson,
+  apiSeed,
+  apiCleanup,
+  expectAriaMatchesCatalog,
+  expectAriaSnapshot,
+  expectAllVisible,
+  expectSoftFieldErrors,
+} from '@/support/pw';
+```
+
+| Capability (title tag / metadata tags) | When                                                      | Generate                                                                                                                                                                                         |
+| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `(@network)` or `#network`             | Failure depends on HTTP status / offline / API error body | `mockJson` / `mockServerError` / `mockAbort` **before** the UI action; `unmockAll` in cleanup step                                                                                               |
+| `(@hybrid)` or `#hybrid`               | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                 |
+| `(@aria)` or `#aria`                   | Structural a11y / landmark regression                     | If `selector-catalog/<feature>/<page>.aria.yml` exists → `expectAriaMatchesCatalog(page.getByRole('main'), 'selector-catalog/...')`; else `expectAriaSnapshot` with a small inline YAML baseline |
+| `(@visual)` or `#visual`               | Layout/CSS regression                                     | After UI stabilizes: `await expectVisual(locator, { name: '<name>.png' })` or `toHaveScreenshot` (scope to a stable region)                                                                      |
+| Multi-field `(@failure)` validation    | Several fields show errors at once                        | Prefer `expect.soft(...)` or `expectSoftFieldErrors([...])` so one test reports all field failures                                                                                               |
+| Time-sensitive UI                      | Date picker / countdown / "expires at"                    | `freezeTime` / `advanceTime` from `@/support/pw` (`page.clock`)                                                                                                                                  |
+
+**Validator:** `validate_generated_tests` fails if file mentions `@network`/`@hybrid`/`@aria`/`@visual` (tags) without the matching API usage.
+
+**Visual baselines:** update intentionally with `npx playwright test --update-snapshots path/to/spec.ts`. Do not update snapshots to hide product bugs.
+
+**Service workers:** if route mocks never fire, add `test.use({ serviceWorkers: 'block' })` on the describe/file.
+
+### Network mock pattern
+
+```typescript
+await test.step('Mock API failure', async () => {
+  await mockServerError(page, '**/api/invoices/**', 500);
+});
+// ... UI action that triggers the request ...
+await test.step('Cleanup routes', async () => {
+  await unmockAll(page);
+});
+```
+
+### Hybrid API + UI pattern
+
+```typescript
+test('…', async ({ page, request }) => {
+  const seeded = await test.step('Seed via API', async () => {
+    return apiSeed(request, '/api/invoices', { amount: 1000 });
+  });
+  // UI assertions using seeded.id …
+  await test.step('Cleanup via API', async () => {
+    await apiCleanup(request, `/api/invoices/${(seeded.body as { id?: string }).id}`);
+  });
+});
+```
+
+### Soft multi-field failure pattern
+
+```typescript
+await expect.soft(page.getByText('Email is required')).toBeVisible();
+await expect.soft(page.getByText('Password is required')).toBeVisible();
+// or: await expectSoftFieldErrors([{ locator, message }, …]);
+```
+
+Do **not** invent backend endpoints. Only use hybrid/network patterns when the requirement/plan names the URL or payload, or when the app under test documents them in Data scope / steps.
 
 ## Output Contract
 
@@ -217,10 +289,12 @@ Return:
 - scenario-to-file mapping,
 - any skipped/unmappable scenarios with reasons,
 - any skeleton files generated with the reason,
-- scenarios deferred to Healer (with last failure message).
+- scenarios deferred to Healer (with last failure message),
+- capability tags applied (`network` / `hybrid` / `aria` / `visual`) per file.
 
 ## Example Prompts
 
 - "Generate tests from `specs/example-login-extension-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
 - "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `src/tests/invoice-finance.spec.ts` and `src/tests/invoice-super-admin.spec.ts`."
 - "Generate access-restriction test from SC-03 in `specs/finance-approve-invoice-test-plan.md` for role hrd."
+- "Generate `@network` failure test that mocks `**/api/invoices/**` 500 using `@/support/pw` helpers."

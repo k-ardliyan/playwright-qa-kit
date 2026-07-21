@@ -77,13 +77,27 @@ export function createFrameworkReporters(options: {
   jsonOutput: string;
   htmlFolder: string;
   customReporterPath: string;
+  /**
+   * When true (typically CI + shard), append Playwright `blob` reporter so
+   * shards can be merged with `npx playwright merge-reports`.
+   * Default false keeps the stable 4-reporter tuple for local/property tests.
+   */
+  includeBlob?: boolean;
+  /** Blob output directory (default: `blob-report`). */
+  blobOutputDir?: string;
 }): PlaywrightTestConfig['reporter'] {
-  return [
+  const reporters: NonNullable<PlaywrightTestConfig['reporter']> = [
     ['list'],
     ['json', { outputFile: options.jsonOutput }],
     ['html', { outputFolder: options.htmlFolder, open: 'never' }],
     [options.customReporterPath],
   ];
+
+  if (options.includeBlob) {
+    reporters.push(['blob', { outputDir: options.blobOutputDir ?? 'blob-report' }]);
+  }
+
+  return reporters;
 }
 
 /**

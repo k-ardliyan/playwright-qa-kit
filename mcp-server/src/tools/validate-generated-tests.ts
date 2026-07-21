@@ -158,6 +158,98 @@ function validateTraceabilityRule(
   return violations;
 }
 
+/**
+ * Capability tags in file content (describe/test tags or comments) must pair with
+ * official power helpers from `@/support/pw` (or equivalent deep import / raw API).
+ *
+ * Demo/property/seed paths are exempt via isTraceabilityExempt + explicit demo prefix.
+ */
+function validateCapabilityPowerRules(
+  content: string,
+  filePath: string,
+  relativePath: string,
+): ValidationViolation[] {
+  if (isTraceabilityExempt(relativePath)) {
+    return [];
+  }
+
+  const violations: ValidationViolation[] = [];
+  const lower = content;
+
+  const hasPwImport = /from\s*['"]@\/support\/pw(?:\/[^'"]*)?['"]/.test(content);
+  const hasRouteApi =
+    /\.route\s*\(/.test(content) || /\bmockJson\b|\bmockServerError\b|\bmockAbort\b/.test(content);
+  const hasRequestApi =
+    /\brequest\b/.test(content) &&
+    (/\bapiSeed\b|\bapiJson\b|\bapiCleanup\b/.test(content) ||
+      /request\.(get|post|put|patch|delete|fetch)\s*\(/.test(content));
+  const hasAriaApi =
+    /\btoMatchAriaSnapshot\b|\bexpectAriaSnapshot\b|\bexpectAriaMatchesCatalog\b/.test(content);
+  const hasVisualApi = /\btoHaveScreenshot\b|\bexpectVisual\b|\bexpectPageVisual\b/.test(content);
+
+  const mentionsNetwork =
+    /@network\b/.test(lower) ||
+    /\(@network\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@network'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@network"/.test(lower);
+  const mentionsHybrid =
+    /@hybrid\b/.test(lower) ||
+    /\(@hybrid\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@hybrid'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@hybrid"/.test(lower);
+  const mentionsAria =
+    /@aria\b/.test(lower) ||
+    /\(@aria\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@aria'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@aria"/.test(lower);
+  const mentionsVisual =
+    /@visual\b/.test(lower) ||
+    /\(@visual\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@visual'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@visual"/.test(lower);
+
+  if (mentionsNetwork && !hasRouteApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@network): must use page.route or import mockJson/mockServerError/mockAbort from @/support/pw',
+    });
+  }
+
+  if (mentionsHybrid && !hasRequestApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@hybrid): must use request fixture with apiSeed/apiJson/apiCleanup or request.get/post/…',
+    });
+  }
+
+  if (mentionsAria && !hasAriaApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@aria): must call toMatchAriaSnapshot or expectAriaSnapshot/expectAriaMatchesCatalog',
+    });
+  }
+
+  if (mentionsVisual && !hasVisualApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@visual): must call toHaveScreenshot or expectVisual/expectPageVisual from @/support/pw',
+    });
+  }
+
+  // Soft nudge: if multiple capability tags used, prefer barrel import (warning-as-violation only if none of APIs match — already covered)
+  void hasPwImport;
+
+  return violations;
+}
+
 export function validateSpecFile(filePath: string, relativePath?: string): ValidationViolation[] {
   const content = fs.readFileSync(filePath, 'utf-8');
   const violations: ValidationViolation[] = [];
@@ -189,6 +281,7 @@ export function validateSpecFile(filePath: string, relativePath?: string): Valid
   }
 
   violations.push(...validateTraceabilityRule(content, filePath, rel));
+  violations.push(...validateCapabilityPowerRules(content, filePath, rel));
 
   return violations;
 }

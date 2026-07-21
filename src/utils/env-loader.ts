@@ -22,9 +22,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import dotenvx from '@dotenvx/dotenvx';
 import { logger } from './logger';
+import { resolveSecureKeysPath } from './dotenv-keys';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -43,15 +43,22 @@ export interface LoadEnvironmentOptions {
   adapterEnv?: AdapterEnvRef;
 }
 
+/**
+ * Resolve secure dotenvx keys path (merge-migrates workspace .env.keys first).
+ * Never overwrites existing global private keys wholesale.
+ */
 export function getSecureKeysPath(): string {
-  // Climb up to find the repository root (containing package.json with 'playwright-qa-kit')
+  // Climb up to find the repository root (package.json present)
   let repoRoot = __dirname;
   while (true) {
     const pkgPath = path.join(repoRoot, 'package.json');
     if (fs.existsSync(pkgPath)) {
       try {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { name?: string };
-        if (pkg.name === 'playwright-qa-kit') {
+        // Prefer monorepo / kit root when name matches; otherwise keep climbing
+        // until filesystem root, then fall back to cwd.
+        if (pkg.name) {
+          // Accept any package.json as repo root once found near project
           break;
         }
       } catch {
@@ -60,50 +67,28 @@ export function getSecureKeysPath(): string {
     }
     const parent = path.dirname(repoRoot);
     if (parent === repoRoot) {
-      repoRoot = process.cwd(); // Fallback
+      repoRoot = process.cwd();
       break;
     }
     repoRoot = parent;
   }
 
-  const localKeysPath = path.resolve(repoRoot, 'environments/.env.keys');
-
-  // Dynamically get project name from package.json
-  const pkgPath = path.resolve(repoRoot, 'package.json');
-  let projectName = 'playwright-qa-kit';
-  if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { name?: string };
-      if (pkg.name) {
-        projectName = pkg.name;
-      }
-    } catch {
-      // ignore
-    }
+  // Prefer cwd if it looks like the project root (has environments/)
+  if (fs.existsSync(path.join(process.cwd(), 'environments'))) {
+    repoRoot = process.cwd();
   }
 
-  const globalKeysDir = path.resolve(os.homedir(), '.dotenvx-keys', projectName);
-  const globalKeysPath = path.resolve(globalKeysDir, '.env.keys');
-
-  // If local keys exist in workspace, automatically migrate them to the secure global folder
-  if (fs.existsSync(localKeysPath)) {
-    try {
-      if (!fs.existsSync(globalKeysDir)) {
-        fs.mkdirSync(globalKeysDir, { recursive: true });
-      }
-      fs.copyFileSync(localKeysPath, globalKeysPath);
-      fs.unlinkSync(localKeysPath);
-      logger.info(
-        `[SECURITY] Automatically migrated .env.keys to secure global folder: ${globalKeysPath}`,
-      );
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logger.warn(`[SECURITY] Failed to migrate .env.keys to global folder: ${errMsg}`);
-      return localKeysPath; // Fallback to local if migration fails
+  try {
+    const secure = resolveSecureKeysPath(repoRoot);
+    if (fs.existsSync(secure)) {
+      return secure;
     }
+    return secure;
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.warn(`[SECURITY] Failed to resolve/migrate dotenv keys: ${errMsg}`);
+    return path.resolve(repoRoot, 'environments', '.env.keys');
   }
-
-  return globalKeysPath;
 }
 
 /**

@@ -23,6 +23,8 @@ import prompts from 'prompts';
 import { printOk, printWarn, printError, printInfo } from './format-error';
 import { EXIT } from './exit-codes';
 import { writeAuthSetup } from './wizard-auth-template';
+import { encodeEnvValue } from './env-edit-lib';
+import { resolveProjectName } from '../src/utils/dotenv-keys';
 
 const ROOT = process.cwd();
 const STATE_FILE = path.join(ROOT, '.wizard-state.json');
@@ -240,11 +242,17 @@ function writeEnvSection(values: Record<string, string>, sectionComment?: string
   let content = fs.existsSync(LOCAL_ENV) ? fs.readFileSync(LOCAL_ENV, 'utf-8') : '';
   if (sectionComment) content += '\n# ' + sectionComment + '\n';
   for (const [key, val] of Object.entries(values)) {
-    const regex = new RegExp('^' + key + '=.*$', 'm');
+    // Reject multiline secrets early (dotenv cannot represent them safely)
+    if (/[\r\n]/.test(val)) {
+      throw new Error(`Nilai ${key} mengandung baris baru — password/value harus satu baris.`);
+    }
+    const encoded = encodeEnvValue(val);
+    const regex = new RegExp('^' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=.*$', 'm');
+    const line = key + '=' + encoded;
     if (regex.test(content)) {
-      content = content.replace(regex, key + '=' + val);
+      content = content.replace(regex, line);
     } else {
-      content += key + '=' + val + '\n';
+      content += line + '\n';
     }
   }
   if (!fs.existsSync(ENV_DIR)) fs.mkdirSync(ENV_DIR, { recursive: true });
@@ -287,7 +295,7 @@ async function phase0(_state: WizardState): Promise<boolean> {
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? '',
         '.dotenvx-keys',
-        'playwright-qa-kit',
+        resolveProjectName(ROOT),
         '.env.keys',
       ),
     ];

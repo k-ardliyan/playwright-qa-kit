@@ -101,11 +101,20 @@ ${roleBlocks}
 
 /**
  * Tulis file auth.setup.ts ke disk, buat direktori jika belum ada.
+ * Jika file sudah ada, backup ke `<outPath>.bak` sekali sebelum overwrite.
  */
 export function writeAuthSetup(opts: AuthTemplateOptions, outPath: string): void {
   const dir = path.dirname(outPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+  }
+  if (fs.existsSync(outPath)) {
+    const bak = outPath + '.bak';
+    try {
+      fs.copyFileSync(outPath, bak);
+    } catch {
+      // non-fatal — still write new content
+    }
   }
   fs.writeFileSync(outPath, generateAuthSetupContent(opts), 'utf-8');
 }

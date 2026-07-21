@@ -3,9 +3,13 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-import os from 'node:os';
 import { EXIT } from './scripts/exit-codes';
 import { printOk, printWarn, printError } from './scripts/format-error';
+import {
+  getGlobalKeysPath,
+  migrateWorkspaceEnvKeys,
+  resolveProjectName,
+} from './src/utils/dotenv-keys';
 
 const CHECKS: Array<{ label: string; path: string; hint: string }> = [
   {
@@ -101,39 +105,66 @@ function checkOptionalWorkspaceMcpConfig(): void {
   }
 }
 
-function migrateKeysToSecureFolder(): void {
-  const cwd = process.cwd();
-  const localKeysPath = path.resolve(cwd, 'environments/.env.keys');
-
-  // Dynamically get project name from package.json
-  const pkgPath = path.resolve(cwd, 'package.json');
-  let projectName = 'playwright-qa-kit';
-  if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { name?: string };
-      if (pkg.name) {
-        projectName = pkg.name;
-      }
-    } catch {
-      // ignore
+function loadPrivateKeysFromFile(keysPath: string): void {
+  if (!fs.existsSync(keysPath)) return;
+  for (const raw of fs.readFileSync(keysPath, 'utf-8').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    const eq = line.indexOf('=');
+    const key = line.slice(0, eq).trim();
+    let val = line.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (key.startsWith('DOTENV_PRIVATE_KEY')) {
+      process.env[key] = val;
     }
   }
+}
 
-  const globalKeysDir = path.resolve(os.homedir(), '.dotenvx-keys', projectName);
-  const globalKeysPath = path.resolve(globalKeysDir, '.env.keys');
+function isEncryptedEnv(filePath: string): boolean {
+  return fs.readFileSync(filePath, 'utf-8').includes('encrypted:');
+}
 
-  if (fs.existsSync(localKeysPath)) {
-    try {
-      if (!fs.existsSync(globalKeysDir)) {
-        fs.mkdirSync(globalKeysDir, { recursive: true });
-      }
-      fs.copyFileSync(localKeysPath, globalKeysPath);
-      fs.unlinkSync(localKeysPath);
-      printOk(`Secured and moved keys to: ${globalKeysPath}`);
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      printWarn(`Failed to secure keys: ${errMsg}`);
+function migrateKeys(): void {
+  const cwd = process.cwd();
+  const projectName = resolveProjectName(cwd);
+  const globalPath = getGlobalKeysPath(cwd);
+  try {
+    const results = migrateWorkspaceEnvKeys(cwd);
+    const any = results.some((r) => r.migrated);
+    const added = results.reduce((n, r) => n + r.added, 0);
+    if (any) {
+      printOk(
+        `Keys digabung ke ~/.dotenvx-keys/${projectName}/.env.keys` +
+          (added > 0 ? ` (+${added} private key baru)` : ' (tidak ada key baru)'),
+      );
     }
+    // Load into process for subsequent decrypt verify
+    loadPrivateKeysFromFile(globalPath);
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    printWarn(`Failed to secure keys: ${errMsg}`);
+  }
+}
+
+function verifyDecrypt(filePath: string): boolean {
+  try {
+    // load any keys produced next to the file before migrate
+    for (const p of [
+      path.join('environments', '.env.keys'),
+      path.join(process.cwd(), '.env.keys'),
+      getGlobalKeysPath(process.cwd()),
+    ]) {
+      loadPrivateKeysFromFile(p);
+    }
+    execSync(`npx @dotenvx/dotenvx decrypt -f "${filePath}" --stdout --quiet`, {
+      stdio: 'pipe',
+      env: process.env,
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -156,14 +187,26 @@ function autoEncryptEnvFiles(): void {
   for (const file of envFiles) {
     const filePath = path.join('environments', file);
     try {
-      execSync(`npx @dotenvx/dotenvx encrypt -f "${filePath}"`, { stdio: 'pipe' });
-      printOk(`${filePath} - Encrypted & Secured`);
-      migrateKeysToSecureFolder();
+      // Prefer encrypt without forcing -fk (avoids keypair mismatch on new files)
+      execSync(`npx @dotenvx/dotenvx encrypt -f "${filePath}" --quiet`, {
+        stdio: 'pipe',
+        env: process.env,
+      });
+      migrateKeys();
+      if (isEncryptedEnv(filePath) && verifyDecrypt(filePath)) {
+        printOk(`${filePath} - Encrypted & decrypt-verified`);
+      } else if (isEncryptedEnv(filePath)) {
+        printWarn(`${filePath} encrypted but decrypt verify failed — cek keys di ~/.dotenvx-keys/`);
+      } else {
+        printWarn(`${filePath} still plaintext after encrypt attempt`);
+      }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       printWarn(`Failed to encrypt ${filePath}: ${errMsg}`);
     }
   }
+  // Final sweep for any leftover workspace keys
+  migrateKeys();
   process.stdout.write('\n');
 }
 

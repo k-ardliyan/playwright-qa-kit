@@ -16,7 +16,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as os from 'node:os';
 import { execSync } from 'node:child_process';
 import prompts from 'prompts';
 import { printOk, printWarn, printError, printInfo } from './format-error';
@@ -32,6 +31,7 @@ import {
   parseEnvText,
   isEncryptedEnvText,
 } from './env-edit-lib';
+import { getGlobalKeysPath, migrateWorkspaceEnvKeys } from '../src/utils/dotenv-keys';
 
 const ROOT = process.cwd();
 const ENV_DIR = path.join(ROOT, 'environments');
@@ -103,23 +103,17 @@ function printHelp(): void {
 
 // ─── Project / keys helpers ────────────────────────────────────────────────
 
-function getProjectName(): string {
-  const pkgPath = path.join(ROOT, 'package.json');
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { name?: string };
-    return pkg.name || 'playwright-qa-kit';
-  } catch {
-    return 'playwright-qa-kit';
-  }
-}
-
 function resolveKeysPath(): string | null {
-  const projectName = getProjectName();
-  const candidates = [
-    path.join(os.homedir(), '.dotenvx-keys', projectName, '.env.keys'),
-    path.join(ENV_DIR, '.env.keys'),
-    path.join(ROOT, '.env.keys'),
-  ];
+  // Merge-migrate any workspace keys first, then return global path if present
+  try {
+    migrateWorkspaceEnvKeys(ROOT);
+  } catch {
+    // non-fatal
+  }
+  const globalPath = getGlobalKeysPath(ROOT);
+  if (fs.existsSync(globalPath)) return globalPath;
+  // fall back to workspace candidates if global not created yet
+  const candidates = [path.join(ENV_DIR, '.env.keys'), path.join(ROOT, '.env.keys')];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }
@@ -144,62 +138,16 @@ function loadPrivateKeysIntoEnv(keysPath: string): void {
   }
 }
 
-/**
- * Merge DOTENV_PRIVATE_KEY* lines from a local keys file into the secure
- * global keys file, then delete the local file. Never overwrite unrelated keys.
- */
-function migrateKeysToSecureFolder(localKeysPath: string): void {
-  if (!fs.existsSync(localKeysPath)) return;
-  const projectName = getProjectName();
-  const globalDir = path.join(os.homedir(), '.dotenvx-keys', projectName);
-  const globalPath = path.join(globalDir, '.env.keys');
+function migrateAllLocalKeyFiles(): void {
   try {
-    if (!fs.existsSync(globalDir)) fs.mkdirSync(globalDir, { recursive: true });
-
-    const incoming = fs.readFileSync(localKeysPath, 'utf-8');
-    if (!fs.existsSync(globalPath)) {
-      fs.writeFileSync(globalPath, incoming, 'utf-8');
-    } else {
-      const existing = fs.readFileSync(globalPath, 'utf-8');
-      const existingKeys = new Set(
-        existing
-          .split(/\r?\n/)
-          .map((l) => l.trim())
-          .filter((l) => l && !l.startsWith('#') && l.includes('='))
-          .map((l) => l.slice(0, l.indexOf('=')).trim()),
-      );
-      const extraLines: string[] = [];
-      for (const raw of incoming.split(/\r?\n/)) {
-        const line = raw.trim();
-        if (!line || line.startsWith('#') || !line.includes('=')) continue;
-        const key = line.slice(0, line.indexOf('=')).trim();
-        if (!key.startsWith('DOTENV_PRIVATE_KEY')) continue;
-        if (existingKeys.has(key)) continue;
-        extraLines.push(raw);
-        existingKeys.add(key);
-      }
-      if (extraLines.length > 0) {
-        const merged =
-          (existing.endsWith('\n') ? existing : existing + '\n') +
-          '\n# merged by env:edit\n' +
-          extraLines.join('\n') +
-          '\n';
-        fs.writeFileSync(globalPath, merged, 'utf-8');
-      }
+    const results = migrateWorkspaceEnvKeys(ROOT);
+    const any = results.some((r) => r.migrated);
+    if (any) {
+      printOk(`Kunci digabung ke: ${getGlobalKeysPath(ROOT)}`);
     }
-    fs.unlinkSync(localKeysPath);
-    printOk(`Kunci digabung ke: ${globalPath}`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    printWarn(`Gagal pindahkan keys dari ${localKeysPath}: ${msg}`);
-  }
-}
-
-/** Collect dotenvx keys files that may appear after encrypt. */
-function migrateAllLocalKeyFiles(): void {
-  const candidates = [path.join(ENV_DIR, '.env.keys'), path.join(ROOT, '.env.keys')];
-  for (const p of candidates) {
-    migrateKeysToSecureFolder(p);
+    printWarn(`Gagal pindahkan keys: ${msg}`);
   }
 }
 
@@ -218,7 +166,7 @@ function decryptEnvToText(filePath: string, keysPath: string | null): string {
     printError({
       title: 'File env terenkripsi tapi kunci tidak ditemukan',
       detail:
-        'Kunci dekripsi biasanya di ~/.dotenvx-keys/playwright-qa-kit/.env.keys — tidak ikut Git.',
+        'Kunci dekripsi biasanya di ~/.dotenvx-keys/<package-name>/.env.keys — tidak ikut Git.',
       hint: 'Minta .env.keys dari tim, atau buat ulang: hapus environments/local.env, salin dari .example, isi, lalu npm run env:edit lagi. Lihat docs/CREDENTIALS.md',
       docsLink: 'docs/CREDENTIALS.md',
       exitCode: EXIT.FIXABLE,

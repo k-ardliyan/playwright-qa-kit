@@ -11,6 +11,15 @@ environments/*.env
 **/.env.keys
 .env.keys
 
+# Env edit / encrypt backups (may contain secrets)
+*.env.bak
+environments/*.bak
+**/*.env.bak
+**/*.bak
+
+# Hermes agent local plans / cache (not part of release)
+.hermes/
+
 # Playwright artifacts
 test-results/
 playwright-report/

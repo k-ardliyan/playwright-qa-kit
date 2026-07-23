@@ -11,15 +11,13 @@ Jalankan perintah ini di terminal Anda. **Jika ada yang ❌, perbaiki dulu sebel
 ```bash
 node --version    # Harus >= 20.19.0
 git --version     # Harus ada (versi berapa saja)
-code --version    # VS Code (opsional tapi disarankan)
 ```
 
-| Prasyarat        | Versi Minimum  | Cara Cek                | Cara Install                                                        |
-| ---------------- | -------------- | ----------------------- | ------------------------------------------------------------------- |
-| Node.js          | **>= 20.19.0** | `node --version`        | <https://nodejs.org/> (pilih LTS)                                   |
-| Git              | Apa saja       | `git --version`         | <https://git-scm.com/>                                              |
-| VS Code          | Latest         | `code --version`        | <https://code.visualstudio.com/>                                    |
-| **Hermes Agent** | Latest         | Buka sidebar di VS Code | Lihat [panduan install](https://hermes-agent.nousresearch.com/docs) |
+| Prasyarat        | Versi Minimum  | Cara Cek                                                            | Cara Install                      |
+| ---------------- | -------------- | ------------------------------------------------------------------- | --------------------------------- |
+| Node.js          | **>= 20.19.0** | `node --version`                                                    | <https://nodejs.org/> (pilih LTS) |
+| Git              | Apa saja       | `git --version`                                                     | <https://git-scm.com/>            |
+| **Hermes Agent** | Latest         | Lihat [panduan install](https://hermes-agent.nousresearch.com/docs) | Sama seperti di atas              |
 
 > **⚠️ Node.js versi lama adalah penyebab #1 setup gagal.** Jika `node --version` menunjukkan v18 atau lebih lama, wizard akan error di Phase 0.
 
@@ -62,16 +60,16 @@ npm run setup:wizard
 
 Wizard akan memandu Anda melalui **7 fase**:
 
-| Fase                | Apa yang terjadi                                                      |
-| ------------------- | --------------------------------------------------------------------- |
-| **0. Welcome**      | Cek prasyarat, cek Node.js version                                    |
-| **1. Project Info** | Masukkan URL aplikasi target (misal `https://staging.myapp.com`)      |
-| **2. Kredensial**   | Masukkan akun test. Nilai akan dienkripsi otomatis.                   |
-| **3. Install**      | Install browser Chromium + build MCP server                           |
-| **4. MCP + Hermes** | Verifikasi koneksi MCP di VS Code (cek status bar: `MCP ● 3 servers`) |
-| **5. Auth Setup**   | Generate `src/support/auth.setup.ts`, jalankan login test             |
-| **6. Verify**       | Run `setup:check` + `health:check` + enkripsi `local.env`             |
-| **7. Next Steps**   | Prompt siap pakai untuk Hermes Agent                                  |
+| Fase                         | Apa yang terjadi                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **0. Welcome**               | Cek prasyarat, cek Node.js version                                                                                                         |
+| **1. Project + Environment** | Pilih **APP_ENV** dulu (`local`/`dev`/`staging`/…), lalu **BASE_URL untuk env itu** (URL beda per env). File: `environments/{APP_ENV}.env` |
+| **2. Kredensial**            | Masukkan akun test ke file env aktif. Nilai dienkripsi otomatis.                                                                           |
+| **3. Install**               | Install browser Chromium + build MCP server                                                                                                |
+| **4. MCP + Hermes**          | Verifikasi koneksi MCP di Hermes (cek: MCP ● 3 servers)                                                                                    |
+| **5. Auth Setup**            | Generate `src/support/auth.setup.ts`, jalankan login test                                                                                  |
+| **6. Verify**                | Run `setup:check` + `health:check` + enkripsi `environments/{APP_ENV}.env`                                                                 |
+| **7. Pipeline Conductor**    | Generate `requirements/login.md` + cetak prompt Hermes Agent                                                                               |
 
 > **💡 Tip:** Wizard menyimpan progress ke `.wizard-state.json`. Jika terputus di tengah, jalankan ulang dan pilih **"Lanjut dari Phase X"**.
 
@@ -90,12 +88,16 @@ npm run health:check
 
 ---
 
-## 🔐 Setelah Setup — Ganti Kredensial / Role
+## Setelah Setup — Ganti Kredensial / Ganti Environment
 
 ```bash
-npm run env:edit          # ganti password, tambah/hapus role
+npm run env:status                 # APP_ENV aktif + source (os|pin|default)
+npm run env:use -- staging         # pin environment (local work)
+npm run env:edit                   # ganti BASE_URL / password / role di file aktif
 npx playwright test src/support/auth.setup.ts --project=setup   # refresh session
 ```
+
+**Catatan:** Setiap environment punya file sendiri (`environments/local.env`, `dev.env`, …) dengan **BASE_URL dan kredensial sendiri**. Jangan mengasumsikan URL sama di semua env.
 
 Detail: **[CREDENTIALS.md](CREDENTIALS.md)**.
 
@@ -103,25 +105,39 @@ Detail: **[CREDENTIALS.md](CREDENTIALS.md)**.
 
 ## 🎯 Mulai Testing
 
+Setelah wizard Phase 7 selesai, **framework sudah generate `requirements/login.md`**
+untuk **website kamu** (BASE_URL, path login, roles dari wizard) — **bukan** file sample.
+
+| Langkah    | Yang terjadi                                                                   |
+| ---------- | ------------------------------------------------------------------------------ |
+| **Lihat**  | Buka `requirements/login.md` — requirement REAL project                        |
+| **Paste**  | Prompt Phase 7 ke Hermes (wajib `snapshot_page` dulu — locator beda tiap site) |
+| **Tunggu** | Plan → Generate → Execute → Heal → Report                                      |
+| **Baca**   | [docs/POST-PIPELINE.md](POST-PIPELINE.md) untuk failureSource + keputusan QA   |
+
+**Prompt yang dicetak Phase 7 (inti):**
+
+```
+Run full pipeline in automatic mode for requirements/login.md
+(orchestrator: AGENTS.md).
+BEFORE Plan/Generate: snapshot_page on real BASE_URL+login path;
+use selector-catalog locators (Path A, no POM).
+```
+
+Atau via CLI:
+
 ```bash
-# Salin template requirement
-cp requirements/_TEMPLATE.md requirements/fitur-login.md
-
-# Edit file: isi judul, tags, prioritas, dan skenario
-# Lalu buka VS Code dan minta Hermes Agent:
+npm run qa:run -- requirements/login.md
 ```
 
-**Kirim prompt ini ke Hermes Agent di VS Code:**
-
-```
-Jalankan pipeline QA untuk requirements/fitur-login.md
-```
+> **ℹ️** `requirements/sample-*.md` = sample format saja. Setup awal = `login.md`.
+> **ℹ️** `qa:run` = preflight + prompt helper — pipeline penuh di Hermes.
 
 Hermes akan otomatis:
 
 1. Validasi requirement (cek format)
-2. Generate test plan (`specs/fitur-login-test-plan.md`)
-3. Generate spec Playwright (`src/tests/fitur-login.spec.ts`)
+2. Generate test plan (`specs/login-test-plan.md`)
+3. Generate spec Playwright (`src/tests/login*.spec.ts`)
 4. Jalankan test
 5. Heal jika ada failure
 6. Buat laporan di `reports/custom-dashboard.html`
@@ -131,7 +147,7 @@ Hermes akan otomatis:
 ## 🆘 Ada Masalah?
 
 - **Lihat [TROUBLESHOOTING.md](TROUBLESHOOTING.md)** untuk 10 error paling umum
-- **Atau tanya langsung ke Hermes Agent** di VS Code — dia tahu semua dokumen di repo ini
+- **Atau tanya langsung ke Hermes Agent** — dia tahu semua dokumen di repo ini
 
 ---
 

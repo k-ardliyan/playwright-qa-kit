@@ -81,9 +81,9 @@ Prefer merging `upstream/main` on a schedule (e.g. monthly) rather than letting 
 
 ---
 
-## 5. Day-one customization — project.fixture.ts
+## 5. Customization — project.fixture.ts
 
-On fork day one, register your application's Page Objects in [`src/fixtures/project.fixture.ts`](../src/fixtures/project.fixture.ts).
+Saat mulai pakai repo hasil fork, register Page Object Models di [`src/fixtures/project.fixture.ts`](../src/fixtures/project.fixture.ts).
 
 Use [`example/erpku/fixtures/project.fixture.ts`](../example/erpku/fixtures/project.fixture.ts) as a reference — it registers `loginPage`, `dashboardPage`, and customer POMs for the ERPKU adapter.
 
@@ -120,7 +120,7 @@ cp environments/local.env.example environments/local.env
 ```
 
 2. Fill universal keys: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, etc.  
-   Day-2 edits (password / multi-role): `npm run env:edit` — see [CREDENTIALS.md](CREDENTIALS.md).
+   Later: edit password / multi-role: `npm run env:edit` — see [CREDENTIALS.md](CREDENTIALS.md).
 
 3. **Adapter env overlay (forks with a Reference Adapter):** commit `{adapter}/environments/{name}.env.example` with app-specific non-secret defaults (e.g. `AUTH_*` paths). In the adapter `playwright.config.ts`, call:
 

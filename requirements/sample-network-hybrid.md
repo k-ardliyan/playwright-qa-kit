@@ -1,9 +1,10 @@
 # REQ-API-001: Invoice List — Network Failure & Hybrid Seed
 
 <!--
-  Contoh requirement capability tags: @network + @hybrid + @aria (opsional).
-  Dipakai Generator untuk emit helper @/support/pw.
-  Validasi: npm run validate:requirement -- requirements/example-network-hybrid.md
+  SAMPLE capability tags: @network + @hybrid + @aria (opsional).
+  Bukan requirement real project — hanya referensi format.
+  Generator: emit helper @/support/pw.
+  Validasi: npm run validate:requirement -- requirements/sample-network-hybrid.md
 -->
 
 ## Metadata

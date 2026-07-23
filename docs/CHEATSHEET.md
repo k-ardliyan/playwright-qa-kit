@@ -28,35 +28,29 @@ npm run setup:check && npm run health:check
 ## Daily Flow
 
 ```bash
-# PATH A — langsung pipeline (default, untuk QA pemula)
-cp requirements/_TEMPLATE.md requirements/fitur-saya.md
-npm run qa:run -- requirements/fitur-saya.md
-start reports/custom-dashboard.html   # Windows
-open  reports/custom-dashboard.html   # Mac
+# Setelah setup:wizard → requirements/login.md = REAL website kamu
+# (sample format: requirements/sample-*.md — jangan dipakai setup awal)
+npm run qa:run -- requirements/login.md
+# Hermes: snapshot_page dulu (locator per site) → plan → generate → report
 
-# PATH B — dengan POM (untuk fitur reusable atau role-aware)
-# 1. Snapshot halaman (sekali, di-cache)
-# snapshot_page (playwright-qa) — url, featureName, pageName
-# 2. Generate scaffold
-# generate_page_object (playwright-qa) — featureName, pageName
-# 3. Edit src/pages/<Class>.ts + register di src/fixtures/project.fixture.ts
-# 4. Lanjut pipeline normal
-npm run qa:run -- requirements/fitur-saya.md
+# Fitur lain:
+cp requirements/_TEMPLATE.md requirements/fitur-saya.md
+# Edit → validate → prompt Hermes
 ```
 
 ---
 
 ## Command Paling Sering
 
-| Command                             | Kapan                                            |
-| ----------------------------------- | ------------------------------------------------ |
-| `npm run qa:run -- X`               | Happy path 1-command (validate + prompt + smoke) |
-| `npm run validate:requirement -- X` | Cek requirement saja                             |
-| `npm run env:edit`                  | Ganti password / tambah / hapus role             |
-| `npm run manual:check`              | List semua skenario `(@manual)`                  |
-| `npm test`                          | Jalankan semua test                              |
-| `npm run test:smoke`                | Cuma smoke test                                  |
-| `npm run health:check`              | Cek MCP + env                                    |
+| Command                             | Kapan                                                 |
+| ----------------------------------- | ----------------------------------------------------- |
+| `npm run qa:run -- X`               | Preflight + cetak prompt Hermes + auto-buka dashboard |
+| `npm run validate:requirement -- X` | Cek requirement saja                                  |
+| `npm run env:edit`                  | Ganti password / tambah / hapus role                  |
+| `npm run manual:check`              | List semua skenario `(@manual)`                       |
+| `npm test`                          | Jalankan semua test                                   |
+| `npm run test:smoke`                | Cuma smoke test                                       |
+| `npm run health:check`              | Cek MCP + env                                         |
 
 ---
 
@@ -124,8 +118,9 @@ generate_page_object (playwright-qa) — featureName, pageName
 | Contoh requirement baik | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |
 | Panduan `@manual`       | [docs/MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md)                   |
 | Auth per role           | [docs/AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)     |
-| Kredensial day-2        | [docs/CREDENTIALS.md](CREDENTIALS.md)                             |
+| Kredensial & multi-role | [docs/CREDENTIALS.md](CREDENTIALS.md)                             |
 
 ---
 
-> **Tips:** Mulai dari `requirements/example-login-extension.md`. Copy → rename → modifikasi → validate → pipeline.
+> **Tips:** Setup awal = `requirements/login.md` (hasil wizard, per website + `snapshot_page`).
+> Sample format saja: `requirements/sample-login-empty-fields.md` / `sample-network-hybrid.md`.

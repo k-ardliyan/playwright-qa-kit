@@ -23,6 +23,7 @@ writeAuthSetup(
 assert.ok(fs.existsSync(out));
 const v1 = fs.readFileSync(out, 'utf-8');
 assert.ok(v1.includes('authenticate:user'));
+assert.ok(v1.includes('LOGIN_ID_PREF') || v1.includes('loginId') || v1.includes('USERNAME'));
 assert.equal(fs.existsSync(out + '.bak'), false);
 
 // second write should create .bak

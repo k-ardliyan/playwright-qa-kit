@@ -5,6 +5,8 @@ Panduan setup, pipeline, dan troubleshooting tim QA.
 > **🆕 Baru pertama kali setup?** Mulai dari [GETTING-STARTED.md](GETTING-STARTED.md) — panduan step-by-step untuk QA baru.
 >
 > **🆘 Setup error?** Cek [TROUBLESHOOTING.md](TROUBLESHOOTING.md) untuk 10 error paling umum + solusinya.
+>
+> **▶️ Baru selesai setup wizard?** Setelah pipeline pertama jalan, baca [POST-PIPELINE.md](POST-PIPELINE.md) untuk failureSource + 6 keputusan QA.
 
 Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [AGENTS.md](../AGENTS.md)
 
@@ -12,12 +14,12 @@ Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-
 
 ## Mulai di Sini
 
-| Langkah                          | Dokumen                                                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Tulis requirement                | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
-| Rapikan catatan (ChatGPT/Gemini) | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
-| Pipeline AI                      | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
-| Contoh requirement valid         | [requirements/example-login-extension.md](../requirements/example-login-extension.md)                                    |
+| Langkah                           | Dokumen                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Tulis requirement                 | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
+| Rapikan catatan (ChatGPT/Gemini)  | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
+| Pipeline AI                       | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
+| Contoh requirement valid (sample) | [requirements/sample-login-empty-fields.md](../requirements/sample-login-empty-fields.md)                                |
 
 ---
 
@@ -45,11 +47,11 @@ npm run setup:check         # verify setup setelah selesai
 | `playwright-test` | Menjalankan tes (`run_tests`)                                                                                   |
 | `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
 
-**VS Code (Codex):** Utamakan `.mcp.json` di root project. Gunakan `.vscode/mcp.json` hanya bila editor membutuhkan workspace MCP config.
+**Hermes:** `.mcp.json` di root project dibaca langsung oleh Hermes. Tidak perlu generate config tambahan. `generate-mcp-config.ts` sudah support multi-platform tapi tidak di-surface ke QA di alur default.
 
-**Cursor / Kiro:** Settings → MCP → pastikan ketiga server connected.
+**Cursor / Kiro / VS Code + Copilot (advanced, bukan alur default):** Settings → MCP → pastikan ketiga server connected.
 
-**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/local.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Setelah mengubah env, restart MCP server di IDE.
+**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/{APP_ENV}.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Cek env aktif: `npm run env:status`. Setelah mengubah env, restart MCP server di IDE.
 
 ---
 
@@ -95,7 +97,7 @@ npx playwright test src/tests/demo/demo-pw-power.spec.ts --project=demo
 npx playwright test src/tests/demo/demo-pw-power-extended.spec.ts --project=demo
 ```
 
-Contoh requirement capability: `requirements/example-network-hybrid.md`.
+Contoh requirement capability: `requirements/sample-network-hybrid.md`.
 
 Auth resmi: project `setup` + `dependencies: ['setup']`. Lihat [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
 
@@ -110,7 +112,7 @@ CI shard merge: set `PW_BLOB=1` (nightly; PR e2e saat `shardCount` > 1) → `blo
 
 ---
 
-## Alur Harian QA
+## Alur kerja QA
 
 Pipeline mengikuti kontrak di [AGENTS.md](../AGENTS.md):
 
@@ -147,17 +149,25 @@ Warning baru yang mungkin muncul setelah upgrade:
 
 ---
 
-## Walkthrough: Contoh Pertama
+## Walkthrough: Sample format vs setup awal (real project)
 
-Gunakan [`requirements/example-login-extension.md`](../requirements/example-login-extension.md) untuk latihan:
+**Setup awal (setelah wizard) — website kamu:**
 
 ```bash
-# 1. Validasi format
-npm run validate:requirement -- requirements/example-login-extension.md
+npm run qa:run -- requirements/login.md
+# Hermes: snapshot_page → plan → generate → execute → report
+```
 
-# 2. Di IDE, kirim prompt pipeline (lihat section Prompt Siap Pakai)
+**Sample format (latihan empty-field, Path B demo):**
 
-# 3. Jalankan tes
+```bash
+# 1. Validasi format sample
+npm run validate:requirement -- requirements/sample-login-empty-fields.md
+
+# 2. Di Hermes, kirim prompt pipeline (lihat section Prompt Siap Pakai)
+#    Sample ini butuh POM loginPage — bukan default setup awal
+
+# 3. Jalankan tes (setelah generate)
 npm test
 
 # 4. Lihat laporan
@@ -165,9 +175,9 @@ start reports/custom-dashboard.html   # Windows
 npx playwright show-report            # detail trace + screenshot
 ```
 
-Output yang diharapkan:
+Output sample yang diharapkan:
 
-- `specs/example-login-extension-test-plan.md` (dibuat Planner)
+- `specs/sample-login-empty-fields-test-plan.md` (dibuat Planner)
 - `src/tests/login-empty-fields.spec.ts` (dibuat Generator)
 - SC-01 dan SC-02 jalan; SC-03 `(@manual)` di-skip
 
@@ -212,7 +222,7 @@ Roles in scope: [tulis role, misal: super-admin, finance, hrd].
 1. Validasi requirement; pastikan Role scope dan Access expectation sudah ada.
 2. Planner buat scenario per role dengan kolom Role dan Auth Context.
 3. Generator buat satu file per role: src/tests/<fitur>-<role>.spec.ts
-   - Gunakan test.use({ storageState: '.auth/<role>.json' }) per file.
+   - Gunakan `test.use({ storageState: authStatePath('<role>') })` atau `.auth/{APP_ENV}/<role>.json` per file.
 4. Jalankan semua role files, atau filter dengan: roleFilter: ["<role>"].
 5. Report mencakup summaryByRole per role.
 6. Archive report setelah selesai.
@@ -302,7 +312,7 @@ Buat POM scaffold dari halaman https://staging.app/login:
 | Test plan                   | `specs/*-test-plan.md`                                  |
 | Kode tes                    | `src/tests/**/*.spec.ts`                                |
 | Tes per role                | `src/tests/<fitur>-<role>.spec.ts`                      |
-| Auth state per role         | `.auth/<role>.json`                                     |
+| Auth state per role         | `.auth/{APP_ENV}/<role>.json` (helper: `authStatePath`) |
 | Katalog selector            | `selector-catalog/<fitur>/<halaman>.json`               |
 | Scaffold POM                | `src/pages/<NamaHalaman>.ts`                            |
 | Daftarkan POM               | `src/fixtures/project.fixture.ts`                       |
@@ -369,25 +379,33 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 
 1. `npm run mcp:build` — wajib setelah clone atau setelah update MCP tools
 2. Cek [`.mcp.json`](../.mcp.json) sebagai source-of-truth project MCP config
-3. VS Code (Codex): reload window atau restart extension
+3. Hermes: reload MCP servers / restart Hermes
 4. Cursor/Kiro: Settings → MCP → restart server; pastikan ketiga server connected
 
 ---
 
-## Environment: `APP_ENV` vs `ENV_NAME`
+## Environment: Active target (`APP_ENV`)
 
-| Variable                                              | Fungsi                                                           |
-| ----------------------------------------------------- | ---------------------------------------------------------------- |
-| `APP_ENV`                                             | Pilih file `environments/{name}.env` (local, dev, staging, prod) |
-| `ENV_NAME`                                            | Label runtime di test (logging)                                  |
-| `BASE_URL`                                            | URL aplikasi                                                     |
-| `TEST_USER_EMAIL` / `USERNAME` / `PHONE` / `PASSWORD` | Kredensial QA default                                            |
-| `{ROLE}_EMAIL` / `{ROLE}_PASSWORD`                    | Kredensial multi-role (mis. `FINANCE_EMAIL`)                     |
-| `PLAYWRIGHT_CONFIG`                                   | Path config Playwright (default `playwright.config.ts`)          |
+| Variable                   | Fungsi                                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **`APP_ENV`**              | **Satu-satunya nama paten** — selector file `environments/{name}.env` (`local` \| `dev` \| `staging` \| `production`) |
+| `BASE_URL`                 | URL aplikasi                                                                                                          |
+| `TEST_USER_*` / `{ROLE}_*` | Kredensial                                                                                                            |
+| `PLAYWRIGHT_CONFIG`        | Path config Playwright                                                                                                |
 
-Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` dari GitHub Secrets.
+`ENV_NAME` **tidak dipakai lagi** sebagai konsep. Kalau masih muncul di file lama, diabaikan. Kode yang masih baca `env.ENV_NAME` mendapat **read-only alias** ke `APP_ENV` (deprecated).
 
-**Day-2 (ganti password / tambah role):** `npm run env:edit` — lihat **[CREDENTIALS.md](CREDENTIALS.md)**.
+### Switch environment (lokal)
+
+```bash
+npm run env:use -- dev          # pin environments/.active-env
+npm run env:status              # lihat APP_ENV + source=pin|os|default
+APP_ENV=staging npm test        # one-shot override (mengalahkan pin)
+```
+
+CI mengabaikan pin (`CI=true`). Setelah `env:use`, restart MCP servers.
+
+**Ganti password / tambah role:** `npm run env:edit` — lihat **[CREDENTIALS.md](CREDENTIALS.md)**.
 
 ---
 
@@ -396,8 +414,8 @@ Set `APP_ENV=local` saat dev lokal. CI E2E materialize `environments/dev.env` da
 - **Halaman baru** tanpa POM → Generator pakai inline locators dari selector-catalog. POM opsional — lihat [Path A vs Path B](writing-requirements.md#path-a-vs-path-b-kapan-pakai-pom).
 - **`(@manual)`** → tes di-skip otomatis (CAPTCHA, email nyata, biometric).
 - **Healer** → menggunakan prioritization berbasis pattern; tidak ada cap arbitrer.
-- **Role auth file** → `.auth/<role>.json` harus dibuat dulu via auth setup test.
-- **Environment** → tiap QA pakai `local.env` sendiri.
+- **Role auth file** → `.auth/{APP_ENV}/<role>.json` harus dibuat dulu via auth setup (`src/support/auth.setup.ts`).
+- **Environment** → tiap QA pakai file `environments/{APP_ENV}.env` sendiri (BASE_URL + kredensial per env).
 - **Selector catalog** → di-cache per-hash. `snapshot_page` skip re-capture kalau UI tidak berubah — aman di-run berulang.
 
 ---

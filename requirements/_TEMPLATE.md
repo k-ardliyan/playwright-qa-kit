@@ -29,17 +29,17 @@
 | `Environment scope`   | ⚪ Opsional | `staging` / `production` / `all`                 | Environment mana yang relevan untuk requirement ini.                       |
 | `Data scope`          | ⚪ Opsional | `seed data diperlukan: invoice_approved`         | Data khusus yang harus ada sebelum test bisa jalan.                        |
 
-**Contoh Metadata yang baik (general flow):**
+**Contoh Metadata Path A (default setup awal — tanpa POM):**
 
 ```
 - **Tags:** #auth #ui #smoke
 - **Prioritas:** high
 - **Auth state:** unauthenticated
 - **Halaman awal:** /login
-- **POM yang dibutuhkan:** loginPage
+# TIDAK perlu "POM yang dibutuhkan" di Path A
 ```
 
-**Contoh Metadata yang baik (role-aware flow):**
+**Contoh Metadata Path B (reusable / role-aware — butuh POM):**
 
 ```
 - **Tags:** #finance #ui #regression

@@ -1,7 +1,9 @@
 # Login — Validasi Field Kosong Test Plan
 
 **Seed:** `src/tests/seed.spec.ts`
-**Requirement:** `requirements/example-login-extension.md`
+**Requirement:** `requirements/sample-login-empty-fields.md`
+
+> SAMPLE plan — setup awal real project memakai `requirements/login.md` + catalog dari `snapshot_page`.
 
 ## Application Overview
 

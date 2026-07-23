@@ -20,7 +20,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - **`playwright.cross-browser.config.ts`** — chromium + firefox + webkit via `buildMultiBrowserProjects`
 - **`playwright.mobile.config.ts`** — Pixel 5 + iPhone 13 device projects
 - **Demo** `demo-pw-power.spec.ts` + `demo-pw-power-extended.spec.ts` (`@demo @pw-power`)
-- **Requirement** `requirements/example-network-hybrid.md` (`@network` `@hybrid` `@aria`)
+- **Requirement** `requirements/sample-network-hybrid.md` (`@network` `@hybrid` `@aria`)
 - **Capability tags** in requirements/planner/generator + **validator capability rules**
 - **Healer** `ensurePowerSeedPatterns()` for network / hybrid / auth failures
 - **Optional blob reporter** — `createFrameworkReporters({ includeBlob })` when `CI=true` and `PW_BLOB=1`

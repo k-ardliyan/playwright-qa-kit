@@ -102,7 +102,7 @@ npm run setup:wizard 2>&1 | head -20
    npx @dotenvx/dotenvx encrypt -f environments/local.env
    ```
 
-Panduan lengkap day-2: [CREDENTIALS.md](CREDENTIALS.md).
+Panduan lengkap: [CREDENTIALS.md](CREDENTIALS.md).
 
 ---
 

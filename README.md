@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-0.1.0--alpha.2-blue) ![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?logo=node.js&logoColor=white) ![Playwright](https://img.shields.io/badge/playwright-1.61+-45ba63?logo=playwright&logoColor=white) ![TypeScript](https://img.shields.io/badge/typescript-6.x-3178c6?logo=typescript&logoColor=white)
 
-> **⚠️ Prasyarat:** Node.js **>= 20.19.0** (cek: `node --version`), Git, dan VS Code dengan **Hermes Agent**. Cek dulu sebelum lanjut ke wizard — lihat [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) untuk panduan lengkap.
+> **⚠️ Prasyarat:** Node.js **>= 20.19.0** (cek: `node --version`), Git, dan **Hermes Agent**. Cek dulu sebelum lanjut ke wizard — lihat [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) untuk panduan lengkap.
 
 Framework Playwright berbantuan AI untuk alur **requirement → test plan → automated test → report**. QA mulai dari kebutuhan pengujian, bukan dari kode.
 
@@ -34,7 +34,7 @@ Wizard akan membimbing kamu langkah demi langkah:
 - Konfigurasi URL aplikasi dan kredensial test
 - Install semua dependency dan browser
 - Build MCP server untuk Hermes Agent
-- Verifikasi koneksi Hermes + MCP di VS Code
+- Verifikasi koneksi Hermes + MCP di Hermes
 - Setup autentikasi session (auth.setup.ts)
 - Enkripsi kredensial secara otomatis
 
@@ -57,7 +57,7 @@ npm run health:check
 Framework memakai `dotenvx` untuk enkripsi otomatis. Setelah wizard atau `setup:check` dijalankan, nilai di `local.env` berubah menjadi `encrypted:BA+84DB/...` — ini **normal dan aman**. Kunci dekripsi disimpan di `~/.dotenvx-keys/playwright-qa-kit/`.
 
 ```bash
-# Ganti password / tambah / hapus role (day-2)
+# Ganti password / tambah / hapus role
 npm run env:edit
 
 # Refresh session login
@@ -72,26 +72,29 @@ Panduan lengkap: **[docs/CREDENTIALS.md](docs/CREDENTIALS.md)**.
 
 ## Quick Start
 
-```bash
-# Jalankan pipeline penuh dari satu requirement
-npm run qa:run -- requirements/example-login-extension.md
-
-# Hasilnya: pre-flight → validasi → prompt agent → opsional smoke test
-```
-
-Setelah berhasil, buka laporan:
+Setelah `setup:wizard` selesai, framework menulis **`requirements/login.md`**
+untuk **website kamu** (bukan sample). Locator beda tiap app → pipeline
+wajib `snapshot_page` dulu.
 
 ```bash
-# Dashboard ringkas
-start reports/custom-dashboard.html
+# 1) Preflight + validasi + prompt Hermes (termasuk snapshot_page)
+npm run qa:run -- requirements/login.md
 
-# Report Playwright lengkap (trace, screenshot, step detail)
-npx playwright show-report
+# 2) Paste prompt ke Hermes Agent
+# Pipeline: snapshot catalog → Plan → Generate → Execute → Heal → Report
+
+# 3) Dashboard terbuka otomatis (reports/custom-dashboard.html)
+#    pakai --no-open-dashboard untuk skip
 ```
+
+- **REAL setup awal:** `requirements/login.md`
+- **SAMPLE format:** `requirements/sample-*.md` (latihan saja)
+
+Detail pasca-pipeline: **[docs/POST-PIPELINE.md](docs/POST-PIPELINE.md)**.
 
 ---
 
-## Workflow Harian QA
+## Alur kerja QA
 
 ### 1. Tulis requirement
 
@@ -161,7 +164,7 @@ Error umum:
 
 ### 3. Jalankan pipeline
 
-Buka **Hermes Agent** di VS Code (sidebar atau `Ctrl+Shift+H`) dan gunakan prompt:
+Buka **Hermes Agent** dan gunakan prompt:
 
 > Jalankan pipeline lengkap untuk `requirements/nama-fitur.md` sesuai kontrak `AGENTS.md`: validasi requirement, buat test plan, generate test, run, heal jika gagal, lalu return summary dan unresolved failures.
 
@@ -181,7 +184,7 @@ Setelah pipeline selesai:
 
 | Command                                | Fungsi                                                 |
 | -------------------------------------- | ------------------------------------------------------ |
-| `npm run qa:run -- requirements/X.md`  | Happy path 1-command (pre-flight + validate + prompt)  |
+| `npm run qa:run -- requirements/X.md`  | Preflight + validasi + cetak prompt Hermes             |
 | `npm run setup:check`                  | Verifikasi setup lokal                                 |
 | `npm run health:check`                 | Pre-flight sebelum pipeline                            |
 | `npm run validate:requirement -- X.md` | Validasi format requirement                            |

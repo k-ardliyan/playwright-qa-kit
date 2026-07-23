@@ -5,7 +5,7 @@
 ## Roles
 
 - **QA User** — A manual/UI/E2E tester who is _non-programmer but tech-comfortable_. They use VS Code, run terminal commands, write markdown requirements, and interact with AI agents (e.g. Codex), but they do **not** write TypeScript or build automation frameworks. They are distinct from _Framework Maintainers_ who maintain the MCP server, CI, and parsers.
-- **Framework Maintainer** — The team member(s) who maintain the framework core: MCP server, CI workflows, parsers, base fixture seam, and env-loader module. They are the escalation point when the framework itself fails, but they are **not** in the critical path for day-to-day test creation (see _Selector Discovery_).
+- **Framework Maintainer** — The team member(s) who maintain the framework core: MCP server, CI workflows, parsers, base fixture seam, and env-loader module. They are the escalation point when the framework itself fails, but they are **not** in the critical path for harian test creation (see _Selector Discovery_).
 
 ## Toolchain
 

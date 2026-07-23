@@ -159,7 +159,7 @@ When upgrading `@playwright/test`:
    - `playwright-qa` tools (`validate_requirement`, `parse_requirement_scenarios`, etc.),
    - `requirements/` → `specs/` → `src/tests/` paths and Indonesian QA template,
    - hybrid `playwright-cli` + MCP live verification in Generator.
-6. Update golden sample if planner format changes: `specs/example-login-extension-test-plan.md`.
+6. Update golden sample if planner format changes: `specs/sample-login-empty-fields-test-plan.md`.
 7. Rebuild MCP if validator rules changed: `npm run mcp:build`.
 8. Verify:
 

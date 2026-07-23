@@ -5,12 +5,12 @@
  * Usage: npm run setup:wizard
  *
  * Phase 0: Welcome + pre-flight + resume detection
- * Phase 1: Project info (nama, BASE_URL, env name)
- * Phase 2: Kredensial test (email, password, multi-role)
+ * Phase 1: Project name → APP_ENV → BASE_URL for that env (environments/{APP_ENV}.env)
+ * Phase 2: Kredensial test (email/username/phone + password, multi-role) → same env file
  * Phase 3: Install dependencies (npm, playwright, mcp:build)
  * Phase 4: Hermes + MCP verification
  * Phase 5: Auth setup (generate + run auth.setup.ts)
- * Phase 6: Verify + encrypt credentials
+ * Phase 6: Verify + encrypt environments/{APP_ENV}.env
  * Phase 7: Next steps
  *
  * @module scripts/setup-wizard
@@ -23,15 +23,65 @@ import prompts from 'prompts';
 import { printOk, printWarn, printError, printInfo } from './format-error';
 import { EXIT } from './exit-codes';
 import { writeAuthSetup } from './wizard-auth-template';
-import { encodeEnvValue } from './env-edit-lib';
+import {
+  encodeEnvValue,
+  normalizeWizardRoles,
+  isValidRoleName,
+  canonicalRoleName,
+  type WizardRoleInput,
+} from './env-edit-lib';
 import { resolveProjectName } from '../src/utils/dotenv-keys';
+import {
+  buildLoginRequirement,
+  type LoginMechanism,
+  type RoleSpec as ScaffolderRole,
+} from './wizard-login-template';
 
 const ROOT = process.cwd();
 const STATE_FILE = path.join(ROOT, '.wizard-state.json');
 const ENV_DIR = path.join(ROOT, 'environments');
-const LOCAL_ENV = path.join(ENV_DIR, 'local.env');
 const AUTH_SETUP_OUT = path.join(ROOT, 'src', 'support', 'auth.setup.ts');
 const TOTAL_PHASES = 7;
+
+/** Path to environments/{envName}.env (APP_ENV profile file). */
+function envFilePath(envName: string): string {
+  const name = (envName || 'local').trim() || 'local';
+  return path.join(ENV_DIR, `${name}.env`);
+}
+
+function suggestedBaseUrl(envName: string): string {
+  switch ((envName || 'local').trim()) {
+    case 'dev':
+      return 'https://dev.example.com';
+    case 'staging':
+      return 'https://staging.example.com';
+    case 'production':
+      return 'https://app.example.com';
+    case 'local':
+    default:
+      return 'http://localhost:3000';
+  }
+}
+
+/**
+ * Ensure environments/{env}.env exists (bootstrap from example if needed).
+ * Returns absolute path.
+ */
+function ensureEnvFile(envName: string): string {
+  if (!fs.existsSync(ENV_DIR)) fs.mkdirSync(ENV_DIR, { recursive: true });
+  const target = envFilePath(envName);
+  if (fs.existsSync(target)) return target;
+  const example = path.join(ENV_DIR, `${envName}.env.example`);
+  const localExample = path.join(ENV_DIR, 'local.env.example');
+  if (fs.existsSync(example)) {
+    fs.copyFileSync(example, target);
+  } else if (fs.existsSync(localExample)) {
+    fs.copyFileSync(localExample, target);
+  } else {
+    fs.writeFileSync(target, '', 'utf8');
+  }
+  return target;
+}
 
 // ─── CLI flags ─────────────────────────────────────────────────────────────
 
@@ -107,6 +157,12 @@ interface WizardState {
   mcpVerified: boolean;
   authSetupDone: boolean;
   timestamp: string;
+  /** Login mechanism — set by Phase 5. */
+  loginMechanism: LoginMechanism | null;
+  /** Optional field hints for Generator live-verify. */
+  loginFieldHints: string[];
+  passwordFieldHints: string[];
+  submitButtonHints: string[];
 }
 
 // ─── State helpers ────────────────────────────────────────────────────────────
@@ -145,6 +201,10 @@ function defaultState(): WizardState {
     mcpVerified: false,
     authSetupDone: false,
     timestamp: new Date().toISOString(),
+    loginMechanism: null,
+    loginFieldHints: [],
+    passwordFieldHints: [],
+    submitButtonHints: [],
   };
 }
 
@@ -157,13 +217,13 @@ function hr(char = '─', width = 62): string {
 function banner(): void {
   process.stdout.write('\n');
   process.stdout.write('╔══════════════════════════════════════════════════════════════╗\n');
-  process.stdout.write('║  🎭 Playwright QA Kit — Setup Wizard                         ║\n');
-  process.stdout.write('║  Framework E2E testing berbantuan Hermes Agent               ║\n');
+  process.stdout.write('║  Playwright QA Kit — Setup Wizard                            ║\n');
+  process.stdout.write('║  Setup awal testing otomatis (Hermes Agent)                  ║\n');
   process.stdout.write('╚══════════════════════════════════════════════════════════════╝\n\n');
-  process.stdout.write('  Framework ini membantu QA membuat test otomatis dari\n');
-  process.stdout.write('  requirement — tanpa nulis kode TypeScript sendiri.\n\n');
-  process.stdout.write('  Hermes Agent di VS Code yang akan menjalankan pipeline-nya.\n');
-  process.stdout.write('  Estimasi waktu setup: 5-15 menit.\n\n');
+  process.stdout.write('  Wizard ini menyiapkan project agar QA bisa menjalankan test\n');
+  process.stdout.write('  dari file requirement — tanpa menulis TypeScript sendiri.\n\n');
+  process.stdout.write('  Setelah setup, Hermes Agent menjalankan pipeline tes.\n');
+  process.stdout.write('  Estimasi: sekitar 5–15 menit.\n\n');
 }
 
 function phaseHeader(num: number, title: string): void {
@@ -184,6 +244,14 @@ function isValidUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function parseHintList(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 }
 
 function runCmd(cmd: string, opts: { cwd?: string } = {}): { ok: boolean; output: string } {
@@ -234,15 +302,26 @@ function detectOS(): OSInfo {
   return { platform, isRoot, needsSudo, shellName };
 }
 
-function writeEnvSection(values: Record<string, string>, sectionComment?: string): void {
+/**
+ * Upsert KEY=value into environments/{envName}.env (active wizard APP_ENV profile).
+ */
+function writeEnvSection(
+  envName: string,
+  values: Record<string, string>,
+  sectionComment?: string,
+): void {
   if (FLAGS.dryRun) {
-    process.stdout.write('\n  [dry-run] skip env write: ' + Object.keys(values).join(', ') + '\n');
+    process.stdout.write(
+      `\n  [dry-run] skip env write → environments/${envName || 'local'}.env: ` +
+        Object.keys(values).join(', ') +
+        '\n',
+    );
     return;
   }
-  let content = fs.existsSync(LOCAL_ENV) ? fs.readFileSync(LOCAL_ENV, 'utf-8') : '';
+  const file = ensureEnvFile(envName);
+  let content = fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
   if (sectionComment) content += '\n# ' + sectionComment + '\n';
   for (const [key, val] of Object.entries(values)) {
-    // Reject multiline secrets early (dotenv cannot represent them safely)
     if (/[\r\n]/.test(val)) {
       throw new Error(`Nilai ${key} mengandung baris baru — password/value harus satu baris.`);
     }
@@ -255,8 +334,7 @@ function writeEnvSection(values: Record<string, string>, sectionComment?: string
       content += line + '\n';
     }
   }
-  if (!fs.existsSync(ENV_DIR)) fs.mkdirSync(ENV_DIR, { recursive: true });
-  fs.writeFileSync(LOCAL_ENV, content, 'utf-8');
+  fs.writeFileSync(file, content, 'utf-8');
 }
 
 // ─── Phase 0: Welcome + Pre-flight ───────────────────────────────────────────
@@ -287,8 +365,10 @@ async function phase0(_state: WizardState): Promise<boolean> {
     printWarn('Git tidak ditemukan — tidak wajib tapi disarankan');
   }
 
-  // local.env sudah ada tapi encrypted tanpa key
-  if (fs.existsSync(LOCAL_ENV) && isEncryptedEnv(LOCAL_ENV)) {
+  // Active env profile file (may still be local until Phase 1)
+  const probeEnv = _state.envName || 'local';
+  const probeFile = envFilePath(probeEnv);
+  if (fs.existsSync(probeFile) && isEncryptedEnv(probeFile)) {
     const keyPaths = [
       path.join(ENV_DIR, '.env.keys'),
       path.join(ROOT, '.env.keys'),
@@ -301,7 +381,7 @@ async function phase0(_state: WizardState): Promise<boolean> {
     ];
     const hasKey = keyPaths.some((k) => fs.existsSync(k));
     if (!hasKey) {
-      printWarn('environments/local.env ada tapi terenkripsi dan kunci tidak ditemukan.');
+      printWarn(`environments/${probeEnv}.env ada tapi terenkripsi dan kunci tidak ditemukan.`);
       const { overwrite } = await prompts({
         type: 'confirm',
         name: 'overwrite',
@@ -309,18 +389,18 @@ async function phase0(_state: WizardState): Promise<boolean> {
         initial: false,
       });
       if (overwrite) {
-        fs.unlinkSync(LOCAL_ENV);
+        fs.unlinkSync(probeFile);
         printInfo('File lama dihapus. Akan dibuat ulang.');
       } else {
         printInfo('Lanjut tanpa menimpa.');
       }
     } else {
-      printOk('environments/local.env terenkripsi dan kunci tersedia');
+      printOk(`environments/${probeEnv}.env terenkripsi dan kunci tersedia`);
     }
-  } else if (fs.existsSync(LOCAL_ENV)) {
-    printOk('environments/local.env sudah ada');
+  } else if (fs.existsSync(probeFile)) {
+    printOk(`environments/${probeEnv}.env sudah ada`);
   } else {
-    printInfo('environments/local.env belum ada — akan dibuat di Phase 2');
+    printInfo(`environments/{nama-target}.env belum ada — dibuat di Phase 1 (pilih target + URL)`);
   }
 
   // node_modules
@@ -347,182 +427,323 @@ async function phase0(_state: WizardState): Promise<boolean> {
   return true;
 }
 
-// ─── Phase 1: Project Info ────────────────────────────────────────────────────
+// ─── Phase 1: Project + Environment ───────────────────────────────────────────
 
 async function phase1(state: WizardState): Promise<void> {
-  phaseHeader(1, 'Info Project');
-  process.stdout.write('\n  Framework ini bisa dipakai untuk testing aplikasi web apapun.\n\n');
+  phaseHeader(1, 'Project & target testing');
+  process.stdout.write('\n  Kita tentukan dulu: project ini, server mana yang ditest,\n');
+  process.stdout.write('  dan alamat website (URL) untuk server itu.\n\n');
+  process.stdout.write('  Catatan: tiap target (local/dev/staging) punya URL sendiri.\n');
+  process.stdout.write('  Jangan pakai satu URL untuk semua target.\n\n');
 
-  const ans = await prompts([
-    {
-      type: 'text',
-      name: 'projectName',
-      message: 'Nama project (untuk penamaan laporan):',
-      initial: state.projectName || 'my-app-testing',
-      validate: (v: string) => v.trim().length > 0 || 'Nama project tidak boleh kosong',
-    },
-    {
-      type: 'text',
-      name: 'baseUrl',
-      message: 'URL aplikasi yang akan ditest (BASE_URL):',
-      initial: state.baseUrl || 'http://localhost:3000',
-      validate: (v: string) =>
-        isValidUrl(v.trim()) || 'URL tidak valid. Contoh: https://staging.myapp.com',
-    },
-    {
-      type: 'select',
-      name: 'envName',
-      message: 'Nama environment ini:',
-      choices: [
-        { title: 'local', value: 'local' },
-        { title: 'staging', value: 'staging' },
-        { title: 'development', value: 'development' },
-      ],
-      initial: 0,
-    },
-  ]);
-
-  if (!ans.baseUrl) {
-    printWarn('Input dibatalkan.');
+  const nameAns = await prompts({
+    type: 'text',
+    name: 'projectName',
+    message: 'Nama project (muncul di laporan):',
+    initial: state.projectName || 'my-app-testing',
+    validate: (v: string) => v.trim().length > 0 || 'Nama project tidak boleh kosong',
+  });
+  if (!nameAns.projectName) {
+    printWarn('Dibatalkan.');
     return;
   }
 
-  state.projectName = ans.projectName.trim();
-  state.baseUrl = ans.baseUrl.trim().replace(/\/$/, '');
-  state.envName = ans.envName;
+  const envAns = await prompts({
+    type: 'select',
+    name: 'envName',
+    message: 'Server / target mana yang mau disiapkan sekarang?',
+    choices: [
+      { title: 'local — di komputer sendiri (localhost)', value: 'local' },
+      { title: 'dev — server development', value: 'dev' },
+      { title: 'staging — server staging / QA', value: 'staging' },
+      { title: 'production — hati-hati (hanya akun QA)', value: 'production' },
+    ],
+    initial: Math.max(
+      0,
+      ['local', 'dev', 'staging', 'production'].indexOf(state.envName || 'local'),
+    ),
+  });
+  if (!envAns.envName) {
+    printWarn('Dibatalkan.');
+    return;
+  }
 
-  if (!fs.existsSync(ENV_DIR)) fs.mkdirSync(ENV_DIR, { recursive: true });
+  const envName = String(envAns.envName);
+  // If env changed since last run, don't keep old BASE_URL as initial
+  const urlInitial =
+    state.envName === envName && state.baseUrl ? state.baseUrl : suggestedBaseUrl(envName);
+  const urlAns = await prompts({
+    type: 'text',
+    name: 'baseUrl',
+    message: `Alamat website (URL) untuk target "${envName}":`,
+    initial: urlInitial,
+    validate: (v: string) =>
+      isValidUrl(v.trim()) ||
+      'URL tidak valid. Contoh: https://staging.myapp.com atau http://localhost:3000',
+  });
+  if (!urlAns.baseUrl) {
+    printWarn('Dibatalkan.');
+    return;
+  }
+
+  state.projectName = String(nameAns.projectName).trim();
+  state.envName = envName;
+  state.baseUrl = String(urlAns.baseUrl).trim().replace(/\/$/, '');
+
   writeEnvSection(
+    state.envName,
     {
       BASE_URL: state.baseUrl,
-      ENV_NAME: state.envName,
       PLAYWRIGHT_CONFIG: 'playwright.config.ts',
       HEADLESS: 'true',
       SLOW_MO: '0',
     },
-    'Playwright QA Kit — environments/local.env',
+    `Playwright QA Kit — environments/${state.envName}.env`,
   );
 
-  printOk('Project info tersimpan ke environments/local.env');
+  // Pin active env for local sessions
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { writeActiveEnvPin, isKnownAppEnv } = require('../src/utils/app-env') as {
+      writeActiveEnvPin: (root: string, env: string) => string;
+      isKnownAppEnv: (v: string) => boolean;
+    };
+    if (isKnownAppEnv(state.envName)) {
+      writeActiveEnvPin(process.cwd(), state.envName);
+      printInfo(
+        `Target aktif diset ke "${state.envName}" (disimpan agar session berikutnya tetap pakai target ini).`,
+      );
+    }
+  } catch {
+    // non-fatal
+  }
+
+  printOk(`Tersimpan: URL + pengaturan → environments/${state.envName}.env`);
+  printInfo(`Ganti target nanti: npm run env:use -- <nama>  lalu  npm run env:edit`);
   markPhase(state, 1);
 }
 
 // ─── Phase 2: Kredensial ─────────────────────────────────────────────────────
 
 async function phase2(state: WizardState): Promise<void> {
-  phaseHeader(2, 'Kredensial Akun Test');
-  process.stdout.write('\n  Masukkan akun yang akan dipakai untuk testing.\n');
-  process.stdout.write('  Akun ini harus sudah ada di aplikasimu.\n\n');
-  process.stdout.write('  PENTING: Nilai yang kamu isi akan DIENKRIPSI otomatis\n');
-  process.stdout.write('  setelah setup selesai. Nilai berubah jadi encrypted:BA+84...\n');
-  process.stdout.write('  Ini NORMAL. Edit ulang nanti: npm run env:edit\n\n');
+  phaseHeader(2, 'Akun login untuk testing');
+  const envLabel = state.envName || 'local';
+  process.stdout.write(`\n  Disimpan ke: environments/${envLabel}.env  (target: ${envLabel})\n`);
+  process.stdout.write('  Isi akun yang sudah ada di aplikasi (bukan invent akun baru).\n\n');
+  process.stdout.write('  Aturan isi:\n');
+  process.stdout.write('  • Password wajib.\n');
+  process.stdout.write('  • Minimal satu identitas: email, username, atau nomor telepon.\n');
+  process.stdout.write(
+    '  • Boleh diisi semua; sistem memilih urutan: email → username → telepon\n',
+  );
+  process.stdout.write('    (kecuali kamu pilih preferensi manual).\n');
+  process.stdout.write('  • Setelah setup, nilai dienkripsi. Ubah nanti: npm run env:edit\n\n');
 
   const { multiRole } = await prompts({
     type: 'confirm',
     name: 'multiRole',
-    message: 'Aplikasimu punya lebih dari 1 role user yang perlu ditest?',
+    message: 'Apakah perlu lebih dari satu jenis akun (mis. admin + finance)?',
     initial: false,
   });
   if (multiRole === undefined) {
-    printWarn('Input dibatalkan.');
+    printWarn('Dibatalkan.');
     return;
   }
 
-  const roles: RoleCredential[] = [];
-
-  if (!multiRole) {
+  async function promptIdentity(label: string): Promise<{
+    email: string;
+    username: string;
+    phone: string;
+    password: string;
+    loginIdPref: string;
+  } | null> {
     const c = await prompts([
-      {
-        type: 'text',
-        name: 'email',
-        message: 'Email akun test:',
-        validate: (v: string) => v.trim().length > 0 || 'Wajib diisi',
-      },
-      { type: 'text', name: 'username', message: 'Username (Enter jika sama dengan email):' },
       {
         type: 'password',
         name: 'password',
-        message: 'Password:',
-        validate: (v: string) => v.length > 0 || 'Wajib diisi',
+        message: `[${label}] Password:`,
+        validate: (v: string) => v.length > 0 || 'Password wajib diisi',
       },
-      { type: 'text', name: 'phone', message: 'Nomor telepon (opsional, Enter untuk skip):' },
+      {
+        type: 'text',
+        name: 'email',
+        message: `[${label}] Email (kosongkan jika tidak dipakai):`,
+      },
+      {
+        type: 'text',
+        name: 'username',
+        message: `[${label}] Username (kosongkan jika tidak dipakai):`,
+      },
+      {
+        type: 'text',
+        name: 'phone',
+        message: `[${label}] Nomor telepon (kosongkan jika tidak dipakai):`,
+      },
+      {
+        type: 'select',
+        name: 'loginIdPref',
+        message: `[${label}] Yang diisi ke kolom login di form:`,
+        choices: [
+          { title: 'Otomatis (email dulu, lalu username, lalu telepon)', value: 'auto' },
+          { title: 'Selalu email', value: 'email' },
+          { title: 'Selalu username', value: 'username' },
+          { title: 'Selalu nomor telepon', value: 'phone' },
+        ],
+        initial: 0,
+      },
     ]);
-    if (!c.password) {
-      printWarn('Input dibatalkan.');
+    if (!c.password) return null;
+    const email = String(c.email ?? '').trim();
+    const username = String(c.username ?? '').trim();
+    const phone = String(c.phone ?? '').trim();
+    if (!email && !username && !phone) {
+      printWarn('Isi minimal satu: email, username, atau nomor telepon.');
+      return null;
+    }
+    return {
+      password: String(c.password),
+      email,
+      username,
+      phone,
+      loginIdPref: String(c.loginIdPref ?? 'auto'),
+    };
+  }
+
+  const collected: WizardRoleInput[] = [];
+
+  if (!multiRole) {
+    const c = await promptIdentity('user');
+    if (!c) {
+      printWarn('Dibatalkan.');
       return;
     }
-    writeEnvSection({ TEST_USER_EMAIL: c.email.trim() }, 'Kredensial QA');
-    if (c.username?.trim()) writeEnvSection({ TEST_USER_USERNAME: c.username.trim() });
-    writeEnvSection({ TEST_USER_PASSWORD: c.password });
-    if (c.phone?.trim()) writeEnvSection({ TEST_USER_PHONE: c.phone.trim() });
-    roles.push({ name: 'default', authFile: '.auth/user.json' });
+    collected.push({
+      name: 'user',
+      fields: {
+        password: c.password,
+        email: c.email || undefined,
+        username: c.username || undefined,
+        phone: c.phone || undefined,
+        loginIdPref: c.loginIdPref,
+      },
+    });
   } else {
     let addMore = true;
     let idx = 0;
     while (addMore) {
       idx++;
-      process.stdout.write('\n  -- Role ' + idx + ' ' + '─'.repeat(50) + '\n');
-      const r = await prompts([
-        {
-          type: 'text',
-          name: 'roleName',
-          message: 'Nama role (misal: admin, finance, user):',
-          validate: (v: string) =>
-            /^[a-z0-9-]+$/.test(v.trim()) || 'Lowercase dan tanda hubung saja',
+      process.stdout.write('\n  -- Akun ke-' + idx + ' ' + '─'.repeat(48) + '\n');
+      const r = await prompts({
+        type: 'text',
+        name: 'roleName',
+        message: 'Nama jenis akun (contoh: user, finance, super-admin):',
+        validate: (v: string) => {
+          const n = v.trim().toLowerCase();
+          if (n === 'general') {
+            return 'Jangan pakai "general". Untuk akun default tulis "user".';
+          }
+          if (n === 'default') return 'Tulis "user" (bukan "default").';
+          return (
+            isValidRoleName(n) || 'Hanya huruf kecil, angka, dan tanda hubung (contoh: super-admin)'
+          );
         },
-        {
-          type: 'text',
-          name: 'email',
-          message: 'Email:',
-          validate: (v: string) => v.trim().length > 0 || 'Wajib diisi',
-        },
-        {
-          type: 'password',
-          name: 'password',
-          message: 'Password:',
-          validate: (v: string) => v.length > 0 || 'Wajib diisi',
-        },
-      ]);
-      if (!r.password) {
-        printWarn('Input dibatalkan.');
+      });
+      if (!r.roleName) break;
+      const id = await promptIdentity(canonicalRoleName(String(r.roleName)));
+      if (!id) {
+        printWarn('Akun ini dibatalkan.');
         break;
       }
-      const prefix = r.roleName.toUpperCase().replace(/-/g, '_');
-      const authFile = '.auth/' + r.roleName + '.json';
-      writeEnvSection(
-        { [prefix + '_EMAIL']: r.email.trim(), [prefix + '_PASSWORD']: r.password },
-        idx === 1 ? 'Kredensial per role' : undefined,
-      );
-      roles.push({ name: r.roleName.trim(), authFile });
+      collected.push({
+        name: String(r.roleName),
+        fields: {
+          password: id.password,
+          email: id.email || undefined,
+          username: id.username || undefined,
+          phone: id.phone || undefined,
+          loginIdPref: id.loginIdPref,
+        },
+      });
       const { more } = await prompts({
         type: 'confirm',
         name: 'more',
-        message: 'Tambah role lagi?',
+        message: 'Tambah jenis akun lagi?',
         initial: false,
       });
       addMore = !!more;
     }
   }
 
-  if (roles.length > 0) {
-    state.roles = roles;
-    printOk('Kredensial tersimpan ke environments/local.env');
-    markPhase(state, 2);
+  if (collected.length === 0) {
+    printWarn('Belum ada akun yang disimpan.');
+    return;
   }
+
+  // Multi N=1 / missing user bridge — single normalize call
+  let mirrorToUser: boolean | undefined;
+  let mirrorFromRole: string | undefined;
+
+  const hasUser = collected.some((r) => canonicalRoleName(r.name) === 'user');
+  const only = collected.length === 1 ? canonicalRoleName(collected[0].name) : null;
+
+  if (only && only !== 'user') {
+    const { mirror } = await prompts({
+      type: 'confirm',
+      name: 'mirror',
+      message: `Hanya ada akun "${only}". Salin juga ke akun default "user" agar login biasa / mode general tetap jalan?`,
+      initial: true,
+    });
+    mirrorToUser = !!mirror;
+  } else if (collected.length >= 2 && !hasUser) {
+    const { mirror } = await prompts({
+      type: 'confirm',
+      name: 'mirror',
+      message:
+        'Belum ada akun default "user". Salin dari akun pertama agar login biasa tetap jalan?',
+      initial: true,
+    });
+    mirrorToUser = !!mirror;
+    if (mirrorToUser) {
+      mirrorFromRole = canonicalRoleName(collected[0].name);
+    }
+  }
+
+  const finalNorm = normalizeWizardRoles(collected, {
+    mirrorToUser,
+    mirrorFromRole,
+    appEnv: state.envName || 'local',
+  });
+
+  writeEnvSection(state.envName || 'local', finalNorm.envUpserts, 'Kredensial QA / per role');
+  for (const w of finalNorm.warnings) printWarn(w);
+
+  state.roles = finalNorm.roles.map((r) => ({
+    name: r.name,
+    authFile: r.authFile,
+  }));
+  printOk(
+    `Akun tersimpan di environments/${state.envName || 'local'}.env (${state.roles.map((r) => r.name).join(', ')})`,
+  );
+  markPhase(state, 2);
 }
 
 // ─── Phase 3: Install ─────────────────────────────────────────────────────────
 
 async function phase3(state: WizardState): Promise<boolean> {
-  phaseHeader(3, 'Instalasi Dependencies');
+  phaseHeader(3, 'Install package, browser & tools');
+
+  process.stdout.write('\n  Langkah ini mengunduh file dari internet.\n');
+  process.stdout.write('  Pastikan koneksi internet stabil (bisa 5–15 menit total).\n');
+  process.stdout.write('  Yang diunduh: package npm & browser Chromium (~150MB).\n');
+  process.stdout.write('  Build tools MCP biasanya lokal (jarang unduhan besar).\n\n');
 
   // Step 1: npm install
   const hasModules = fs.existsSync(path.join(ROOT, 'node_modules', '@playwright', 'test'));
   if (hasModules) {
-    printOk('node_modules sudah ada — skip npm install');
+    printOk('Package project sudah terpasang — lewati npm install');
   } else {
-    process.stdout.write('\n  1/3  npm install\n');
-    process.stdout.write('  Menginstall semua package... (1-3 menit)\n');
+    process.stdout.write('\n  1/3  npm install — unduh package project\n');
+    process.stdout.write('  Estimasi 1–3 menit. Jangan putus internet.\n');
     const r = runCmd('npm install');
     if (r.ok) {
       printOk('npm install selesai');
@@ -530,7 +751,7 @@ async function phase3(state: WizardState): Promise<boolean> {
       printError({
         title: 'npm install gagal',
         detail: r.output.split('\n')[0],
-        hint: 'Cek koneksi internet dan coba lagi.',
+        hint: 'Cek koneksi internet, lalu jalankan lagi: npm run setup:wizard -- --from-phase=3',
         exitCode: EXIT.FIXABLE,
       });
       return false;
@@ -538,8 +759,8 @@ async function phase3(state: WizardState): Promise<boolean> {
   }
 
   // Step 2: playwright install chromium
-  process.stdout.write('\n  2/3  npx playwright install --with-deps chromium\n');
-  process.stdout.write('  Mengunduh browser Chromium... (~150MB, bisa 2-5 menit)\n');
+  process.stdout.write('\n  2/3  Unduh browser Chromium untuk testing\n');
+  process.stdout.write('  Ukuran ~150MB — butuh internet lancar (bisa 2–5 menit).\n');
 
   // OS detection + sudo hint
   const osInfo = detectOS();
@@ -547,33 +768,31 @@ async function phase3(state: WizardState): Promise<boolean> {
     printWarn('OS tidak dikenali — lanjut dengan default.');
   } else {
     process.stdout.write(
-      '\n  ℹ️  Terdeteksi OS: ' + osInfo.platform + ' (shell: ' + osInfo.shellName + ')\n',
+      '\n  Terdeteksi OS: ' + osInfo.platform + ' (shell: ' + osInfo.shellName + ')\n',
     );
     if (osInfo.needsSudo) {
-      printWarn('`--with-deps` butuh akses admin untuk install system packages (libnss3, dll).');
-      printWarn('Kamu akan diminta password sudo saat install berjalan.');
+      printWarn('Install library sistem butuh akses admin (sudo).');
+      printWarn('Kamu mungkin diminta password sudo.');
       if (!FLAGS.dryRun) {
         const { useSudo } = await prompts({
           type: 'select',
           name: 'useSudo',
-          message: 'Pilih metode install browser:',
+          message: 'Cara install browser:',
           choices: [
-            { title: 'Gunakan sudo (disarankan — install system packages)', value: 'sudo' },
-            { title: 'Tanpa sudo — install browser saja tanpa system deps', value: 'nosudo' },
+            { title: 'Pakai sudo (disarankan)', value: 'sudo' },
+            { title: 'Tanpa sudo (browser saja, library sistem manual)', value: 'nosudo' },
           ],
         });
         if (useSudo === 'sudo') {
           printInfo('Menggunakan sudo. Masukkan password jika diminta.');
         } else {
-          printInfo(
-            'Skip system deps. Browser tetap terinstall tapi mungkin perlu library manual.',
-          );
+          printInfo('Tanpa system deps. Browser terpasang, tapi mungkin perlu library manual.');
         }
       }
     } else if (osInfo.platform === 'windows') {
-      printInfo('Windows: jalankan terminal sebagai Administrator jika belum.');
+      printInfo('Windows: jika gagal, coba buka terminal sebagai Administrator.');
     } else {
-      printOk('Berjalan sebagai root/admin — tidak butuh sudo');
+      printOk('Berjalan sebagai admin — tidak butuh sudo');
     }
   }
 
@@ -585,34 +804,34 @@ async function phase3(state: WizardState): Promise<boolean> {
       : 'npx playwright install --with-deps chromium';
     const pw = runCmd(pwCmd);
     if (pw.ok) {
-      printOk('Chromium browser siap');
+      printOk('Browser Chromium siap');
     } else {
-      printWarn('playwright install gagal atau partial: ' + pw.output.split('\n')[0]);
+      printWarn('Install browser gagal atau sebagian: ' + pw.output.split('\n')[0]);
+      printWarn('Cek internet / coba lagi: npx playwright install chromium');
     }
   }
 
-  // Step 3: mcp:build — WAJIB
-  process.stdout.write('\n  3/3  npm run mcp:build\n');
-  process.stdout.write('  Membangun AI Tools server (playwright-qa MCP)...\n');
-  process.stdout.write('  Server ini yang memungkinkan Hermes membaca requirement\n');
-  process.stdout.write('  dan mengakses laporan test secara langsung.\n');
+  // Step 3: mcp:build — WAJIB (local compile, biasanya tanpa unduhan besar)
+  process.stdout.write('\n  3/3  Build tools MCP (dipakai Hermes nanti)\n');
+  process.stdout.write('  Ini compile lokal — biasanya cepat, jarang butuh unduhan besar.\n');
+  process.stdout.write('  Hasilnya: Hermes bisa baca requirement & laporan test.\n');
   const mcp = runCmd('npm run mcp:build');
   if (mcp.ok) {
-    printOk('mcp-server/dist/index-mcp.js berhasil di-build');
+    printOk('Build MCP selesai (mcp-server/dist siap)');
   } else {
     const errLine =
       mcp.output.split('\n').find((l: string) => l.toLowerCase().includes('error')) ??
       mcp.output.split('\n')[0];
     printError({
-      title: 'mcp:build gagal',
+      title: 'Build MCP gagal',
       detail: errLine,
-      hint: 'Coba: npm run mcp:build lagi. Jika berulang, hubungi Framework Maintainer.',
+      hint: 'Coba: npm run mcp:build. Jika berulang, hubungi maintainer framework.',
       exitCode: EXIT.ESCALATE,
     });
     const { cont } = await prompts({
       type: 'confirm',
       name: 'cont',
-      message: 'Lanjut meski mcp:build gagal? (MCP tools tidak tersedia)',
+      message: 'Lanjut meski build MCP gagal? (tools di Hermes belum siap)',
       initial: false,
     });
     if (!cont) return false;
@@ -625,74 +844,102 @@ async function phase3(state: WizardState): Promise<boolean> {
 // ─── Phase 4: Hermes + MCP Setup ──────────────────────────────────────────────
 
 async function phase4(state: WizardState): Promise<void> {
-  phaseHeader(4, 'Konfigurasi Hermes Agent + MCP');
+  phaseHeader(4, 'Cek Hermes & koneksi tools');
 
-  process.stdout.write('\n  Framework ini bekerja dengan Hermes Agent di VS Code.\n');
-  process.stdout.write(
-    '  Hermes yang menjalankan pipeline: Requirement -> Plan -> Generate -> Execute -> Report.\n\n',
-  );
+  process.stdout.write('\n  Bedanya dengan langkah install tadi:\n');
+  process.stdout.write('  • Phase 3 = tools MCP sudah di-build di folder project (file siap).\n');
+  process.stdout.write('  • Phase 4 = cek file config + minta kamu pastikan Hermes\n');
+  process.stdout.write('    benar-benar terhubung ke tools itu (wizard tidak bisa klik\n');
+  process.stdout.write('    tombol di dalam aplikasi Hermes).\n\n');
 
-  // Verifikasi .mcp.json
+  // Auto-check what we can verify without Hermes UI
+  let filesOk = true;
   const mcpJson = path.join(ROOT, '.mcp.json');
   if (fs.existsSync(mcpJson)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(mcpJson, 'utf-8')) as { servers?: unknown[] };
-      const serverCount = parsed.servers?.length ?? 0;
+      const parsed = JSON.parse(fs.readFileSync(mcpJson, 'utf-8')) as {
+        servers?: unknown[];
+        mcpServers?: Record<string, unknown>;
+      };
+      // Support both shapes: { servers: [] } and { mcpServers: { name: {...} } }
+      const serverCount =
+        parsed.servers?.length ?? (parsed.mcpServers ? Object.keys(parsed.mcpServers).length : 0);
       if (serverCount >= 3) {
-        printOk('.mcp.json ada dan memiliki ' + serverCount + ' MCP servers');
+        printOk(`Config tools (.mcp.json) OK — ${serverCount} server terdaftar`);
+      } else if (serverCount > 0) {
+        printWarn(`.mcp.json ada tapi hanya ${serverCount} server (biasanya 3)`);
+        filesOk = false;
       } else {
-        printWarn('.mcp.json ada tapi hanya ' + serverCount + ' server (expected 3)');
+        printWarn('.mcp.json ada tapi daftar server kosong / format tidak dikenali');
+        filesOk = false;
       }
     } catch {
       printWarn('.mcp.json tidak valid JSON');
+      filesOk = false;
     }
   } else {
     printError({
       title: '.mcp.json tidak ditemukan',
-      detail: 'File ini seharusnya ada di root project.',
-      hint: 'Restore dari git.',
+      detail: 'File config tools seharusnya ada di root project.',
+      hint: 'Restore dari git, atau: npm run mcp:config',
       exitCode: EXIT.ESCALATE,
     });
+    filesOk = false;
   }
 
-  // Verifikasi mcp-server/dist
   const mcpDist = path.join(ROOT, 'mcp-server', 'dist', 'index-mcp.js');
   if (fileExistsAndNonEmpty(mcpDist)) {
-    printOk('mcp-server/dist/index-mcp.js siap');
+    printOk('Build MCP dari Phase 3 terdeteksi (mcp-server/dist siap)');
   } else {
-    printWarn('mcp-server/dist belum ada — jalankan npm run mcp:build dulu');
+    printWarn('Build MCP belum ada — jalankan: npm run mcp:build');
+    filesOk = false;
   }
 
-  process.stdout.write('\n');
-  process.stdout.write('  Langkah berikutnya di VS Code:\n\n');
-  process.stdout.write('  1. Buka VS Code di folder project ini\n');
-  process.stdout.write('     File > Open Folder > pilih folder ini\n\n');
-  process.stdout.write('  2. Buka Hermes Agent\n');
-  process.stdout.write('     Klik icon Hermes di sidebar kiri, atau tekan Ctrl+Shift+H\n\n');
-  process.stdout.write('  3. Cek status MCP di status bar bawah VS Code:\n');
-  process.stdout.write('       MCP  3 servers  <- angka harus 3\n\n');
-  process.stdout.write('  4. Jika belum 3 server connected:\n');
-  process.stdout.write('     a. Klik status bar MCP tersebut\n');
-  process.stdout.write('     b. Pilih Reload MCP Servers\n');
-  process.stdout.write('     c. Tunggu semua server Connected\n\n');
+  // Optional: health check for more signal
+  process.stdout.write('\n  Menjalankan health check singkat...\n');
+  const hc = runCmd('npx tsx scripts/health-check-cli.ts');
+  if (hc.ok) {
+    printOk('Health check CLI selesai (lihat ringkas di bawah bila ada peringatan)');
+  } else {
+    printWarn('Health check ada keluhan — cek output di bawah');
+  }
+  hc.output
+    .split('\n')
+    .filter((l: string) => l.trim())
+    .slice(0, 12)
+    .forEach((l: string) => process.stdout.write('    ' + l.trim() + '\n'));
+
+  process.stdout.write('\n  Yang perlu kamu cek di aplikasi Hermes (1 menit):\n\n');
+  process.stdout.write('  1. Buka Hermes di folder project ini.\n');
+  process.stdout.write('  2. Lihat status MCP / tools: idealnya 3 server Connected.\n');
+  process.stdout.write('  3. Jika belum: Reload MCP Servers, tunggu Connected.\n');
+  process.stdout.write('     Docs: https://hermes-agent.nousresearch.com/docs\n\n');
+
+  if (!filesOk) {
+    printWarn('File project belum lengkap — perbaiki dulu sebelum mengandalkan Hermes.');
+  }
 
   const { verified } = await prompts({
     type: 'select',
     name: 'verified',
-    message: 'Status MCP di Hermes:',
+    message: 'Di Hermes, status tools MCP sekarang?',
     choices: [
-      { title: 'Sudah connected (lanjut)', value: 'yes' },
-      { title: 'Belum / belum cek (skip dulu, bisa dicek nanti)', value: 'skip' },
-      { title: 'Ada error (tampilkan troubleshooting)', value: 'error' },
+      { title: 'Sudah Connected (3 server) — lanjut', value: 'yes' },
+      { title: 'Belum sempat cek / skip dulu (bisa cek nanti)', value: 'skip' },
+      { title: 'Ada error — tampilkan cara perbaiki', value: 'error' },
     ],
   });
 
   if (verified === 'error') {
-    process.stdout.write('\n  Troubleshooting MCP tidak connect:\n\n');
-    process.stdout.write('  1. Pastikan mcp:build berhasil: npm run mcp:build\n');
-    process.stdout.write('  2. Jalankan health check: npm run health:check\n');
-    process.stdout.write('  3. Restart VS Code sepenuhnya (bukan hanya reload window)\n');
-    process.stdout.write('  4. Jika masih gagal: npm run mcp:config lalu restart VS Code\n\n');
+    process.stdout.write('\n  Cara perbaiki jika Hermes belum connect:\n\n');
+    process.stdout.write('  1. Build ulang tools: npm run mcp:build\n');
+    process.stdout.write('  2. Cek kesehatan: npm run health:check\n');
+    process.stdout.write('  3. Di Hermes: Reload MCP Servers\n');
+    process.stdout.write('  4. Masih gagal: npm run mcp:config lalu restart Hermes\n\n');
+  } else if (verified === 'yes') {
+    printOk('Catatan: tools di Hermes dilaporkan Connected');
+  } else {
+    printInfo('Dilewati. Sebelum pipeline, pastikan MCP Connected di Hermes.');
   }
 
   state.mcpVerified = verified === 'yes';
@@ -702,76 +949,147 @@ async function phase4(state: WizardState): Promise<void> {
 // ─── Phase 5: Auth Setup ──────────────────────────────────────────────────────
 
 async function phase5(state: WizardState): Promise<void> {
-  phaseHeader(5, 'Setup Autentikasi Test');
+  phaseHeader(5, 'Simpan sesi login (auth)');
 
-  process.stdout.write('\n  Framework menyimpan session login ke .auth/<role>.json\n');
-  process.stdout.write('  sehingga test tidak perlu login ulang setiap saat.\n\n');
+  const envLabel = state.envName || 'local';
+  process.stdout.write(`\n  Tujuan: simpan sesi login ke folder .auth/${envLabel}/\n`);
+  process.stdout.write('  supaya test berikutnya tidak perlu ketik login berulang.\n\n');
+  process.stdout.write('  Pilih cara login aplikasi kamu:\n');
+  process.stdout.write('  • Form biasa — ada kolom user/email + password + tombol Login.\n');
+  process.stdout.write('    Nanti browser dibuka dan diisi pakai akun dari Phase 2.\n');
+  process.stdout.write('  • SSO — login lewat Google/Microsoft/dll (wizard belum otomatis).\n');
+  process.stdout.write('  • Tanpa login — semua halaman publik.\n\n');
 
   const { mechanism } = await prompts({
     type: 'select',
     name: 'mechanism',
-    message: 'Bagaimana cara login di aplikasimu?',
+    message: 'Bagaimana cara login di aplikasi ini?',
     choices: [
-      { title: 'Form login biasa (email/username + password + klik Login)', value: 'form' },
-      { title: 'SSO / OAuth (redirect ke Google, Microsoft, dsb.)', value: 'sso' },
+      {
+        title: 'Form biasa (user/email + password) — disarankan, wizard bantu isi',
+        value: 'form',
+      },
+      {
+        title: 'SSO / OAuth (Google, Microsoft, dsb.) — belum otomatis di wizard',
+        value: 'sso',
+      },
       { title: 'Tidak ada login (semua halaman publik)', value: 'none' },
     ],
   });
 
   if (mechanism === undefined) {
-    printWarn('Input dibatalkan.');
+    printWarn('Dibatalkan.');
     return;
   }
 
+  state.loginMechanism = mechanism as LoginMechanism;
+
   if (mechanism === 'none') {
-    printInfo('Tidak ada auth setup. Test akan berjalan tanpa session.');
+    printInfo('Tanpa login. Test berjalan tanpa sesi tersimpan.');
     state.authSetupDone = true;
     markPhase(state, 5);
     return;
   }
 
   if (mechanism === 'sso') {
-    process.stdout.write('\n  SSO/OAuth tidak bisa diotomasi langsung oleh wizard.\n');
-    process.stdout.write('  Minta bantuan Hermes setelah setup selesai:\n');
-    process.stdout.write(
-      '  Ketik di Hermes: ' +
-        JSON.stringify(
-          'Tolong buat auth.setup.ts untuk SSO login di ' + (state.baseUrl ?? '') + '/login',
-        ) +
-        '\n\n',
-    );
+    const base = state.baseUrl || 'https://your-app.example.com';
+    const loginPath = state.loginUrl || '/login';
+    process.stdout.write('\n  SSO belum siap diotomatisasi wizard.\n');
+    process.stdout.write('  Setup akun/file env tetap jalan; sesi login SSO\n');
+    process.stdout.write('  perlu dibantu Hermes setelah wizard selesai.\n\n');
+    process.stdout.write('  Salin prompt ini ke Hermes:\n');
+    process.stdout.write('  ' + hr('-', 60) + '\n');
+    const ssoPrompt = [
+      `Tolong buatkan / perbaiki src/support/auth.setup.ts untuk login SSO/OAuth.`,
+      `BASE_URL=${base}, path login ${loginPath}, APP_ENV=${envLabel}.`,
+      `Simpan storage state ke .auth/${envLabel}/user.json (dan role lain bila ada).`,
+      `Jelaskan langkah manual sekali (klik provider, izin) lalu cara re-run:`,
+      `npx playwright test src/support/auth.setup.ts --project=setup`,
+    ].join(' ');
+    for (const line of ssoPrompt.match(/.{1,58}/g) ?? [ssoPrompt]) {
+      process.stdout.write('  ' + line + '\n');
+    }
+    process.stdout.write('  ' + hr('-', 60) + '\n\n');
+    printInfo('Lanjut wizard tanpa sesi SSO. Jalankan prompt di atas setelah setup.');
+    state.authSetupDone = false;
     markPhase(state, 5);
     return;
   }
 
   // Form login
+  process.stdout.write('\n  Form biasa: nanti browser dibuka, diisi akun dari Phase 2\n');
+  process.stdout.write('  (password + email/username/telepon yang sudah kamu masukkan),\n');
+  process.stdout.write('  lalu sesi disimpan. Kamu tidak perlu mengisi ulang di sini.\n\n');
+
   const loginInfo = await prompts([
     {
       type: 'text',
       name: 'loginUrl',
-      message: 'Path halaman login:',
+      message: 'Path halaman login (contoh: /login):',
       initial: state.loginUrl ?? '/login',
-      validate: (v: string) => v.startsWith('/') || 'Harus diawali / misal: /login',
+      validate: (v: string) => v.startsWith('/') || 'Harus diawali /  contoh: /login',
     },
     {
       type: 'text',
       name: 'successUrlPath',
-      message: 'Path setelah login berhasil:',
+      message: 'Path setelah login berhasil (contoh: /dashboard):',
       initial: state.successUrlPath ?? '/dashboard',
-      validate: (v: string) => v.startsWith('/') || 'Harus diawali / misal: /dashboard',
+      validate: (v: string) => v.startsWith('/') || 'Harus diawali /  contoh: /dashboard',
     },
   ]);
 
   if (!loginInfo.successUrlPath) {
-    printWarn('Input dibatalkan.');
+    printWarn('Dibatalkan.');
     return;
   }
 
   state.loginUrl = loginInfo.loginUrl;
   state.successUrlPath = loginInfo.successUrlPath;
 
+  // Optional field hints — membantu Generator live-verify selector form login.
+  // Skip-friendly: Enter menerima default.
+  const hintAnswers = await prompts([
+    {
+      type: 'text',
+      name: 'loginFieldHints',
+      message: 'Teks label kolom login di form (opsional, pisah koma — Enter lewati):',
+      initial: '',
+    },
+    {
+      type: 'text',
+      name: 'passwordFieldHints',
+      message: 'Teks label kolom password (opsional — Enter lewati):',
+      initial: '',
+    },
+    {
+      type: 'text',
+      name: 'submitButtonHints',
+      message: 'Teks tombol masuk/login (opsional, pisah koma — Enter lewati):',
+      initial: '',
+    },
+  ]);
+
+  state.loginFieldHints = parseHintList(hintAnswers.loginFieldHints);
+  state.passwordFieldHints = parseHintList(hintAnswers.passwordFieldHints);
+  state.submitButtonHints = parseHintList(hintAnswers.submitButtonHints);
+
+  const appEnv = state.envName || 'local';
+  const defaultAuth = `.auth/${appEnv}/user.json`;
   const roles =
-    state.roles.length > 0 ? state.roles : [{ name: 'default', authFile: '.auth/user.json' }];
+    state.roles.length > 0
+      ? state.roles.map((r) => ({
+          name: r.name,
+          // Prefer scoped path if role was stored legacy-unscoped
+          authFile: r.authFile.includes(`/${appEnv}/`)
+            ? r.authFile
+            : r.authFile.startsWith('.auth/')
+              ? `.auth/${appEnv}/${r.name === 'default' ? 'user' : r.name}.json`
+              : r.authFile,
+        }))
+      : [{ name: 'user', authFile: defaultAuth }];
+
+  // Keep state.roles aligned with scoped paths
+  state.roles = roles;
 
   // Generate auth.setup.ts
   writeAuthSetup(
@@ -780,25 +1098,25 @@ async function phase5(state: WizardState): Promise<void> {
   );
   printOk('src/support/auth.setup.ts dibuat');
 
-  // Pastikan .auth/ dir ada
-  const authDir = path.join(ROOT, '.auth');
+  // Pastikan .auth/{APP_ENV}/ dir ada
+  const authDir = path.join(ROOT, '.auth', appEnv);
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
   // Tanya apakah mau jalankan auth setup sekarang
   const { runNow } = await prompts({
     type: 'confirm',
     name: 'runNow',
-    message: 'Jalankan auth setup sekarang? (membuka browser, melakukan login)',
+    message: 'Jalankan login sekarang di browser untuk menyimpan sesi?',
     initial: true,
   });
 
   if (runNow) {
-    process.stdout.write('\n  Menjalankan auth setup...\n');
+    process.stdout.write('\n  Membuka browser & menyimpan sesi login...\n');
     const result = runCmd(
       'npx playwright test src/support/auth.setup.ts --project=setup --reporter=line',
     );
     if (result.ok || result.output.includes('passed')) {
-      printOk('Auth setup berhasil');
+      printOk('Login & simpan sesi berhasil');
       for (const role of roles) {
         if (fs.existsSync(path.join(ROOT, role.authFile))) {
           printOk(role.authFile + ' tersimpan');
@@ -806,11 +1124,11 @@ async function phase5(state: WizardState): Promise<void> {
       }
       state.authSetupDone = true;
     } else {
-      printWarn('Auth setup gagal atau partial.');
+      printWarn('Login / simpan sesi gagal atau sebagian.');
       printWarn(result.output.split('\n').slice(0, 3).join(' | '));
-      process.stdout.write('\n  Minta bantuan Hermes untuk memperbaiki selector login:\n');
+      process.stdout.write('\n  Minta bantuan Hermes untuk memperbaiki form login:\n');
       process.stdout.write(
-        '  Ketik di Hermes: ' +
+        '  ' +
           JSON.stringify(
             'Tolong perbaiki src/support/auth.setup.ts untuk login page di ' +
               (state.baseUrl ?? '') +
@@ -821,7 +1139,7 @@ async function phase5(state: WizardState): Promise<void> {
     }
   } else {
     printInfo(
-      'Auth setup dilewati. Jalankan manual: npx playwright test src/support/auth.setup.ts --project=setup',
+      'Dilewati. Jalankan nanti: npx playwright test src/support/auth.setup.ts --project=setup',
     );
   }
 
@@ -831,8 +1149,8 @@ async function phase5(state: WizardState): Promise<void> {
 // ─── Phase 6: Verify + Encrypt ────────────────────────────────────────────────
 
 async function phase6(state: WizardState): Promise<void> {
-  phaseHeader(6, 'Verifikasi Setup');
-  process.stdout.write('\n  Menjalankan pengecekan akhir...\n\n');
+  phaseHeader(6, 'Cek akhir & enkripsi');
+  process.stdout.write('\n  Mengecek setup dan mengamankan file akun...\n\n');
 
   // setup:check
   const sc = runCmd('npx tsx setup-check.ts');
@@ -855,67 +1173,193 @@ async function phase6(state: WizardState): Promise<void> {
   });
 
   process.stdout.write('\n');
-  printInfo("Warning 'json_results' belum ada adalah NORMAL sebelum test pertama.");
+  printInfo("Peringatan 'json_results belum ada' normal sebelum test pertama dijalankan.");
 
-  // Encrypt env
-  if (fs.existsSync(LOCAL_ENV) && !isEncryptedEnv(LOCAL_ENV)) {
-    process.stdout.write('\n  Mengenkripsi credentials di environments/local.env...\n');
-    const enc = runCmd('npx @dotenvx/dotenvx encrypt -f environments/local.env');
+  // Encrypt active APP_ENV profile file
+  const activeEnv = state.envName || 'local';
+  const activeEnvFile = envFilePath(activeEnv);
+  const relEnv = `environments/${activeEnv}.env`;
+  if (fs.existsSync(activeEnvFile) && !isEncryptedEnv(activeEnvFile)) {
+    process.stdout.write(`\n  Mengamankan (enkripsi) file akun di ${relEnv}...\n`);
+    const enc = runCmd(`npx @dotenvx/dotenvx encrypt -f "${relEnv}"`);
     if (enc.ok) {
-      printOk('Credentials dienkripsi');
-      printInfo('Kunci dekripsi tersimpan di: ~/.dotenvx-keys/playwright-qa-kit/');
-      printInfo('Edit ulang nanti: npm run env:edit');
+      printOk(`File akun diamankan: ${relEnv}`);
+      printInfo('Kunci disimpan di: ~/.dotenvx-keys/playwright-qa-kit/');
+      printInfo('Ubah akun nanti: npm run env:edit');
     } else {
       printWarn('Enkripsi gagal: ' + enc.output.split('\n')[0]);
-      printWarn('File masih PLAINTEXT. Jangan commit environments/local.env!');
+      printWarn(`File masih teks biasa. Jangan commit ${relEnv} ke git.`);
     }
-  } else if (isEncryptedEnv(LOCAL_ENV)) {
-    printOk('Credentials sudah terenkripsi');
+  } else if (isEncryptedEnv(activeEnvFile)) {
+    printOk(`File akun sudah terenkripsi (${relEnv})`);
+  } else {
+    printWarn(`${relEnv} belum ada — enkripsi dilewati`);
   }
 
   markPhase(state, 6);
   process.stdout.write('\n  Status: SETUP SELESAI\n');
 }
 
-// ─── Phase 7: Next Steps ──────────────────────────────────────────────────────
+// ─── Phase 7: Pipeline Conductor ─────────────────────────────────────────────
 
-function phase7(state: WizardState): void {
-  phaseHeader(7, 'Siap Digunakan!');
+const LOGIN_REQ_REL = 'requirements/login.md';
+const LOGIN_REQ_ABS = path.join(ROOT, LOGIN_REQ_REL);
+
+function phase7ReadinessSummary(state: WizardState): void {
+  process.stdout.write('\n  Status setelah setup:\n\n');
+
+  // Env profile (target aktif)
+  const activeEnv = state.envName || 'local';
+  const activeEnvFile = envFilePath(activeEnv);
+  const relEnv = `environments/${activeEnv}.env`;
+  if (fileExistsAndNonEmpty(activeEnvFile)) {
+    if (isEncryptedEnv(activeEnvFile)) {
+      printOk(`${relEnv} terenkripsi (target: ${activeEnv})`);
+    } else {
+      printWarn(`${relEnv} masih teks biasa (seharusnya terenkripsi di Phase 6)`);
+    }
+  } else {
+    printWarn(`${relEnv} belum ada`);
+  }
+
+  // MCP dist
+  const mcpDist = path.join(ROOT, 'mcp-server', 'dist', 'index-mcp.js');
+  if (fileExistsAndNonEmpty(mcpDist)) {
+    printOk('mcp-server/dist siap');
+  } else {
+    printWarn('mcp-server/dist belum ada — jalankan: npm run mcp:build');
+  }
+
+  // Auth file
+  if (state.roles.length > 0 && state.loginMechanism === 'form') {
+    for (const role of state.roles) {
+      const p = path.join(ROOT, role.authFile);
+      if (fileExistsAndNonEmpty(p) && fs.statSync(p).size > 100) {
+        printOk(`${role.authFile} tersimpan (${fs.statSync(p).size} bytes)`);
+      } else {
+        printWarn(
+          `${role.authFile} kosong / tidak ada — login authenticated akan gagal sampai Phase 5 diulang`,
+        );
+      }
+    }
+  } else if (state.loginMechanism === 'sso') {
+    printInfo('Login mechanism SSO — auth.setup.ts belum di-generate. Minta Hermes.');
+  } else if (state.loginMechanism === 'none') {
+    printInfo('Login mechanism: none — semua halaman publik');
+  } else {
+    printWarn('Login mechanism belum dipilih (Phase 5 dilewati)');
+  }
 
   process.stdout.write('\n');
-  process.stdout.write('  ' + hr('=', 60) + '\n');
-  process.stdout.write('  CARA PAKAI FRAMEWORK INI\n');
-  process.stdout.write('  ' + hr('=', 60) + '\n\n');
+}
 
-  process.stdout.write('  1. Buka VS Code di folder ini, pastikan Hermes Agent aktif\n');
-  process.stdout.write('     (cek status bar: MCP  Tulis requirement di folder requirements/\n');
-  process.stdout.write('     Salin template:\n');
-  process.stdout.write('       cp requirements/_TEMPLATE.md requirements/fitur-login.md\n');
-  process.stdout.write('     Isi sesuai fitur yang mau ditest.\n\n');
+function phase7ScaffoldLoginRequirement(
+  state: WizardState,
+  absPath: string,
+  relPath: string,
+): 'written' | 'previewed' {
+  const appEnv = state.envName || 'local';
+  const scaffolderRoles: ScaffolderRole[] =
+    state.roles.length > 0
+      ? state.roles.map((r) => ({ name: r.name, authFile: r.authFile }))
+      : [{ name: 'user', authFile: `.auth/${appEnv}/user.json` }];
 
-  process.stdout.write('  3. Kirim prompt ini ke Hermes Agent:\n');
-  process.stdout.write('  \n');
-  process.stdout.write('     +' + hr('-', 52) + '+\n');
-  process.stdout.write('     | Jalankan pipeline QA untuk                        |\n');
-  process.stdout.write('     | requirements/fitur-login.md                       |\n');
-  process.stdout.write('     +' + hr('-', 52) + '+\n');
-  process.stdout.write('  \n');
-  process.stdout.write('     Hermes akan otomatis: validasi requirement -> plan\n');
-  process.stdout.write('     -> generate test -> execute -> report.\n\n');
+  const mechanism: LoginMechanism = state.loginMechanism ?? 'form';
 
-  process.stdout.write('  4. Lihat laporan:\n');
-  process.stdout.write('     start reports/custom-dashboard.html   (Windows)\n');
-  process.stdout.write('     open  reports/custom-dashboard.html   (Mac/Linux)\n\n');
+  const content = buildLoginRequirement({
+    projectName: state.projectName || 'Target App',
+    baseUrl: state.baseUrl || 'http://localhost:3000',
+    loginUrl: state.loginUrl || '/login',
+    successUrlPath: state.successUrlPath || '/dashboard',
+    roles: scaffolderRoles,
+    mechanism,
+    loginFieldHints: state.loginFieldHints,
+    passwordFieldHints: state.passwordFieldHints,
+    submitButtonHints: state.submitButtonHints,
+  });
 
-  process.stdout.write('  ' + hr('=', 60) + '\n');
-  process.stdout.write('  Coba dulu dengan contoh yang sudah ada:\n');
-  process.stdout.write('    npm run qa:run -- requirements/example-login-extension.md\n\n');
+  if (FLAGS.dryRun) {
+    process.stdout.write(`\n  [dry-run] would write ${relPath} (${content.length} chars)\n`);
+    return 'previewed';
+  }
 
-  process.stdout.write('  Referensi cepat : docs/CHEATSHEET.md\n');
-  process.stdout.write('  Panduan lengkap : docs/GUIDE.md\n');
-  process.stdout.write('  Edit credentials: npm run env:edit\n');
-  process.stdout.write('  Butuh bantuan   : Tanya Hermes langsung di VS Code!\n');
-  process.stdout.write('  ' + hr('=', 60) + '\n\n');
+  if (fs.existsSync(absPath)) {
+    process.stdout.write(`\n  File ${relPath} sudah ada. Backup ke .bak lalu tulis ulang.\n`);
+    const bak = absPath + '.bak';
+    fs.copyFileSync(absPath, bak);
+    printInfo(`Backup: ${path.basename(bak)}`);
+    fs.writeFileSync(absPath, content, 'utf-8');
+    printOk(`${relPath} ditulis ulang`);
+    return 'written';
+  }
+
+  fs.writeFileSync(absPath, content, 'utf-8');
+  printOk(`${relPath} dibuat (${content.length} chars, Path A, no POM)`);
+  return 'written';
+}
+
+function phase7(state: WizardState): void {
+  phaseHeader(7, 'Langkah berikutnya');
+
+  // 1) Readiness snapshot
+  phase7ReadinessSummary(state);
+
+  // 2) Scaffold login requirement (Path A, real per project)
+  const scaffoldResult = phase7ScaffoldLoginRequirement(state, LOGIN_REQ_ABS, LOGIN_REQ_REL);
+  void scaffoldResult;
+
+  // 3) Print conductor — SATU prompt Hermes
+  process.stdout.write('\n');
+  process.stdout.write('  ' + hr('=', 64) + '\n');
+  process.stdout.write('  LANGKAH BERIKUTNYA (urut dari atas)\n');
+  process.stdout.write('  ' + hr('=', 64) + '\n\n');
+
+  process.stdout.write('  1. Pastikan Hermes Agent membuka folder project ini.\n');
+  process.stdout.write('  2. Cek MCP di Hermes: harus 3 server terhubung.\n');
+  process.stdout.write(
+    '  3. Buka ' + LOGIN_REQ_REL + ' — file requirement website kamu (bukan sample).\n',
+  );
+  process.stdout.write(
+    '  4. Salin prompt di bawah, tempel ke Hermes (jalankan pipeline + ambil locator):\n\n',
+  );
+
+  // Single prompt — site-specific: snapshot catalog then full pipeline.
+  const loginUrl = state.loginUrl || '/login';
+  const baseUrl = state.baseUrl || 'http://localhost:3000';
+  const mechanism = state.loginMechanism ?? 'form';
+  const snapshotUrl = mechanism === 'none' ? baseUrl + '/' : baseUrl + loginUrl;
+  const featureName = mechanism === 'none' ? 'public' : 'auth';
+  const pageName = mechanism === 'none' ? 'home' : 'login';
+
+  const prompt = [
+    `Run full pipeline in automatic mode for ${LOGIN_REQ_REL} (orchestrator: AGENTS.md).`,
+    `This is the REAL project login requirement (APP_ENV=${state.envName || 'local'}, BASE_URL=${baseUrl}), not a sample file.`,
+    `BEFORE Plan/Generate: call snapshot_page (playwright-qa) with url=${snapshotUrl}, featureName=${featureName}, pageName=${pageName}.`,
+    `Use the resulting selector-catalog/${featureName}/${pageName}.json locators (Path A, no POM).`,
+    `Live-verify labels/selectors on the real page — every website differs.`,
+    `Resume from last checkpoint if reports/pipeline-state.json exists.`,
+    `Return summary, unresolvedFailures, catalog path, and dashboard/report path.`,
+  ].join(' ');
+
+  process.stdout.write('     ' + hr('-', 60) + '\n');
+  for (const line of prompt.match(/.{1,58}/g) ?? [prompt]) {
+    process.stdout.write('     ' + line + '\n');
+  }
+  process.stdout.write('     ' + hr('-', 60) + '\n\n');
+
+  process.stdout.write('  5. Setelah pipeline selesai, buka dashboard:\n');
+  process.stdout.write('     reports/custom-dashboard.html\n\n');
+
+  process.stdout.write('  ' + hr('-', 64) + '\n');
+  process.stdout.write('  Catatan singkat:\n');
+  process.stdout.write(
+    '   - requirements/login.md     = requirement website kamu (hasil wizard)\n',
+  );
+  process.stdout.write('   - requirements/sample-*.md  = contoh format saja (latihan)\n');
+  process.stdout.write('   - Ganti akun / password: npm run env:edit\n');
+  process.stdout.write('   - Ganti target server: npm run env:use -- <nama>\n');
+  process.stdout.write('   - Panduan gagal pipeline: docs/POST-PIPELINE.md\n');
+  process.stdout.write('  ' + hr('-', 64) + '\n\n');
 
   markPhase(state, 7);
 }
@@ -986,19 +1430,19 @@ async function main(): Promise<void> {
     markPhase(state, 0);
   }
 
-  // Phase 1: Project info
+  // Phase 1: Project + Environment
   if (startPhase <= 1 && !state.completedPhases.includes(1)) {
     await phase1(state);
   } else if (state.completedPhases.includes(1)) {
-    printOk('[Phase 1] Project info sudah ada — skip');
+    printOk(`[Phase 1] Project & target (${state.envName || 'local'}) sudah ada — skip`);
   }
 
   // Phase 2: Kredensial
   if (startPhase <= 2 && !state.completedPhases.includes(2)) {
     await phase2(state);
   } else if (state.completedPhases.includes(2)) {
-    printOk('[Phase 2] Kredensial sudah dikonfigurasi — skip');
-    printInfo('Mau ganti / tambah role? Jalankan: npm run env:edit');
+    printOk('[Phase 2] Akun login sudah dikonfigurasi — skip');
+    printInfo('Mau ganti / tambah akun? Jalankan: npm run env:edit');
     printInfo('Atau ulang Phase 2: npm run setup:wizard -- --from-phase=2');
   }
 

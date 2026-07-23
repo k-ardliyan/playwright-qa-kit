@@ -74,16 +74,22 @@ Validator akan memberi warning jika:
 
 Lihat panduan lengkap: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)
 
+### Mode general vs role-aware
+
+- **general** = tidak ada `Role scope`; auth default = role kredensial **`user`** (`TEST_USER_*`), **bukan** role bernama `general`
+- **role-aware** = ada `Role scope`; satu spek/auth per role bisnis (`finance`, `hrd`, …)
+- `Role scope` memuat nama bisnis saja — jangan tulis `general` di daftar role
+
 ---
 
 ## Contoh & Referensi
 
-| File                                                                                    | Untuk apa                                           |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                             | Template utama yang Anda salin                      |
-| [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                     | Contoh requirement BAIK — target kualitas           |
-| [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                       | Contoh requirement BURUK — apa yang harus dihindari |
-| [`requirements/example-login-extension.md`](../requirements/example-login-extension.md) | Contoh valid untuk latihan pipeline                 |
+| File                                                                                        | Untuk apa                                           |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                                 | Template utama yang Anda salin                      |
+| [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                         | Contoh requirement BAIK — target kualitas           |
+| [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                           | Contoh requirement BURUK — apa yang harus dihindari |
+| [`requirements/sample-login-empty-fields.md`](../requirements/sample-login-empty-fields.md) | Contoh valid untuk latihan pipeline                 |
 
 ---
 

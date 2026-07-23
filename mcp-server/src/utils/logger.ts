@@ -1,17 +1,25 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-const LOG_DIR = path.resolve(process.cwd(), 'logs');
-const LOG_FILE = path.join(LOG_DIR, 'automation.log');
-
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+
+/**
+ * Resolve log paths at write-time.
+ * MCP bootstrap may `chdir` to the repo root after this module is first loaded;
+ * freezing LOG_DIR at import time previously wrote to CWD-at-import (e.g. System32).
+ */
+function getLogPaths(): { logDir: string; logFile: string } {
+  const logDir = path.resolve(process.cwd(), 'logs');
+  return { logDir, logFile: path.join(logDir, 'automation.log') };
+}
 
 function appendToFile(line: string): void {
   try {
-    if (!fs.existsSync(LOG_DIR)) {
-      fs.mkdirSync(LOG_DIR, { recursive: true });
+    const { logDir, logFile } = getLogPaths();
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
     }
-    fs.appendFileSync(LOG_FILE, `${line}\n`, 'utf8');
+    fs.appendFileSync(logFile, `${line}\n`, 'utf8');
   } catch (error) {
     // MCP stdio transport: stdout reserved for protocol messages only.
     // Log file write failures go to stderr.
@@ -24,10 +32,9 @@ function write(level: LogLevel, message: string, metadata?: Record<string, unkno
   const metaPart = metadata ? ` ${JSON.stringify(metadata)}` : '';
   const line = `[${timestamp}] [${level}] ${message}${metaPart}`;
 
-  // All log output goes to stderr + file. Never stdout (breaks MCP stdio).
-  if (level === 'ERROR' || level === 'WARN') {
-    process.stderr.write(`${line}\n`);
-  }
+  // All console log output goes to stderr. Never stdout (breaks MCP stdio).
+  // INFO was previously file-only; emit to stderr too so MCP hosts can diagnose startup.
+  process.stderr.write(`${line}\n`);
 
   appendToFile(line);
 }

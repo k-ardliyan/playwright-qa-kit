@@ -15,8 +15,8 @@ You analyze requirement documents and convert them into structured, testable sce
 ## Format Reference
 
 Read [`requirements/_TEMPLATE.md`](../../requirements/_TEMPLATE.md) as the canonical format.
-Example: [`requirements/example-login-extension.md`](../../requirements/example-login-extension.md).
-Golden test plan: [`specs/example-login-extension-test-plan.md`](../../specs/example-login-extension-test-plan.md).
+Example: [`requirements/sample-login-empty-fields.md`](../../requirements/sample-login-empty-fields.md).
+Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/sample-login-empty-fields-test-plan.md).
 
 > **Table View fields:** Each scenario in a requirement now carries `testId`, `priority`,
 > `inputData`, `expectedResultFormatted`, and `affectedLayer` parsed by
@@ -48,14 +48,14 @@ For public sites without authentication, prefer **`discover_pages`** over manual
 
 ## Seed and auth context
 
-| Context                    | Seed                                                                      | Auth                                                                                                                                                                                                                                                 | POM fixtures                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Template core (`npm test`) | `src/tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `src/support/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: '.auth/<role>.json' })` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it        |
-| ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/user.json`                                                                                                                                                                                     | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
+| Context                    | Seed                                                                      | Auth                                                                                                                                                                                                                                                                                      | POM fixtures                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Template core (`npm test`) | `src/tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `src/support/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it        |
+| ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/{APP_ENV}/user.json`                                                                                                                                                                                                                | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
 
-- **Generated tests** always land in `src/tests/<name>.spec.ts` with `@/fixtures/base.fixture`.
+- Auth state files per role: `.auth/{APP_ENV}/<role>.json` (e.g. `.auth/local/finance.json`). Prefer `authStatePath('finance')` from `@/support/auth-paths`.
 - **Role-aware tests** land in `src/tests/<name>-<role>.spec.ts`, one file per role.
-- Auth state files per role: `.auth/<role>.json` (e.g. `.auth/finance.json`, `.auth/super-admin.json`).
+- **Generated tests** always land in `src/tests/<name>.spec.ts` with `@/fixtures/base.fixture`.
 
 ## Role-Aware Planning
 
@@ -64,10 +64,12 @@ When the requirement has `Role scope` in metadata:
 1. **Detect mode** — if `Role scope` is present, switch to role-aware planning.
 2. **Per-role scenarios** — generate scenario groups for each role listed in `Role scope`.
 3. **Access restriction scenarios** — for roles listed in `Access expectation` as restricted, generate `(@access-restriction)` scenarios.
-4. **Auth context** — note which `.auth/<role>.json` storage state each scenario group requires.
+4. **Auth context** — note which `.auth/{APP_ENV}/<role>.json` (or `authStatePath('<role>')`) each scenario group requires.
 5. **Coverage gaps** — if `Access expectation` names a role but no scenario covers that role, flag it as a gap.
 
 If `Role scope` is **not** present, plan in **general mode** — single auth context, no per-role split.
+
+**Vocabulary:** `Mode: general` means non-role-aware (no Role scope). Auth storage for authenticated general scenarios is the default credential role **`user`** (`.auth/{APP_ENV}/user.json` / `TEST_USER_*`). Never invent an env role named `general`.
 
 ## Output Format
 
@@ -91,7 +93,7 @@ Save to `specs/<feature-name>-test-plan.md`.
 ### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @hybrid | @aria | @visual)
 
 **Role:** <role name, or "general">
-**Auth Context:** `.auth/<role>.json` | `unauthenticated` | `storageState: undefined`
+**Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
 **Capabilities:** <none | network | hybrid | aria | visual — derived from title tags / requirement Tags>
 
@@ -110,7 +112,7 @@ For **role-aware mode**, group rows under `## Role: <role>` header and use the s
 ### SC-02: <scenario title> (@failure)
 
 **Role:** <role name, or "general">
-**Auth Context:** `.auth/<role>.json` | `unauthenticated`
+**Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated`
 **Seed:** `src/tests/seed.spec.ts`
 
 | Scenario Name | Steps | Expected Result |
@@ -204,6 +206,6 @@ If there are no manual scenarios, write: `No manual scenarios.`
 
 ## Example Prompt
 
-- "Plan test scenarios from `requirements/example-login-extension.md` and save to `specs/example-login-extension-test-plan.md`."
+- "Plan test scenarios from `requirements/sample-login-empty-fields.md` and save to `specs/sample-login-empty-fields-test-plan.md`."
 - "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
-- "Plan capability scenarios from `requirements/example-network-hybrid.md` including @network @hybrid @aria."
+- "Plan capability scenarios from `requirements/sample-network-hybrid.md` including @network @hybrid @aria."

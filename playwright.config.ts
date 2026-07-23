@@ -17,7 +17,7 @@ export default defineConfig({
     blobOutputDir: 'blob-report',
   }),
   projects: [
-    // Auth setup — materializes .auth/user.json (empty if no credentials).
+    // Auth setup — materializes .auth/{APP_ENV}/<role>.json for every login-ready role.
     // Run explicitly: npx playwright test src/support/auth.setup.ts --project=setup
     {
       name: 'setup',
@@ -29,8 +29,9 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         // Default unauthenticated. Generated authenticated specs MUST override:
-        //   test.use({ storageState: '.auth/<role>.json' })
-        // Forcing .auth/user.json here would break unauth + public demos.
+        //   test.use({ storageState: authStatePath('<role>') })
+        //   // or `.auth/${process.env.APP_ENV||'local'}/<role>.json`
+        // Forcing .auth/.../user.json here would break unauth + public demos.
         storageState: { cookies: [], origins: [] },
       },
       testDir: './src/tests',

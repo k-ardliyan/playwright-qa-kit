@@ -39,7 +39,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: '.auth/user.json',
+        storageState: `.auth/${process.env.APP_ENV?.trim() || 'local'}/user.json`,
       },
       testDir: './e2e/specs',
       testMatch: '**/*.spec.ts',

@@ -93,7 +93,6 @@ jobs:
         run: |
           {
             printf 'BASE_URL=%s\n' "${BASE_URL}"
-            printf 'ENV_NAME=%s\n' "${TARGET_ENV}"
             [ -n "${TEST_USER_EMAIL}" ]    && printf 'TEST_USER_EMAIL=%s\n'    "${TEST_USER_EMAIL}"
             [ -n "${TEST_USER_USERNAME}" ] && printf 'TEST_USER_USERNAME=%s\n' "${TEST_USER_USERNAME}"
             [ -n "${TEST_USER_PASSWORD}" ] && printf 'TEST_USER_PASSWORD=%s\n' "${TEST_USER_PASSWORD}"

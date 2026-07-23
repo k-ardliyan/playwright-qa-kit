@@ -87,8 +87,21 @@ function extractScenarioType(rawHeading: string): ScenarioType {
 }
 
 /**
+ * Normalize role slug: default/general → user (credential role for mode general).
+ */
+function canonicalRoleName(role: string): string {
+  const r = role
+    .trim()
+    .toLowerCase()
+    .replace(/[.,;]+$/, '');
+  if (!r || r === 'default' || r === 'general') return 'user';
+  return r;
+}
+
+/**
  * Parse "Role scope" metadata field → array of role names.
  * Handles: "super-admin, finance, hrd" or "super-admin; finance"
+ * Strips forbidden public name "general" from scope list (mode, not env role).
  */
 function parseRolesInScope(text: string): string[] {
   const match = text.match(/^\s*-\s+\*\*Role\s+scope:\*\*\s*(.+)$/im);
@@ -96,7 +109,8 @@ function parseRolesInScope(text: string): string[] {
   return match[1]
     .split(/[,;]/)
     .map((r) => r.trim().toLowerCase())
-    .filter((r) => r.length > 0 && r !== 'semua role' && r !== 'all roles');
+    .filter((r) => r.length > 0 && r !== 'semua role' && r !== 'all roles' && r !== 'general')
+    .map((r) => (r === 'default' ? 'user' : r));
 }
 
 /**
@@ -111,7 +125,7 @@ function parseAccessExpectations(text: string): Record<string, string> {
   for (const part of parts) {
     const colonIdx = part.indexOf(':');
     if (colonIdx === -1) continue;
-    const role = part.slice(0, colonIdx).trim().toLowerCase();
+    const role = canonicalRoleName(part.slice(0, colonIdx));
     const expectation = part.slice(colonIdx + 1).trim();
     if (role && expectation) result[role] = expectation;
   }
@@ -119,16 +133,64 @@ function parseAccessExpectations(text: string): Record<string, string> {
 }
 
 /**
- * Derive auth context from auth state + role.
- * Role-aware → .auth/<role>.json; unauthenticated → 'unauthenticated'; else undefined.
+ * Per-scenario role from:
+ * 1. `- **Role:** finance` / `**Role:** finance` in scenario block
+ * 2. Heading prefix `finance: ...` when that name is in rolesInScope
+ * 3. Single role in rolesInScope (only one business role) → that role
+ * Else undefined → pipeline treats as general → credential role user
+ */
+function resolveScenarioRole(
+  scenarioLines: string[],
+  rawName: string,
+  rolesInScope: string[],
+): string | undefined {
+  for (const line of scenarioLines) {
+    const m =
+      line.match(/^\s*-\s+\*\*Role:\*\*\s*(.+)$/i) || line.match(/^\s*\*\*Role:\*\*\s*(.+)$/i);
+    if (m) {
+      const role = canonicalRoleName(m[1].split(/[,;(]/)[0] ?? '');
+      if (role) return role;
+    }
+  }
+
+  const prefix = rawName.match(/^([a-z0-9-]+)\s*[:—–-]\s+/i);
+  if (prefix) {
+    const candidate = canonicalRoleName(prefix[1]);
+    if (
+      rolesInScope.length === 0 ||
+      rolesInScope.includes(candidate) ||
+      rolesInScope.includes(prefix[1].toLowerCase())
+    ) {
+      // Only treat as role prefix if looks like a role in scope or common role token
+      if (rolesInScope.includes(candidate) || rolesInScope.includes(prefix[1].toLowerCase())) {
+        return candidate;
+      }
+    }
+  }
+
+  if (rolesInScope.length === 1) {
+    return canonicalRoleName(rolesInScope[0]);
+  }
+
+  return undefined;
+}
+
+/**
+ * Derive auth context from auth state + optional role.
+ * Paths are scoped by APP_ENV: `.auth/{APP_ENV}/{role}.json`
+ * - unauthenticated → 'unauthenticated'
+ * - authenticated without role / general / default → user (pipeline mode general)
+ * - authenticated + business role → that role
  */
 function deriveAuthContext(text: string, role?: string): string | undefined {
   const authMatch = text.match(/^\s*-\s+\*\*Auth\s+state:\*\*\s*(\S+)/im);
   if (!authMatch) return undefined;
-  const authState = authMatch[1].toLowerCase();
+  const authState = authMatch[1].toLowerCase().replace(/[.,;]+$/, '');
   if (authState === 'unauthenticated') return 'unauthenticated';
-  if (role) return `.auth/${role}.json`;
-  return undefined;
+
+  const appEnv = (process.env.APP_ENV ?? 'local').trim() || 'local';
+  const roleName = canonicalRoleName(role ?? 'user');
+  return `.auth/${appEnv}/${roleName}.json`;
 }
 
 type BlockMode = 'list' | 'paragraph';
@@ -296,9 +358,12 @@ function parseExpectedResultFormatted(
 }
 
 export function parseRequirementScenariosFromText(text: string): RequirementScenario[] {
-  const lines = text.split(/\r?\n/);
+  const lines = text
+    .split(String.fromCharCode(10))
+    .map((line) => (line.endsWith(String.fromCharCode(13)) ? line.slice(0, -1) : line));
   const scenarios: RequirementScenario[] = [];
   const globalPriority = parseGlobalPriority(text);
+  const rolesInScope = parseRolesInScope(text);
   let i = 0;
 
   while (i < lines.length) {
@@ -437,7 +502,8 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
 
     if (name.length > 0 && steps.length > 0 && expectedResult.length > 0) {
       const scenarioType = extractScenarioType(rawName);
-      const authContext = deriveAuthContext(text);
+      const roleScope = resolveScenarioRole(scenarioLines, rawName, rolesInScope);
+      const authContext = deriveAuthContext(text, roleScope);
 
       // Derive testId fallback: TC-<FEATURETAG>-<NNN> from scenario index
       const resolvedTestId =
@@ -456,6 +522,7 @@ export function parseRequirementScenariosFromText(text: string): RequirementScen
         inputData,
         expectedResultFormatted: expectedResultFormatted || expectedResult,
         affectedLayer,
+        ...(roleScope !== undefined && { roleScope }),
         ...(authContext !== undefined && { authContext }),
       };
       if (precondition) {

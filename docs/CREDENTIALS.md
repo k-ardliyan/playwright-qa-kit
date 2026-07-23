@@ -1,130 +1,145 @@
-# Kredensial & Multi-Role — Panduan Day-2
+# Kredensial & Multi-Role
 
-> **Satu halaman** untuk ganti password, tambah/hapus role, dan refresh session login.
-> First-time setup? Mulai dari [GETTING-STARTED.md](GETTING-STARTED.md) (`npm run setup:wizard`).
+> **Satu halaman** untuk ganti password, tambah/hapus role, dan refresh session login.  
+> Setup awal? Mulai dari [GETTING-STARTED.md](GETTING-STARTED.md) (`npm run setup:wizard`).
+
+---
+
+## Environment dulu, baru BASE_URL
+
+`BASE_URL` **bukan** global project — isinya di `environments/{APP_ENV}.env` dan **boleh beda per env**.
+
+| Urutan benar                               | Contoh                     |
+| ------------------------------------------ | -------------------------- |
+| 1. Pilih / pin `APP_ENV`                   | `staging`                  |
+| 2. Isi `BASE_URL` + kredensial di file itu | `environments/staging.env` |
+
+Wizard Phase 1: **project name → APP_ENV → BASE_URL untuk env itu**.  
+Env lain: `npm run env:use -- <env>` lalu `npm run env:edit` (jangan mengasumsikan URL sama).
 
 ---
 
 ## Naming Convention (sumber kebenaran)
 
-| Role di UI / test     | Env keys                                                                  | Auth file                |
-| --------------------- | ------------------------------------------------------------------------- | ------------------------ |
-| `user` (default)      | `TEST_USER_EMAIL`, `TEST_USER_PASSWORD` (+ optional `USERNAME` / `PHONE`) | `.auth/user.json`        |
-| `finance`             | `FINANCE_EMAIL`, `FINANCE_PASSWORD`                                       | `.auth/finance.json`     |
-| `super-admin`         | `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`                               | `.auth/super-admin.json` |
-| `<role>` (kebab-case) | `{ROLE_UPPER_SNAKE}_EMAIL`, `_PASSWORD`                                   | `.auth/<role>.json`      |
+Setiap role memakai **skema yang sama**:
 
-Contoh: role `super-admin` → keys `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` → file `.auth/super-admin.json`.
+| Key                 | Wajib?           | Keterangan                       |
+| ------------------- | ---------------- | -------------------------------- |
+| `{P}_PASSWORD`      | Ya (untuk login) | Secret                           |
+| `{P}_EMAIL`         | Opsional         | Identitas email                  |
+| `{P}_USERNAME`      | Opsional         | Identitas username               |
+| `{P}_PHONE`         | Opsional         | Identitas telepon                |
+| `{P}_LOGIN_ID_PREF` | Opsional         | `email` \| `username` \| `phone` |
 
-Validasi nama role: **huruf kecil, angka, tanda hubung** saja (`finance`, `super-admin`).
+Prefix `{P}`: role `user` → `TEST_USER`; role `finance` → `FINANCE`; `super-admin` → `SUPER_ADMIN`.
+
+| Role                     | Prefix                 | Auth file                          |
+| ------------------------ | ---------------------- | ---------------------------------- |
+| `user` (default account) | `TEST_USER_*`          | `.auth/{APP_ENV}/user.json`        |
+| `finance`                | `FINANCE_*`            | `.auth/{APP_ENV}/finance.json`     |
+| `super-admin`            | `SUPER_ADMIN_*`        | `.auth/{APP_ENV}/super-admin.json` |
+| `<role>` kebab           | `{ROLE_UPPER_SNAKE}_*` | `.auth/{APP_ENV}/<role>.json`      |
+
+**Jangan** buat role bernama `general` — itu **mode pipeline**, bukan akun.
+
+Validasi nama role: huruf kecil, angka, tanda hubung (`finance`, `super-admin`, `user`).
 
 ---
 
-## First-time (wizard)
+## Identifier opsional (aturan)
+
+1. **Password wajib** untuk role yang akan login.
+2. **Isi minimal satu** dari: email, username, atau telepon.
+3. **Boleh isi semua** — tidak error.
+4. Jika lebih dari satu terisi, sistem memilih: **email → username → phone**, kecuali `LOGIN_ID_PREF` di-set.
+5. Pref menunjuk field kosong → fall through ke urutan default.
+
+| Isi env                     | Yang dipakai login    |
+| --------------------------- | --------------------- |
+| email saja                  | email                 |
+| username + phone            | username              |
+| email + phone, `PREF=phone` | phone                 |
+| password saja               | **tidak login-ready** |
+
+---
+
+## Single vs multi vs **general**
+
+| Konsep                         | Arti                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **Single-role**                | Hanya role `user` (`TEST_USER_*`)                                                                 |
+| **Multi-role**                 | Beberapa role di file env yang sama (`user` + `finance` + …)                                      |
+| **Mode general** (requirement) | Tidak ada `Role scope` — skenario non-RBAC; auth default = **`user`**, bukan role bernama general |
+| **Mode role-aware**            | Ada `Role scope` — satu spek/auth per role bisnis                                                 |
+
+### Multi tapi hanya isi 1 role
+
+- Nama `user` → diperlakukan seperti single-role.
+- Nama lain (mis. `finance`) → wizard menawar **mirror ke `TEST_USER`** agar mode general / auth default tetap jalan (disarankan Ya).
+- Multi ≥2 tanpa `user` → diminta mirror/tambah default user.
+
+---
+
+## Setup awal (wizard)
 
 ```bash
 npm install
 npm run setup:wizard
 ```
 
-Phase 2 wizard mendukung single-role **atau** multi-role. Setelah selesai, nilai di `environments/local.env` dienkripsi (`encrypted:…`) — **itu normal**.
+Phase 1: pilih **APP_ENV**, lalu **BASE_URL untuk env itu**.  
+Phase 2: kredensial ke file env yang sama. Nilai di `environments/{APP_ENV}.env` dienkripsi — **itu normal**.
 
 ---
 
-## Day-2: `npm run env:edit` (utama)
-
-Jangan edit file `encrypted:…` di editor teks. Gunakan:
+## Ganti password / tambah role: `npm run env:edit`
 
 ```bash
-npm run env:edit                  # menu interaktif
-npm run env:edit -- --list        # lihat keys (masked)
-npm run env:edit -- --env dev     # environments/dev.env
+npm run env:status                # APP_ENV + roles readiness
+npm run env:use -- dev            # pin environment
+npm run env:edit                  # menu (file = active APP_ENV)
+npm run env:edit -- --list
+npm run env:edit -- --env staging
 ```
 
-### Menu yang sering dipakai
+| Kebutuhan                  | Aksi                                     |
+| -------------------------- | ---------------------------------------- |
+| Ganti password / identitas | **Edit kredensial role**                 |
+| Tambah role                | **Tambah role** (bukan nama `general`)   |
+| Hapus role                 | **Hapus role**                           |
+| Ganti URL                  | **Edit BASE_URL / HEADLESS / SLOW_MO**   |
+| Simpan                     | **Simpan & encrypt**                     |
+| Regenerasi auth setup      | **Regenerasi src/support/auth.setup.ts** |
 
-| Kebutuhan              | Aksi di menu                             |
-| ---------------------- | ---------------------------------------- |
-| Ganti password / email | **Edit kredensial role**                 |
-| Tambah role baru       | **Tambah role**                          |
-| Hapus role             | **Hapus role**                           |
-| Ganti URL app          | **Edit BASE_URL / ENV_NAME**             |
-| Simpan perubahan       | **Simpan & encrypt**                     |
-| Regenerasi auth setup  | **Regenerasi src/support/auth.setup.ts** |
-
-Setelah simpan, CLI mengingatkan refresh session.
+Auth session: `.auth/{APP_ENV}/<role>.json` (legacy `.auth/<role>.json` masih dibaca untuk `local`).
 
 ---
 
-## Refresh session (tanpa ganti password)
-
-Kalau login expired / `.auth/*.json` basi:
+## Refresh session
 
 ```bash
 npx playwright test src/support/auth.setup.ts --project=setup
 ```
 
-File auth setup digenerate wizard di `src/support/auth.setup.ts`.  
-Adapter ERPKU sample: `example/erpku/support/auth.setup.ts` (jalankan lewat config adapter).
-
 ---
 
-## Enkripsi — yang perlu diketahui
+## Enkripsi
 
-| Item           | Lokasi / catatan                                                  |
-| -------------- | ----------------------------------------------------------------- |
-| Env file       | `environments/local.env` (gitignored)                             |
-| Ciphertext     | `KEY=encrypted:BA+84…` — **normal**                               |
-| Kunci dekripsi | `~/.dotenvx-keys/playwright-qa-kit/.env.keys` (**jangan commit**) |
-| Auto-encrypt   | `npm run setup:check` juga mengenkripsi plaintext `.env`          |
+| Item       | Lokasi                                        |
+| ---------- | --------------------------------------------- |
+| Env file   | `environments/{APP_ENV}.env` (gitignored)     |
+| Ciphertext | `KEY=encrypted:…` — normal                    |
+| Kunci      | `~/.dotenvx-keys/playwright-qa-kit/.env.keys` |
 
-### Kunci hilang di mesin baru
-
-1. Minta `.env.keys` dari tim (via vault / channel aman), simpan ke `~/.dotenvx-keys/playwright-qa-kit/.env.keys`
-2. **Atau** buat ulang:
-   ```bash
-   rm environments/local.env
-   cp environments/local.env.example environments/local.env
-   # isi BASE_URL + kredensial
-   npm run env:edit   # simpan & encrypt
-   ```
-
-Lihat juga [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Error #5.
-
----
-
-## Fallback manual (jika CLI gagal)
-
-```bash
-# Decrypt in-place (butuh keys di env / -fk)
-npx @dotenvx/dotenvx decrypt -f environments/local.env
-
-# Edit plaintext di editor — lalu:
-npx @dotenvx/dotenvx encrypt -f environments/local.env
-
-# Pindahkan keys lokal ke folder aman jika muncul environments/.env.keys
-```
-
-Jangan commit `environments/*.env` atau `.env.keys`.
-
----
-
-## Multi-role testing (ringkas)
-
-1. Isi keys per role (`npm run env:edit` → Tambah role)
-2. Pastikan `src/support/auth.setup.ts` memuat semua role (regenerate dari menu env:edit)
-3. Jalankan setup project → menghasilkan `.auth/<role>.json`
-4. Di spec: `test.use({ storageState: '.auth/finance.json' })`
-
-Detail convention & contoh spec: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
+Lihat [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Error #5.
 
 ---
 
 ## Related
 
-| Dokumen                                                  | Isi                         |
-| -------------------------------------------------------- | --------------------------- |
-| [GETTING-STARTED.md](GETTING-STARTED.md)                 | Setup pertama               |
-| [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md) | Auth state per role di test |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md)                 | Error setup / keys          |
-| [GUIDE.md](GUIDE.md)                                     | Pipeline QA harian          |
+| Dokumen                                                  | Isi                        |
+| -------------------------------------------------------- | -------------------------- |
+| [GETTING-STARTED.md](GETTING-STARTED.md)                 | Setup pertama              |
+| [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md) | Auth state per role        |
+| [writing-requirements.md](writing-requirements.md)       | Mode general vs role-aware |
+| [GUIDE.md](GUIDE.md)                                     | Pipeline harian            |

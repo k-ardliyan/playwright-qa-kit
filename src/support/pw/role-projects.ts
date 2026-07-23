@@ -1,7 +1,9 @@
 /**
  * Role-aware Playwright project builders (official multi-project + dependencies pattern).
  *
- * Use when a fork has multi-role auth files under .auth/<role>.json.
+ * Auth storage is scoped by APP_ENV (sole environment patent):
+ *   `.auth/{APP_ENV}/{role}.json`
+ *
  * Keep root template chromium project generic; compose role projects in a fork config
  * or playwright.role-projects.config.ts.
  *
@@ -13,9 +15,9 @@ import type { Project } from '@playwright/test';
 import { devices } from '@playwright/test';
 
 export interface RoleProjectOptions {
-  /** Business role slug, e.g. finance, super-admin */
+  /** Business role slug, e.g. finance, super-admin (never invent role "general") */
   role: string;
-  /** storageState path (default .auth/<role>.json) */
+  /** storageState path (default `.auth/{APP_ENV}/{role}.json`) */
   storageState?: string;
   /** Test match for this role (default files ending with -<role>.spec.ts) */
   testMatch?: string | RegExp;
@@ -24,6 +26,20 @@ export interface RoleProjectOptions {
   /** Setup project name this role depends on (default setup) */
   setupProjectName?: string;
   device?: keyof typeof devices;
+  /** Override APP_ENV segment for path (default process.env.APP_ENV || 'local') */
+  appEnv?: string;
+}
+
+function canonicalRoleSlug(role: string): string {
+  const r = role.trim().toLowerCase();
+  if (r === 'default' || r === 'general') return 'user';
+  return r;
+}
+
+/** Default storage path for a role under active APP_ENV. */
+export function roleStorageStatePath(role: string, appEnv?: string): string {
+  const env = (appEnv ?? process.env.APP_ENV ?? 'local').trim() || 'local';
+  return `.auth/${env}/${canonicalRoleSlug(role)}.json`;
 }
 
 /**
@@ -32,10 +48,10 @@ export interface RoleProjectOptions {
  * storageState covers the common case for role-suffixed spec files.
  */
 export function buildRoleProject(options: RoleProjectOptions): Project {
-  const role = options.role.trim();
+  const role = canonicalRoleSlug(options.role);
   const setupName = options.setupProjectName ?? 'setup';
   const deviceName = options.device ?? 'Desktop Chrome';
-  const storageState = options.storageState ?? `.auth/${role}.json`;
+  const storageState = options.storageState ?? roleStorageStatePath(role, options.appEnv);
 
   return {
     name: `${role}-tests`,
@@ -50,7 +66,7 @@ export function buildRoleProject(options: RoleProjectOptions): Project {
   };
 }
 
-/** Build one project per role (plus optional general project left to caller). */
+/** Build one project per role (plus optional general/unauth project left to caller). */
 export function buildRoleProjects(
   roles: string[],
   shared?: Omit<RoleProjectOptions, 'role'>,

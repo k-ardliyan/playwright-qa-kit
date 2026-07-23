@@ -117,7 +117,7 @@ List every tool explicitly by server:
 - Pass Planner test plan to Generator.
 - Generator reads `Role` and `Auth Context` columns per scenario.
 - If role-aware: Generator creates one file per role (`src/tests/<feature>-<role>.spec.ts`).
-- Generator uses `test.use({ storageState: '.auth/<role>.json' })` for role-specific files.
+- Generator uses `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` for role-specific files.
 - For blocked/unclear scenarios: Generator produces skeleton with `test.skip`.
 - Call `validate_generated_tests` before execution.
 - Generator uses **playwright-cli** (preferred) or **playwright** MCP for live verification per scenario.
@@ -266,7 +266,7 @@ For each stage (`planner`, `generator`, `healer`, `reporter`):
 **Pipeline lengkap:**
 
 ```
-Run full pipeline for requirements/example-login-extension.md and return unresolved failures if any.
+Run full pipeline for requirements/sample-login-empty-fields.md and return unresolved failures if any.
 ```
 
 **Automatic mode:**

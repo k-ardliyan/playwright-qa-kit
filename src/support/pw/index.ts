@@ -17,4 +17,9 @@ export { expectVisual, expectPageVisual, type VisualOptions } from './visual';
 
 export { freezeTime, advanceTime, setTime, resumeRealTime } from './clock';
 
-export { buildRoleProject, buildRoleProjects, type RoleProjectOptions } from './role-projects';
+export {
+  buildRoleProject,
+  buildRoleProjects,
+  roleStorageStatePath,
+  type RoleProjectOptions,
+} from './role-projects';

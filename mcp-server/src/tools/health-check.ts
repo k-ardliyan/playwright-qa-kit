@@ -91,7 +91,23 @@ function checkPlaywrightTest(): HealthCheckItem {
 }
 
 function checkEnvironmentFile(): HealthCheckItem {
-  const appEnv = process.env.APP_ENV ?? 'local';
+  let appEnv = process.env.APP_ENV ?? 'local';
+  let source = process.env.APP_ENV_SOURCE ?? 'unknown';
+  try {
+    // Prefer pre-load resolve when APP_ENV_SOURCE not yet stamped
+    if (!process.env.APP_ENV_SOURCE) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { resolveAppEnv } = require(path.join(getRepoRoot(), 'src/utils/app-env')) as {
+        resolveAppEnv: (o: { repoRoot: string }) => { appEnv: string; source: string };
+      };
+      const r = resolveAppEnv({ repoRoot: getRepoRoot() });
+      appEnv = r.appEnv;
+      source = r.source;
+    }
+  } catch {
+    // keep process.env fallback
+  }
+
   const candidates = [
     path.join(getRepoRoot(), 'environments', `${appEnv}.env`),
     path.join(getRepoRoot(), 'environments', `${appEnv}.env.example`),
@@ -103,7 +119,7 @@ function checkEnvironmentFile(): HealthCheckItem {
       return {
         name: 'environment',
         status: kind === 'template' ? 'warn' : 'ok',
-        message: `Using environments/${path.basename(file)} (${kind}) for APP_ENV=${appEnv}`,
+        message: `Using environments/${path.basename(file)} (${kind}) for APP_ENV=${appEnv} (source=${source})`,
       };
     }
   }
@@ -111,7 +127,7 @@ function checkEnvironmentFile(): HealthCheckItem {
   return {
     name: 'environment',
     status: 'fail',
-    message: `No environments/${appEnv}.env or .env.example found`,
+    message: `No environments/${appEnv}.env or .env.example found (source=${source})`,
   };
 }
 

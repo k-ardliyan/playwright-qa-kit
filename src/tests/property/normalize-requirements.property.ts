@@ -228,14 +228,14 @@ async function propertyMetadataSection(): Promise<void> {
 async function propertyValidateRequirementExample(): Promise<void> {
   const fs = await import('node:fs');
   const path = await import('node:path');
-  const examplePath = path.join(process.cwd(), 'requirements', 'example-login-extension.md');
+  const examplePath = path.join(process.cwd(), 'requirements', 'sample-login-empty-fields.md');
   const text = fs.readFileSync(examplePath, 'utf-8');
 
   const result = validateRequirementText(text);
   assert.equal(result.status, 'success');
   assert.equal(result.violations.filter((v) => v.severity === 'error').length, 0);
 
-  console.log('✓ validate_requirement passes for example-login-extension.md');
+  console.log('✓ validate_requirement passes for sample-login-empty-fields.md');
 }
 
 function propertyValidateRequirementStrictShape(): void {
@@ -313,7 +313,7 @@ function propertyValidateRequirementStrictShape(): void {
 async function propertyNormalizeRequirementPathMatchesText(): Promise<void> {
   const fs = await import('node:fs');
   const path = await import('node:path');
-  const requirementPath = 'requirements/example-login-extension.md';
+  const requirementPath = 'requirements/sample-login-empty-fields.md';
   const absolutePath = path.join(process.cwd(), requirementPath);
   const text = fs.readFileSync(absolutePath, 'utf-8');
 

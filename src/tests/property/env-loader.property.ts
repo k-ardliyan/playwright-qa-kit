@@ -17,6 +17,7 @@ async function main(): Promise<void> {
       fc.stringMatching(/^[A-Za-z0-9_-]{1,20}$/).filter((value) => !KNOWN.has(value)),
       async (unknownEnv) => {
         const previousAppEnv = process.env.APP_ENV;
+        const previousSource = process.env.APP_ENV_SOURCE;
 
         const warnings: string[] = [];
         const infos: string[] = [];
@@ -53,6 +54,8 @@ async function main(): Promise<void> {
             infos.some((msg) => msg.includes('environments/local.env')),
             true,
           );
+          assert.equal(process.env.APP_ENV, 'local');
+          assert.equal(process.env.APP_ENV_SOURCE, 'invalid_os');
         } finally {
           logger.warn = originalWarn;
           logger.info = originalInfo;
@@ -62,11 +65,65 @@ async function main(): Promise<void> {
           } else {
             process.env.APP_ENV = previousAppEnv;
           }
+          if (previousSource === undefined) {
+            delete process.env.APP_ENV_SOURCE;
+          } else {
+            process.env.APP_ENV_SOURCE = previousSource;
+          }
         }
       },
     ),
     { numRuns: 24 },
   );
+
+  // Unset APP_ENV → default local with info (not warn "APP_ENV is not set")
+  {
+    const previousAppEnv = process.env.APP_ENV;
+    const previousSource = process.env.APP_ENV_SOURCE;
+    const previousCi = process.env.CI;
+    delete process.env.APP_ENV;
+    delete process.env.APP_ENV_SOURCE;
+    delete process.env.CI;
+
+    const warnings: string[] = [];
+    const infos: string[] = [];
+    const originalWarn = logger.warn.bind(logger) as LoggerMethod;
+    const originalInfo = logger.info.bind(logger) as LoggerMethod;
+    logger.warn = ((message: string) => {
+      warnings.push(message);
+    }) as LoggerMethod;
+    logger.info = ((message: string) => {
+      infos.push(message);
+    }) as LoggerMethod;
+
+    try {
+      loadEnvironment();
+      assert.equal(
+        warnings.some((msg) => msg.includes('APP_ENV is not set')),
+        false,
+      );
+      assert.equal(process.env.APP_ENV, 'local');
+      assert.ok(process.env.APP_ENV_SOURCE === 'default' || process.env.APP_ENV_SOURCE === 'pin');
+      assert.equal(
+        infos.some(
+          (msg) =>
+            msg.includes('Using default APP_ENV=local') ||
+            msg.includes('Using APP_ENV=local from environments/.active-env') ||
+            msg.includes("Loaded environment 'local'"),
+        ),
+        true,
+      );
+    } finally {
+      logger.warn = originalWarn;
+      logger.info = originalInfo;
+      if (previousAppEnv === undefined) delete process.env.APP_ENV;
+      else process.env.APP_ENV = previousAppEnv;
+      if (previousSource === undefined) delete process.env.APP_ENV_SOURCE;
+      else process.env.APP_ENV_SOURCE = previousSource;
+      if (previousCi === undefined) delete process.env.CI;
+      else process.env.CI = previousCi;
+    }
+  }
 
   console.log('✓ Property 4 passed: env loader fallback behavior');
 }

@@ -59,6 +59,8 @@ interface QAArgs {
   dryRun: boolean;
   noConfirm: boolean;
   help: boolean;
+  smoke: boolean;
+  openDashboard: boolean;
 }
 
 interface PreFlightResult {
@@ -73,23 +75,84 @@ interface ValidationResult {
   warnings: string[];
 }
 
+// ─── Dashboard opener ──────────────────────────────────────────────────────
+
+/**
+ * Open reports/custom-dashboard.html with the OS default browser.
+ * No-op (with message) if the file doesn't exist or platform unsupported.
+ * Spawn detached so we never block qa:run's exit.
+ */
+function openCustomDashboard(repoRoot: string): void {
+  const dashboardAbs = path.join(repoRoot, 'reports', 'custom-dashboard.html');
+  if (!fs.existsSync(dashboardAbs)) {
+    process.stdout.write(
+      `  ⓘ Dashboard belum ada di ${path.relative(repoRoot, dashboardAbs)}. Jalankan pipeline dulu.\n`,
+    );
+    return;
+  }
+
+  const platform = process.platform;
+  const url = dashboardAbs.replace(/\\/g, '/');
+  // Use `file:///` so default browser handler picks it up cross-platform.
+  const fileUrl = url.startsWith('/') ? `file://${url}` : `file:///${url}`;
+
+  let cmd: string;
+  if (platform === 'win32') {
+    // `start "" "<file>"` — empty quoted title required by `start`.
+    cmd = `start "" "${fileUrl}"`;
+  } else if (platform === 'darwin') {
+    cmd = `open "${fileUrl}"`;
+  } else {
+    // Linux / WSL
+    cmd = `xdg-open "${fileUrl}"`;
+  }
+
+  try {
+    const child = spawnSync(cmd, {
+      shell: true,
+      stdio: 'ignore',
+      detached: true,
+      windowsHide: true,
+    });
+    if (child.status === 0) {
+      process.stdout.write(`  ✓ Dashboard dibuka: ${path.relative(repoRoot, dashboardAbs)}\n`);
+    } else {
+      process.stdout.write(`  ⚠ Tidak bisa buka dashboard otomatis. Jalankan manual:\n`);
+      process.stdout.write(
+        `    ${platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open'} ${path.relative(repoRoot, dashboardAbs)}\n`,
+      );
+    }
+  } catch {
+    process.stdout.write(`  ⚠ Gagal spawn browser opener. Buka manual:\n`);
+    process.stdout.write(`    ${path.relative(repoRoot, dashboardAbs)}\n`);
+  }
+}
+
 // ─── Argv Parser ──────────────────────────────────────────────────────────────
 
 const USAGE = `
 Usage:
   npm run qa:run -- <requirements/feature.md> [options]
 
+Fungsi: Preflight + validasi requirement + cetak prompt Hermes.
+Pipeline penuh (Plan → Generate → Execute → Heal → Report) dijalankan
+di Hermes Agent setelah user paste prompt, BUKAN di qa:run.
+
 Options:
-  --skip-tests     Validate + print prompt only, jangan jalankan test
-  --skip-prompt    Print validation only, jangan print prompt
+  --skip-prompt    Skip cetak prompt (cuma validate + preflight)
+  --smoke          (Opsional) Jalankan smoke test setelah cetak prompt
   --dry-run        Validate only, exit 0 tanpa side-effect lain
-  --no-confirm     Skip interactive confirmation sebelum run tests
+  --no-confirm     Skip konfirmasi interaktif sebelum --smoke
+  --open-dashboard Setelah cetak prompt, buka reports/custom-dashboard.html
+                   otomatis di browser default (default: ON jika file ada).
+                   Pakai --no-open-dashboard untuk skip.
   -h, --help       Tampilkan pesan ini
 
 Examples:
   npm run qa:run -- requirements/login.md
   npm run qa:run -- requirements/login.md --dry-run
-  npm run qa:run -- requirements/login.md --skip-tests
+  npm run qa:run -- requirements/login.md --smoke
+  npm run qa:run -- requirements/login.md --no-open-dashboard
 `;
 
 function parseArgs(argv: string[]): QAArgs {
@@ -100,6 +163,8 @@ function parseArgs(argv: string[]): QAArgs {
     dryRun: false,
     noConfirm: false,
     help: false,
+    smoke: false,
+    openDashboard: true,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -108,6 +173,9 @@ function parseArgs(argv: string[]): QAArgs {
     else if (arg === '--skip-prompt') args.skipPrompt = true;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--no-confirm') args.noConfirm = true;
+    else if (arg === '--smoke') args.smoke = true;
+    else if (arg === '--open-dashboard') args.openDashboard = true;
+    else if (arg === '--no-open-dashboard') args.openDashboard = false;
     else if (arg === '-h' || arg === '--help') args.help = true;
     else if (!arg.startsWith('--') && !args.requirementPath) {
       args.requirementPath = arg;
@@ -121,21 +189,26 @@ function parseArgs(argv: string[]): QAArgs {
 
 function showHelp(): void {
   process.stdout.write(USAGE);
-  process.stdout.write('\n');
-  process.stdout.write('Exit codes: docs/EXIT-CODES.md\n');
+  process.stdout.write(
+    '\nExit codes: lihat scripts/exit-codes.ts (OK=0, USAGE=3, FIXABLE=1, ESCALATE=2).\n',
+  );
 }
 
 function preflight(repoRoot: string): PreFlightResult {
   const issues: string[] = [];
 
   // Check environment file
-  const appEnv = process.env.APP_ENV ?? 'local';
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { resolveAppEnv } = require('../src/utils/app-env') as {
+    resolveAppEnv: (o: { repoRoot: string }) => { appEnv: string };
+  };
+  const appEnv = resolveAppEnv({ repoRoot }).appEnv;
   const envPath = path.join(repoRoot, 'environments', `${appEnv}.env`);
   const envExamplePath = path.join(repoRoot, 'environments', `${appEnv}.env.example`);
 
   if (!fs.existsSync(envPath) && !fs.existsSync(envExamplePath)) {
     issues.push(
-      `Environment file tidak ada. Buat: cp environments/local.env.example environments/${appEnv}.env`,
+      `Environment file tidak ada. Buat: cp environments/local.env.example environments/${appEnv}.env  (atau: npm run env:use -- ${appEnv} --init)`,
     );
   }
 
@@ -238,18 +311,16 @@ function validateRequirementFile(repoRoot: string, relPath: string): ValidationR
 }
 
 function buildAgentPrompt(reqRelPath: string): string {
-  return `Jalankan pipeline lengkap untuk ${reqRelPath} sesuai kontrak AGENTS.md:
-
-1. Pre-flight dan validasi requirement; berhenti jika ada error.
-2. Buat test plan di specs/<filename>-test-plan.md.
-3. Generate spec Playwright di src/tests/ memakai @/fixtures/base.fixture.
-4. Validasi generated tests sebelum eksekusi.
-5. Jalankan tests lewat playwright-test.
-6. Jika gagal (<=10), ambil failure dari JSON hasil run aktif, heal, validasi ulang, lalu re-run scoped.
-7. Ambil summary akhir dan return unresolved failures jika ada.
-
-Untuk situs publik, boleh gunakan discover_pages/snapshot_page agar selector-catalog bisa dipakai ulang.
-Ikuti format requirement di requirements/_TEMPLATE.md.`;
+  return (
+    `Run full pipeline in automatic mode for ${reqRelPath} (orchestrator: AGENTS.md).\n` +
+    `If this is requirements/login.md (wizard-generated REAL site requirement):\n` +
+    `  BEFORE Plan/Generate, call snapshot_page on the real BASE_URL+login path;\n` +
+    `  use selector-catalog locators (Path A, no POM); live-verify — every website differs.\n` +
+    `Sample files under requirements/sample-*.md are format demos only.\n` +
+    `Resume from last checkpoint if reports/pipeline-state.json exists.\n` +
+    `Pipeline: Plan → Generate → Execute → Heal (max 3 cycles) → Report → archive_report.\n` +
+    `Return summary, unresolvedFailures, catalog path (if any), and dashboard/report path.\n`
+  );
 }
 
 function runSmokeTests(repoRoot: string): { ok: boolean; summary: string } {
@@ -269,15 +340,6 @@ function runSmokeTests(repoRoot: string): { ok: boolean; summary: string } {
   };
 }
 
-function reportPaths(repoRoot: string): string[] {
-  const candidates = [
-    path.join(repoRoot, 'reports', 'custom-dashboard.html'),
-    path.join(repoRoot, 'reports', 'test-summary.json'),
-    path.join(repoRoot, 'playwright-report', 'index.html'),
-  ];
-  return candidates.filter((p) => fs.existsSync(p));
-}
-
 function askConfirm(question: string): boolean {
   // Read dari stdin — untuk CI pass --no-confirm
   if (!process.stdin.isTTY) return true;
@@ -285,8 +347,6 @@ function askConfirm(question: string): boolean {
   const buf = fs.readFileSync(0, { encoding: 'utf-8' });
   return /^y(es)?$/i.test(buf.trim());
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   await withFriendlyErrors(async () => {
@@ -314,20 +374,20 @@ async function main(): Promise<void> {
         title: `File requirement tidak ditemukan: ${args.requirementPath}`,
         detail: `Resolved: ${resolvedReq}`,
         hint: 'Buat dulu dari template: cp requirements/_TEMPLATE.md ' + args.requirementPath,
-        docsLink: 'docs/writing-requirements.md',
         exitCode: EXIT.USAGE,
       });
     }
     const relReq = path.relative(repoRoot, resolvedReq).replace(/\\/g, '/');
 
     // Banner
-    process.stdout.write('╔════════════════════════════════════════════════╗\n');
-    process.stdout.write('║  Playwright QA Kit — Single-Command Runner     ║\n');
-    process.stdout.write('╚════════════════════════════════════════════════╝\n');
+    process.stdout.write('╔══════════════════════════════════════════════════════════════╗\n');
+    process.stdout.write('║  Preflight + Agent Prompt Helper                            ║\n');
+    process.stdout.write('║  Pipeline penuh dijalankan di Hermes Agent — bukan di sini  ║\n');
+    process.stdout.write('╚══════════════════════════════════════════════════════════════╝\n');
     process.stdout.write(`\n📄 Requirement: ${relReq}\n\n`);
 
-    // Step 1/4: Pre-flight
-    printStep(1, 4, 'Pre-flight setup check');
+    // Step 1/3: Pre-flight
+    printStep(1, 3, 'Pre-flight setup check');
     const pre = preflight(repoRoot);
     if (!pre.ok) {
       process.stderr.write('\n');
@@ -335,15 +395,15 @@ async function main(): Promise<void> {
         title: 'Pre-flight gagal',
         detail: pre.issues.map((i) => `• ${i}`).join('\n'),
         hint: 'Perbaiki semua issue di atas lalu coba lagi.',
-        docsLink: 'docs/GUIDE.md#setup-lokal',
+        docsLink: 'docs/POST-PIPELINE.md',
         exitCode: EXIT.FIXABLE,
       });
       process.exit(EXIT.FIXABLE);
     }
     printOk(`Setup lengkap (env=${process.env.APP_ENV ?? 'local'})`);
 
-    // Step 2/4: Validate requirement
-    printStep(2, 4, 'Validate requirement');
+    // Step 2/3: Validate requirement
+    printStep(2, 3, 'Validate requirement');
     const val = validateRequirementFile(repoRoot, relReq);
     if (!val.ok) {
       process.stderr.write('\n');
@@ -351,7 +411,7 @@ async function main(): Promise<void> {
         printError({
           title: 'Validation error',
           detail: err,
-          docsLink: 'docs/GUIDE.md#troubleshooting-validate-requirement',
+          hint: 'Perbaiki file requirement lalu jalankan ulang.',
           exitCode: EXIT.FIXABLE,
         });
       }
@@ -367,36 +427,40 @@ async function main(): Promise<void> {
     }
 
     if (args.dryRun) {
-      printStep(3, 4, 'Dry-run');
+      printStep(3, 3, 'Dry-run');
       printOk('Dry-run selesai. Tidak ada side-effect.');
       process.exit(EXIT.OK);
     }
 
-    // Step 3/4: Print prompt
+    // Step 3/3: Print Hermes prompt
     if (!args.skipPrompt) {
-      printStep(3, 4, 'Agent prompt siap copy-paste');
-      process.stdout.write('\n📋 Copy prompt di bawah ke AI agent (Codex / Claude / Cursor):\n');
-      process.stdout.write('─'.repeat(60) + '\n');
-      process.stdout.write(buildAgentPrompt(relReq) + '\n');
-      process.stdout.write('─'.repeat(60) + '\n');
-      process.stdout.write('\n');
+      printStep(3, 3, 'Hermes prompt siap copy-paste');
+      process.stdout.write('\n📋 Paste prompt di bawah ke Hermes Agent:\n');
+      process.stdout.write('─'.repeat(64) + '\n');
+      process.stdout.write(buildAgentPrompt(relReq));
+      process.stdout.write('─'.repeat(64) + '\n\n');
+      printInfo(
+        'Setelah Hermes menjalankan pipeline, hasilnya ada di reports/pipeline-report-*.md dan reports/custom-dashboard.html.',
+      );
     } else {
-      printStep(3, 4, 'Agent prompt (skipped)');
-      printInfo('Prompt di-skip. Jalankan manual via IDE.');
+      printStep(3, 3, 'Prompt (skipped)');
+      printInfo('Prompt di-skip. Jalankan pipeline manual via Hermes.');
     }
 
-    // Step 4/4: Optional smoke test
-    if (args.skipTests) {
-      printStep(4, 4, 'Tests (skipped)');
-      printInfo('Test di-skip. Jalankan manual: npm test atau npm run test:smoke');
+    // Auto-open dashboard (default ON, no prompt)
+    if (args.openDashboard) {
+      openCustomDashboard(repoRoot);
+    }
+
+    // Optional smoke test, opt-in via --smoke
+    if (!args.smoke) {
       process.exit(EXIT.OK);
     }
 
-    printStep(4, 4, 'Optional smoke test');
     if (!args.noConfirm) {
       const proceed = askConfirm('Jalankan smoke test sekarang?');
       if (!proceed) {
-        printInfo('Smoke test di-skip. Jalankan manual nanti: npm test');
+        printInfo('Smoke test di-skip.');
         process.exit(EXIT.OK);
       }
     }
@@ -406,26 +470,12 @@ async function main(): Promise<void> {
       printError({
         title: 'Smoke test gagal',
         detail: run.summary.slice(0, 500),
-        hint: 'Lihat report detail di bawah atau jalankan: npx playwright show-report',
-        docsLink: 'docs/GUIDE.md#cara-membaca-hasil-test',
+        hint: 'Lihat: npx playwright show-report',
         exitCode: EXIT.FIXABLE,
       });
       process.exit(EXIT.FIXABLE);
     }
     printOk('Smoke test lulus');
-
-    // Done — print report paths
-    process.stdout.write('\n');
-    printOk('Pipeline qa:run selesai!');
-    const reports = reportPaths(repoRoot);
-    if (reports.length > 0) {
-      process.stdout.write('\n📊 Buka report:\n');
-      for (const r of reports) {
-        process.stdout.write(`   ${path.relative(repoRoot, r)}\n`);
-      }
-    } else {
-      printInfo('Belum ada report di-generate. Jalankan: npm test lalu cek reports/');
-    }
     process.exit(EXIT.OK);
   });
 }

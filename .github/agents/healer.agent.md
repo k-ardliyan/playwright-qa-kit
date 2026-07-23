@@ -185,7 +185,7 @@ Pattern storage behavior:
 7. **Always store the fix outcome** (success or failure) in the pattern database after each attempt.
 8. **Network failures** (`rootCause: network`, Failed to fetch, 5xx): prefer `mockJson` / `mockServerError` / `unmockAll` from `@/support/pw` rather than lengthening timeouts.
 9. **Missing seed / empty list / 404 test data** (`data_state`): prefer hybrid `apiSeed` + cleanup via `request` fixture when the requirement documents an API.
-10. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: '.auth/<role>.json' })`; re-run setup project — do not skip auth checks.
+10. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: authStatePath('<role>') })` (or `.auth/{APP_ENV}/<role>.json`); re-run setup project — do not skip auth checks.
 11. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
 
 ## Guardrails (Mandatory)

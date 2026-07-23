@@ -7,6 +7,9 @@ node_modules/
 environments/*.env
 !environments/*.env.example
 
+# Local active profile pin (written by npm run env:use)
+environments/.active-env
+
 # dotenvx keys
 **/.env.keys
 .env.keys

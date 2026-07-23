@@ -31,12 +31,12 @@ const HINTS: Record<string, { hint: string; docs: string; severity: 'fixable' | 
     severity: 'fixable',
   },
   environment: {
-    hint: 'Salin template: cp environments/local.env.example environments/local.env lalu isi BASE_URL + kredensial',
+    hint: 'Salin template: cp environments/local.env.example environments/<APP_ENV>.env (local|dev|staging|…) lalu isi BASE_URL + kredensial. Cek: npm run env:status',
     docs: 'docs/GUIDE.md#setup-lokal',
     severity: 'fixable',
   },
   base_url: {
-    hint: 'Set BASE_URL di environments/local.env (misal: BASE_URL=https://staging.app.com)',
+    hint: 'Set BASE_URL di environments/{APP_ENV}.env aktif (npm run env:status). Contoh: BASE_URL=https://staging.app.com',
     docs: 'docs/GUIDE.md#setup-lokal',
     severity: 'fixable',
   },

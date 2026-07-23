@@ -2,18 +2,19 @@
  * Environment Loader for the Playwright AI Agent Framework.
  *
  * Selects and loads the correct per-environment `.env` file from the
- * `environments/` folder based on the `APP_ENV` environment variable.
+ * `environments/` folder based on resolved APP_ENV (see `resolveAppEnv`).
  *
  * Logic flow:
- * 1. Read APP_ENV from process.env
- * 2. If APP_ENV is undefined → log warn "default environment", set to 'local'
- * 3. If APP_ENV value is not in the known set → log warn "unrecognised value", set to 'local'
+ * 1. Resolve APP_ENV: OS → pin (environments/.active-env) → default local
+ * 2. invalid_os / invalid_pin → warn + fall back to local
+ * 3. default → info (not warn)
  * 4. Try loading candidates in order:
  *    a. environments/{APP_ENV}.env         (primary — real credentials)
  *    b. environments/{APP_ENV}.env.example (fallback — template, warn to fill values)
  * 5. If no candidate exists → throw descriptive Error listing all paths tried
- * 6. Log success at info level
- * 7. Optionally overlay adapter-specific env files (non-overriding)
+ * 6. Set process.env.APP_ENV (+ APP_ENV_SOURCE)
+ * 7. Log success at info level
+ * 8. Optionally overlay adapter-specific env files (non-overriding)
  *
  * Supported environments: local | dev | staging | production
  *
@@ -23,15 +24,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import dotenvx from '@dotenvx/dotenvx';
+import { resolveAppEnv, type AppEnv } from './app-env';
 import { logger } from './logger';
 import { resolveSecureKeysPath } from './dotenv-keys';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const KNOWN_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'] as const;
-type KnownEnvironment = (typeof KNOWN_ENVIRONMENTS)[number];
 
 export interface AdapterEnvRef {
   dir: string;
@@ -92,7 +87,7 @@ export function getSecureKeysPath(): string {
 }
 
 /**
- * Reads `APP_ENV` from `process.env`, selects the matching file from the
+ * Resolves APP_ENV (OS → pin → default), selects the matching file from the
  * `environments/` folder, and loads it into `process.env` via dotenv.
  *
  * Lookup order (first match wins):
@@ -102,28 +97,31 @@ export function getSecureKeysPath(): string {
  * When `options.adapterEnv` is set, overlays `{dir}/{name}.env` then
  * `{dir}/{name}.env.example` without overwriting keys already set by core load.
  *
- * Defaults to `local` when `APP_ENV` is undefined or unrecognised.
+ * Defaults to `local` when APP_ENV is unset (info) or unrecognised (warn).
  *
  * @throws {Error} If no candidate file is found, with a list of all paths tried.
  */
 export function loadEnvironment(options?: LoadEnvironmentOptions): void {
-  const rawEnv = process.env['APP_ENV'];
-
-  let appEnv: KnownEnvironment;
-
-  if (rawEnv === undefined) {
-    // Requirement 5.3: default to local, log warning
-    logger.warn('APP_ENV is not set — using default environment: local');
-    appEnv = 'local';
-  } else if (!(KNOWN_ENVIRONMENTS as readonly string[]).includes(rawEnv)) {
-    // Requirement 5.2: unrecognised value, default to local, log warning
-    logger.warn(`APP_ENV has unrecognised value: "${rawEnv}" — falling back to local`);
-    appEnv = 'local';
-  } else {
-    appEnv = rawEnv as KnownEnvironment;
-  }
-
   const cwd = process.cwd();
+  const resolved = resolveAppEnv({ repoRoot: cwd });
+  const appEnv: AppEnv = resolved.appEnv;
+
+  if (resolved.source === 'invalid_os') {
+    logger.warn(`APP_ENV has unrecognised value: "${resolved.rawOsValue}" — falling back to local`);
+  } else if (resolved.source === 'invalid_pin') {
+    logger.warn(
+      `environments/.active-env has unrecognised value: "${resolved.rawPinValue}" — falling back to local`,
+    );
+  } else if (resolved.source === 'default') {
+    logger.info('Using default APP_ENV=local (environments/local.env)');
+  } else if (resolved.source === 'pin') {
+    logger.info(`Using APP_ENV=${appEnv} from environments/.active-env`);
+  }
+  // source === 'os' → silent (explicit operator intent)
+
+  // Publish resolved selector for downstream readers (auth paths, status, reports)
+  process.env.APP_ENV = appEnv;
+  process.env.APP_ENV_SOURCE = resolved.source;
 
   // Requirement 5.4: try candidates in order — primary first, then template fallback
   const candidates = [
@@ -187,6 +185,10 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
     path: loaded.resolvedPath,
     envKeysFile: getSecureKeysPath(),
   });
+
+  // APP_ENV is the sole patent selector — re-assert after dotenv (file must not hijack it)
+  process.env.APP_ENV = appEnv;
+  process.env.APP_ENV_SOURCE = resolved.source;
 
   // Requirement 5.6: log success at info level
   logger.info(`Loaded environment '${appEnv}' from ${loaded.label}`);

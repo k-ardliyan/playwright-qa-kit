@@ -1,11 +1,11 @@
 /**
  * Modul pembaca dan validator Environment Variable secara type-safe.
  *
- * Menyediakan akses terpusat ke semua konfigurasi lingkungan (.env)
- * dengan validasi fail-fast untuk mendeteksi variabel yang hilang atau salah konfigurasi.
+ * APP_ENV = sole patent environment selector.
+ * Role credentials: getRoleLoginId / getRolePassword (uniform schema).
  */
 
-// ── Private Helpers ────────────────────────────────────────────────────────
+import { roleCredentialKeys, resolveLoginIdentifier } from './role-credentials';
 
 function requireEnv(key: string, fallback?: string): string {
   const value = process.env[key] ?? fallback;
@@ -53,54 +53,60 @@ function optionalSecretEnv(key: string): string | undefined {
   return value;
 }
 
-// ── Public Config Object ───────────────────────────────────────────────────
-
 export const env = {
-  /** Full URL aplikasi yang akan ditest */
   get BASE_URL(): string {
     return requireEnv('BASE_URL');
   },
 
-  /** Environment name: dev | stg | prod */
-  get ENV_NAME(): string {
-    return requireEnv('ENV_NAME', 'dev');
+  /** Active profile: local | dev | staging | production */
+  get APP_ENV(): string {
+    return requireEnv('APP_ENV', 'local');
   },
 
-  /** Email akun QA test — validated as non-placeholder */
+  /** @deprecated Alias of APP_ENV */
+  get ENV_NAME(): string {
+    return this.APP_ENV;
+  },
+
   get USER_EMAIL(): string {
     return requireSecretEnv('TEST_USER_EMAIL');
   },
 
-  /** Username akun QA test — optional; falls back to undefined for repos that
-   *  only carry the legacy EMAIL/PASSWORD secrets. */
   get USER_USERNAME(): string | undefined {
     return optionalSecretEnv('TEST_USER_USERNAME');
   },
 
-  /** Nomor Telepon akun QA test — optional; falls back to undefined for repos
-   *  that only carry the legacy EMAIL/PASSWORD secrets. */
   get USER_PHONE(): string | undefined {
     return optionalSecretEnv('TEST_USER_PHONE');
   },
 
-  /** Password akun QA test — validated as non-placeholder */
   get USER_PASSWORD(): string {
     return requireSecretEnv('TEST_USER_PASSWORD');
   },
 
-  /** ── Konfigurasi Auth Setup (Opsional) ── */
+  /** Resolved login id for role (pref → email → username → phone) */
+  getRoleLoginId(role: string): string {
+    const ref = roleCredentialKeys(role);
+    const result = resolveLoginIdentifier(process.env as Record<string, string>, ref);
+    if ('error' in result) {
+      throw new Error(`[Config Error] ${result.error}`);
+    }
+    return result.value;
+  },
 
-  /** Jalur URL yang menandakan login berhasil (wajib untuk auth setup) */
+  getRolePassword(role: string): string {
+    const ref = roleCredentialKeys(role);
+    return requireSecretEnv(ref.passwordKey);
+  },
+
   get AUTH_SUCCESS_URL_PATH(): string | undefined {
     return process.env.AUTH_SUCCESS_URL_PATH?.trim() || undefined;
   },
 
-  /** Jalur URL halaman login (wajib untuk auth setup) */
   get AUTH_LOGIN_URL_PATH(): string | undefined {
     return process.env.AUTH_LOGIN_URL_PATH?.trim() || undefined;
   },
 
-  /** Teks yang muncul setelah berhasil login (wajib untuk auth setup) */
   get AUTH_SUCCESS_TEXT(): string | undefined {
     return process.env.AUTH_SUCCESS_TEXT?.trim() || undefined;
   },

@@ -21,8 +21,9 @@ Also read per-scenario fields:
 - `Input Data` — key: value pairs from requirement (used for `setTestMetadata`)
 - `Expected Result` — observable outcome (used for `setTestMetadata`)
 - `Layer` — affected layers FE / BE / DB / API (used for `setTestMetadata`)
-- `Role` — which role this scenario runs as, or "general"
-- `Auth Context` — storage state path (e.g. `.auth/finance.json`) or `unauthenticated`
+- `Role` — which **business** role this scenario runs as, or `"general"` for **pipeline mode general** (non-role-aware).  
+  **Auth for `"general"`:** use default account **`user`** (`.auth/{APP_ENV}/user.json` / `TEST_USER_*`). Never invent a credential role named `general`.
+- `Auth Context` — storage state path (e.g. `.auth/{APP_ENV}/finance.json` or `authStatePath('finance')`) or `unauthenticated`
 - `Seed` — always `src/tests/seed.spec.ts`
 
 Also read metadata from the source requirement via `normalize_requirements` when available.
@@ -71,23 +72,23 @@ Before calling `browser_snapshot` for live verification, check `selector-catalog
 
 ## Metadata → Code Mapping
 
-| Source (requirement / test plan)              | Generated code                                                                                |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `metadata.tags` or `#tags`                    | `test.describe('...', { tag: ['@auth', '@ui'] }, () => {`                                     |
-| `metadata.authState: unauthenticated`         | `test.use({ storageState: { cookies: [], origins: [] } })`                                    |
-| `metadata.authState: authenticated` (general) | `test.use({ storageState: '.auth/user.json' })`                                               |
-| `Role: super-admin`                           | `test.use({ storageState: '.auth/super-admin.json' })`                                        |
-| `Role: finance`                               | `test.use({ storageState: '.auth/finance.json' })`                                            |
-| `Role: hrd`                                   | `test.use({ storageState: '.auth/hrd.json' })`                                                |
-| `Role: admin`                                 | `test.use({ storageState: '.auth/admin.json' })`                                              |
-| `Role: user` / `Role: general`                | `test.use({ storageState: '.auth/user.json' })`                                               |
-| `Auth Context: unauthenticated`               | `test.use({ storageState: { cookies: [], origins: [] } })`                                    |
-| `Auth Context: .auth/<role>.json`             | `test.use({ storageState: '.auth/<role>.json' })`                                             |
-| Scenario type `(@access-restriction)`         | Generate test that verifies access is denied: redirect, error message, or element not visible |
-| Scenario type `(@failure)`                    | Generate test with invalid input, assert error message / validation state                     |
-| Scenario type `(@manual)`                     | `test.skip(true, 'Manual: <reason from Expected Result>')` — never omit the reason            |
-| Scenario type `(@success)` or untagged        | Generate full positive-path test                                                              |
-| `metadata.pomRequired`                        | Import and use the named POM class(es) from `src/pages/<name>.ts`                             |
+| Source (requirement / test plan)              | Generated code                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `metadata.tags` or `#tags`                    | `test.describe('...', { tag: ['@auth', '@ui'] }, () => {`                                                                                        |
+| `metadata.authState: unauthenticated`         | `test.use({ storageState: { cookies: [], origins: [] } })`                                                                                       |
+| `metadata.authState: authenticated` (general) | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/user.json\` })`— mode general → role **user**, never invent role`general` |
+| `Role: super-admin`                           | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/super-admin.json\` })`                                                    |
+| `Role: finance`                               | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/finance.json\` })`                                                        |
+| `Role: hrd`                                   | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/hrd.json\` })`                                                            |
+| `Role: admin`                                 | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/admin.json\` })`                                                          |
+| `Role: user` / plan label `general`           | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/user.json\` })`                                                           |
+| `Auth Context: unauthenticated`               | `test.use({ storageState: { cookies: [], origins: [] } })`                                                                                       |
+| `Auth Context: .auth/<role>.json` (legacy)    | Prefer scoped path `.auth/{APP_ENV}/<role>.json` (or `authStatePath('<role>')` from `@/support/auth-paths`)                                      |
+| Scenario type `(@access-restriction)`         | Generate test that verifies access is denied: redirect, error message, or element not visible                                                    |
+| Scenario type `(@failure)`                    | Generate test with invalid input, assert error message / validation state                                                                        |
+| Scenario type `(@manual)`                     | `test.skip(true, 'Manual: <reason from Expected Result>')` — never omit the reason                                                               |
+| Scenario type `(@success)` or untagged        | Generate full positive-path test                                                                                                                 |
+| `metadata.pomRequired`                        | Import and use the named POM class(es) from `src/pages/<name>.ts`                                                                                |
 
 ## File Naming Convention
 
@@ -101,20 +102,35 @@ Never put all role scenarios in a single file — each role gets its own file so
 
 ## Auth Storage State Convention
 
-All auth state files live under `.auth/` in the repo root:
+Auth state is **scoped by APP_ENV** (sole environment patent):
 
 ```
 .auth/
-  user.json          ← default authenticated user
-  super-admin.json   ← super admin role
-  finance.json       ← finance role
-  hrd.json           ← hrd role
-  admin.json         ← admin role
+  {APP_ENV}/                 e.g. local | dev | staging | production
+    user.json                ← default account (pipeline mode "general")
+    super-admin.json
+    finance.json
+    hrd.json
+    admin.json
 ```
 
-These files are created by auth setup tests (e.g. `src/tests/auth.setup.ts`). If a role file does not exist yet, generate the test with a comment `// AUTH SETUP REQUIRED: run auth setup for role '<role>' first`.
+Prefer:
 
-See `docs/AUTH-CONTEXT-CONVENTION.md` for full convention and setup guide.
+```typescript
+import { authStatePath } from '@/support/auth-paths';
+// ...
+test.use({ storageState: authStatePath('finance') });
+// or explicit:
+test.use({ storageState: `.auth/${process.env.APP_ENV || 'local'}/finance.json` });
+```
+
+These files are created by `src/support/auth.setup.ts` (discovers all login-ready roles from env).  
+If a role file does not exist yet, generate the test with a comment  
+`// AUTH SETUP REQUIRED: run npx playwright test src/support/auth.setup.ts --project=setup`.
+
+**Vocabulary:** plan column `Role: general` = non-role-aware mode → storage **`user`**. Never create `.auth/.../general.json`.
+
+See `docs/AUTH-CONTEXT-CONVENTION.md` and `docs/CREDENTIALS.md`.
 
 ## Table View Metadata — Mandatory Annotation Block
 
@@ -205,7 +221,7 @@ Mark skeletons with `// SKELETON` so they're easy to find and complete later.
 5. Include relevant test tags (`@smoke`, `@regression`, `@ui`, `@api`, `@role-<rolename>` for role-specific tests).
 6. Use `test.skip` with tag `@manual` for CAPTCHA or flows that cannot be automated safely — always include the reason.
 7. For `(@access-restriction)` scenarios, assert the denial explicitly: check redirect URL, visible error message, or absence of restricted element.
-8. For role-specific files, always include `test.use({ storageState: '.auth/<role>.json' })` at the describe level.
+8. For role-specific files, always include `test.use({ storageState: authStatePath('<role>') })` or `.auth/${process.env.APP_ENV||'local'}/<role>.json` at the describe level.
 9. After all scenarios are processed, call `validate_generated_tests` (all specs or per `filePath`).
 10. If a scenario is blocked (auth missing, unclear steps), generate skeleton — do not silently skip.
 11. Prefer **web-first assertions** (`toBeVisible`, `toHaveURL`, `toHaveText`). Never use `page.$`, `page.$$`, or fixed `waitForTimeout` sleeps.
@@ -294,7 +310,7 @@ Return:
 
 ## Example Prompts
 
-- "Generate tests from `specs/example-login-extension-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
+- "Generate tests from `specs/sample-login-empty-fields-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
 - "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `src/tests/invoice-finance.spec.ts` and `src/tests/invoice-super-admin.spec.ts`."
 - "Generate access-restriction test from SC-03 in `specs/finance-approve-invoice-test-plan.md` for role hrd."
 - "Generate `@network` failure test that mocks `**/api/invoices/**` 500 using `@/support/pw` helpers."

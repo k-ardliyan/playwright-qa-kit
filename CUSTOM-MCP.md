@@ -11,7 +11,7 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 Register and use these **three** servers. **Project source of truth:** [`.mcp.json`](.mcp.json). Keep [`.vscode/mcp.json`](.vscode/mcp.json) only for editor compatibility when needed.
 
 1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
-   - Command: `npx -y @playwright/mcp@0.0.77 --headless`
+   - Command: `npx -y @playwright/mcp@0.0.78 --headless`
 
 2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
    - Launcher: `npx tsx scripts/playwright-test-mcp-launch.ts` (loads `environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
@@ -38,7 +38,7 @@ Bootstrap module: [`mcp-server/src/utils/mcp-env-bootstrap.ts`](mcp-server/src/u
 Default install uses core browser tools only. Power users can enable extra capabilities via args in [`.vscode/mcp.json`](.vscode/mcp.json):
 
 ```json
-"args": ["-y", "@playwright/mcp@0.0.77", "--headless", "--caps=network"]
+"args": ["-y", "@playwright/mcp@0.0.78", "--headless", "--caps=network"]
 ```
 
 | Flag              | Enables                                     |
@@ -88,7 +88,7 @@ Template reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
 
 ```json
 {
-  "requirementPath": "requirements/example-login-extension.md"
+  "requirementPath": "requirements/sample-login-empty-fields.md"
 }
 ```
 
@@ -147,7 +147,7 @@ Scenarios with `(@manual)` in the heading return `automatable: false`.
 
 ```json
 {
-  "requirementPath": "requirements/example-login-extension.md"
+  "requirementPath": "requirements/sample-login-empty-fields.md"
 }
 ```
 
@@ -174,7 +174,7 @@ Or:
       "automatable": true,
       "scenarioType": "success | failure | access-restriction | manual | general",
       "roleScope": "finance",
-      "authContext": ".auth/finance.json"
+      "authContext": ".auth/local/finance.json"
     }
   ],
   "rolesInScope": ["super-admin", "finance"],
@@ -188,8 +188,8 @@ Or:
 ```
 
 - `scenarioType` — derived from `(@success/@failure/@access-restriction/@manual)` tag in scenario heading; defaults to `general` if untagged.
-- `roleScope` — per-scenario role if mentioned; inherited from `Role scope` metadata.
-- `authContext` — `.auth/<role>.json` for authenticated role scenarios; `unauthenticated` for public flows.
+- `roleScope` — per-scenario role from `- **Role:** …`, heading prefix `role: …` (if in Role scope), or the sole Role scope entry; `general`/`default` → `user`. Multi-role scope without per-scenario Role leaves `roleScope` unset (mode general → auth user).
+- `authContext` — `unauthenticated`, or `.auth/{APP_ENV}/{role}.json` (APP_ENV from process env, default `local`).
 - `rolesInScope` — only present when `Role scope` is defined in requirement metadata.
 - `accessExpectations` — only present when `Access expectation` is defined in requirement metadata.
 
@@ -203,7 +203,7 @@ Validates requirement markdown structure before the Planner runs. Returns a scor
 
 ```json
 {
-  "requirementPath": "requirements/example-login-extension.md"
+  "requirementPath": "requirements/sample-login-empty-fields.md"
 }
 ```
 

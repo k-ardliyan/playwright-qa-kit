@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * env-edit — Day-2 credential manager for Playwright QA Kit
+ * env-edit — Credential & runtime config manager for Playwright QA Kit
  *
  * Usage:
  *   npm run env:edit
@@ -30,8 +30,13 @@ import {
   removeEnvKeys,
   parseEnvText,
   isEncryptedEnvText,
+  resolveLoginIdentifier,
+  canonicalRoleName,
+  isRoleLoginReady,
+  hasDefaultUserCredentials,
 } from './env-edit-lib';
 import { getGlobalKeysPath, migrateWorkspaceEnvKeys } from '../src/utils/dotenv-keys';
+import { resolveAppEnv } from '../src/utils/app-env';
 
 const ROOT = process.cwd();
 const ENV_DIR = path.join(ROOT, 'environments');
@@ -48,7 +53,7 @@ interface CliFlags {
 function parseFlags(): CliFlags {
   const args = process.argv.slice(2);
   const flags: CliFlags = {
-    envName: process.env.APP_ENV?.trim() || 'local',
+    envName: resolveAppEnv({ repoRoot: ROOT }).appEnv,
     listOnly: false,
     help: false,
   };
@@ -82,19 +87,24 @@ function parseFlags(): CliFlags {
 
 function printHelp(): void {
   process.stdout.write(`
-  env:edit — Kelola kredensial test (day-2)
+  env:edit — Kelola konfigurasi & kredensial test
 
   Usage:
     npm run env:edit                       # menu interaktif
-    npm run env:edit -- --list             # tampilkan keys (masked)
+    npm run env:edit -- --list             # tampilkan semua config (masked)
     npm run env:edit -- --env local        # pilih environments/{name}.env
     npm run env:edit -- --help             # bantuan ini
 
-  Flow umum:
-    1. Ganti password / email role  → menu "Edit kredensial role"
-    2. Tambah role baru             → menu "Tambah role"
-    3. Hapus role                   → menu "Hapus role"
-    4. Refresh session login        → npx playwright test src/support/auth.setup.ts --project=setup
+  Yang bisa diedit:
+    - BASE_URL / HEADLESS / SLOW_MO
+    - Kredensial tiap role (TEST_USER_*, FINANCE_*, SUPER_ADMIN_*, dll)
+    - Tambah / hapus role
+    - Key bebas (advanced)
+    - Re-encrypt file saja
+    - Regenerasi src/support/auth.setup.ts
+
+  Refresh session login setelah edit:
+    npx playwright test src/support/auth.setup.ts --project=setup
 
   Docs: docs/CREDENTIALS.md
 
@@ -314,28 +324,38 @@ function printRoleTable(map: Record<string, string>): void {
   const roles = parseRolesFromEnvMap(map);
   process.stdout.write('\n  Kredensial terdeteksi:\n\n');
   if (roles.length === 0) {
-    process.stdout.write('  (belum ada TEST_USER_EMAIL atau {ROLE}_EMAIL)\n\n');
+    process.stdout.write('  (belum ada role login-ready)\n\n');
   } else {
-    process.stdout.write('  Role            Email                    Password      Auth file\n');
+    process.stdout.write('  Role            Ids set                 Password      Auth file\n');
     process.stdout.write(
-      '  ──────────────  ───────────────────────  ────────────  ──────────────────\n',
+      '  ──────────────  ──────────────────────  ────────────  ──────────────────\n',
     );
     for (const r of roles) {
-      const email = maskSecret(map[r.emailKey]);
+      const ids: string[] = [];
+      if (map[r.emailKey]?.trim()) ids.push('email');
+      if (map[r.usernameKey]?.trim()) ids.push('username');
+      if (map[r.phoneKey]?.trim()) ids.push('phone');
+      const ready = isRoleLoginReady(map, r) ? 'ok' : '!!';
       const pw = maskSecret(map[r.passwordKey]);
       process.stdout.write(
-        `  ${r.name.padEnd(14)}  ${email.padEnd(23)}  ${pw.padEnd(12)}  ${r.authFile}\n`,
+        `  ${r.name.padEnd(14)}  ${(ids.join('+') || '-').padEnd(22)}  ${pw.padEnd(12)}  ${r.authFile}  ${ready}\n`,
       );
     }
     process.stdout.write('\n');
+    if (!hasDefaultUserCredentials(map)) {
+      process.stdout.write(
+        '  ⚠ Default user (TEST_USER_*) belum login-ready — mode general authenticated berisiko.\n\n',
+      );
+    }
   }
 
   process.stdout.write('  Config lain:\n');
   process.stdout.write(`    BASE_URL  = ${maskSecret(map.BASE_URL)}\n`);
-  process.stdout.write(`    ENV_NAME  = ${map.ENV_NAME ?? '(empty)'}\n`);
   if (map.PLAYWRIGHT_CONFIG) {
     process.stdout.write(`    PLAYWRIGHT_CONFIG = ${map.PLAYWRIGHT_CONFIG}\n`);
   }
+  process.stdout.write(`    HEADLESS  = ${map.HEADLESS ?? 'true'}\n`);
+  process.stdout.write(`    SLOW_MO   = ${map.SLOW_MO ?? '0'}\n`);
   process.stdout.write('\n');
 }
 
@@ -350,16 +370,30 @@ async function actionEditBase(content: string, map: Record<string, string>): Pro
       initial: map.BASE_URL || 'http://localhost:3000',
     },
     {
-      type: 'text',
-      name: 'envName',
-      message: 'ENV_NAME:',
-      initial: map.ENV_NAME || 'local',
+      type: 'select',
+      name: 'headless',
+      message: 'HEADLESS (jalankan browser tanpa UI?):',
+      choices: [
+        { title: 'true — tanpa UI (CI, lebih cepat)', value: 'true' },
+        { title: 'false — browser terlihat (debug lokal)', value: 'false' },
+      ],
+      initial: (map.HEADLESS ?? 'true') === 'false' ? 1 : 0,
+    },
+    {
+      type: 'number',
+      name: 'slowMo',
+      message: 'SLOW_MO (delay ms per aksi browser — 0 untuk off):',
+      initial: parseInt(map.SLOW_MO ?? '0', 10) || 0,
+      min: 0,
+      max: 10000,
+      validate: (v: number) => (Number.isFinite(v) && v >= 0) || 'Harus angka >= 0',
     },
   ]);
   if (ans.baseUrl === undefined) return content;
   return upsertEnvContent(content, {
     BASE_URL: String(ans.baseUrl).trim().replace(/\/$/, ''),
-    ENV_NAME: String(ans.envName || 'local').trim(),
+    HEADLESS: String(ans.headless ?? 'true'),
+    SLOW_MO: String(Math.max(0, Math.floor(Number(ans.slowMo ?? 0)))),
   });
 }
 
@@ -375,60 +409,101 @@ async function actionEditRole(content: string, map: Record<string, string>): Pro
     name: 'roleName',
     message: 'Pilih role yang mau diedit:',
     choices: roles.map((r) => ({
-      title: `${r.name}  (${maskSecret(map[r.emailKey])})`,
+      title: `${r.name}  (${maskSecret(map[r.emailKey] || map[r.usernameKey] || map[r.phoneKey])})`,
       value: r.name,
     })),
   });
   if (!roleName) return content;
 
   const ref = roleCredentialKeys(roleName);
-  const fields: prompts.PromptObject[] = [
-    {
-      type: 'text',
-      name: 'email',
-      message: `${ref.emailKey}:`,
-      initial: map[ref.emailKey] || '',
-      validate: (v: string) => v.trim().length > 0 || 'Wajib diisi',
-    },
+  const ans = await prompts([
     {
       type: 'password',
       name: 'password',
       message: `${ref.passwordKey} (kosongkan jika tidak ganti):`,
     },
-  ];
-  if (ref.usernameKey) {
-    fields.push({
+    {
+      type: 'text',
+      name: 'email',
+      message: `${ref.emailKey} (Enter skip / kosongkan):`,
+      initial: map[ref.emailKey] || '',
+    },
+    {
       type: 'text',
       name: 'username',
       message: `${ref.usernameKey} (opsional):`,
       initial: map[ref.usernameKey] || '',
-    });
-  }
-  if (ref.phoneKey) {
-    fields.push({
+    },
+    {
       type: 'text',
       name: 'phone',
       message: `${ref.phoneKey} (opsional):`,
       initial: map[ref.phoneKey] || '',
-    });
-  }
+    },
+    {
+      type: 'select',
+      name: 'loginIdPref',
+      message: 'Preferensi login id:',
+      choices: [
+        { title: 'Auto (email → username → phone)', value: 'auto' },
+        { title: 'Email', value: 'email' },
+        { title: 'Username', value: 'username' },
+        { title: 'Phone', value: 'phone' },
+      ],
+      initial: 0,
+    },
+  ]);
+  if (ans.email === undefined && ans.username === undefined) return content;
 
-  const ans = await prompts(fields);
-  if (ans.email === undefined) return content;
+  const password =
+    ans.password && String(ans.password).length > 0
+      ? String(ans.password)
+      : map[ref.passwordKey] || '';
+  const email = String(ans.email ?? '').trim();
+  const username = String(ans.username ?? '').trim();
+  const phone = String(ans.phone ?? '').trim();
+  if (!password) {
+    printWarn('Password wajib untuk role yang login.');
+    return content;
+  }
+  if (!email && !username && !phone) {
+    printWarn('Isi minimal satu identitas: email, username, atau telepon.');
+    return content;
+  }
 
   const values: Record<string, string> = {
-    [ref.emailKey]: String(ans.email).trim(),
+    [ref.passwordKey]: password,
   };
-  if (ans.password && String(ans.password).length > 0) {
-    values[ref.passwordKey] = String(ans.password);
+  if (email) values[ref.emailKey] = email;
+  if (username) values[ref.usernameKey] = username;
+  if (phone) values[ref.phoneKey] = phone;
+  const pref = String(ans.loginIdPref ?? 'auto');
+  if (pref && pref !== 'auto') values[ref.loginIdPrefKey] = pref;
+
+  const trial = { ...map, ...values };
+  // Cleared fields must not linger from previous map
+  if (!email) delete trial[ref.emailKey];
+  if (!username) delete trial[ref.usernameKey];
+  if (!phone) delete trial[ref.phoneKey];
+  if (!pref || pref === 'auto') delete trial[ref.loginIdPrefKey];
+
+  const resolved = resolveLoginIdentifier(trial, ref);
+  if ('error' in resolved) {
+    printWarn(resolved.error);
+    return content;
   }
-  if (ref.usernameKey && ans.username !== undefined && String(ans.username).trim()) {
-    values[ref.usernameKey] = String(ans.username).trim();
+
+  let next = upsertEnvContent(content, values);
+  // Remove identity keys that user cleared
+  const toRemove: string[] = [];
+  if (!email && map[ref.emailKey] !== undefined) toRemove.push(ref.emailKey);
+  if (!username && map[ref.usernameKey] !== undefined) toRemove.push(ref.usernameKey);
+  if (!phone && map[ref.phoneKey] !== undefined) toRemove.push(ref.phoneKey);
+  if ((!pref || pref === 'auto') && map[ref.loginIdPrefKey] !== undefined) {
+    toRemove.push(ref.loginIdPrefKey);
   }
-  if (ref.phoneKey && ans.phone !== undefined && String(ans.phone).trim()) {
-    values[ref.phoneKey] = String(ans.phone).trim();
-  }
-  return upsertEnvContent(content, values);
+  if (toRemove.length > 0) next = removeEnvKeys(next, toRemove);
+  return next;
 }
 
 async function actionAddRole(content: string, map: Record<string, string>): Promise<string> {
@@ -436,21 +511,16 @@ async function actionAddRole(content: string, map: Record<string, string>): Prom
     {
       type: 'text',
       name: 'roleName',
-      message: 'Nama role (lowercase-hyphen, misal: finance, super-admin):',
+      message: 'Nama role (lowercase-hyphen, misal: finance, user) — jangan "general":',
       validate: (v: string) => {
         const n = v.trim().toLowerCase();
-        if (!isValidRoleName(n)) return 'Hanya a-z, 0-9, dan tanda hubung';
+        if (n === 'general') return 'Pakai "user" untuk default; general = mode pipeline saja';
         if (n === 'default') return 'Pakai "user" untuk default TEST_USER_*';
-        const existing = parseRolesFromEnvMap(map).some((r) => r.name === n);
-        if (existing) return `Role "${n}" sudah ada — pilih Edit`;
+        if (!isValidRoleName(n)) return 'Hanya a-z, 0-9, dan tanda hubung';
+        const existing = parseRolesFromEnvMap(map).some((r) => r.name === canonicalRoleName(n));
+        if (existing) return `Role "${canonicalRoleName(n)}" sudah ada — pilih Edit`;
         return true;
       },
-    },
-    {
-      type: 'text',
-      name: 'email',
-      message: 'Email:',
-      validate: (v: string) => v.trim().length > 0 || 'Wajib diisi',
     },
     {
       type: 'password',
@@ -458,19 +528,44 @@ async function actionAddRole(content: string, map: Record<string, string>): Prom
       message: 'Password:',
       validate: (v: string) => v.length > 0 || 'Wajib diisi',
     },
+    { type: 'text', name: 'email', message: 'Email (Enter skip):' },
+    { type: 'text', name: 'username', message: 'Username (Enter skip):' },
+    { type: 'text', name: 'phone', message: 'Telepon (Enter skip):' },
+    {
+      type: 'select',
+      name: 'loginIdPref',
+      message: 'Preferensi login id:',
+      choices: [
+        { title: 'Auto (email → username → phone)', value: 'auto' },
+        { title: 'Email', value: 'email' },
+        { title: 'Username', value: 'username' },
+        { title: 'Phone', value: 'phone' },
+      ],
+      initial: 0,
+    },
   ]);
   if (!ans.roleName || !ans.password) return content;
 
-  const ref = roleCredentialKeys(String(ans.roleName).trim().toLowerCase());
-  const next = upsertEnvContent(
-    content,
-    {
-      [ref.emailKey]: String(ans.email).trim(),
-      [ref.passwordKey]: String(ans.password),
-    },
-    'Kredensial per role',
-  );
-  printOk(`Role ${ref.name} ditambahkan (${ref.emailKey} / ${ref.passwordKey})`);
+  const email = String(ans.email ?? '').trim();
+  const username = String(ans.username ?? '').trim();
+  const phone = String(ans.phone ?? '').trim();
+  if (!email && !username && !phone) {
+    printWarn('Isi minimal satu identitas: email, username, atau telepon.');
+    return content;
+  }
+
+  const ref = roleCredentialKeys(String(ans.roleName).trim());
+  const values: Record<string, string> = {
+    [ref.passwordKey]: String(ans.password),
+  };
+  if (email) values[ref.emailKey] = email;
+  if (username) values[ref.usernameKey] = username;
+  if (phone) values[ref.phoneKey] = phone;
+  const pref = String(ans.loginIdPref ?? 'auto');
+  if (pref && pref !== 'auto') values[ref.loginIdPrefKey] = pref;
+
+  const next = upsertEnvContent(content, values, 'Kredensial per role');
+  printOk(`Role ${ref.name} ditambahkan`);
   printInfo(`Auth file nanti: ${ref.authFile}`);
   return next;
 }
@@ -502,9 +597,7 @@ async function actionRemoveRole(
   if (!confirm) return { content };
 
   const ref = roleCredentialKeys(roleName);
-  const keys = [ref.emailKey, ref.passwordKey];
-  if (ref.usernameKey) keys.push(ref.usernameKey);
-  if (ref.phoneKey) keys.push(ref.phoneKey);
+  const keys = [ref.emailKey, ref.usernameKey, ref.phoneKey, ref.passwordKey, ref.loginIdPrefKey];
 
   const next = removeEnvKeys(content, keys);
 
@@ -630,7 +723,7 @@ async function main(): Promise<void> {
       message: 'Pilih aksi:',
       choices: [
         { title: 'Lihat kredensial (masked)', value: 'list' },
-        { title: 'Edit BASE_URL / ENV_NAME', value: 'base' },
+        { title: 'Edit BASE_URL / HEADLESS / SLOW_MO', value: 'base' },
         { title: 'Edit kredensial role', value: 'edit-role' },
         { title: 'Tambah role', value: 'add-role' },
         { title: 'Hapus role', value: 'remove-role' },
@@ -676,7 +769,7 @@ async function main(): Promise<void> {
         content = next;
         map = parseEnvText(content);
         dirty = true;
-        printOk('BASE_URL / ENV_NAME di-update (belum disimpan ke disk)');
+        printOk('BASE_URL / HEADLESS / SLOW_MO di-update (belum disimpan ke disk)');
       }
       continue;
     }

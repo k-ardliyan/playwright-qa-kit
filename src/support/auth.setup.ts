@@ -1,35 +1,41 @@
 import { test as setup } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  authStatePath,
+  authStateWritePath,
+  ensureAuthDirForEnv,
+  migrateLegacyAuthFiles,
+} from './auth-paths';
+import {
+  parseRolesFromEnvMap,
+  resolveLoginIdentifier,
+  isRoleLoginReady,
+  roleCredentialKeys,
+  type RoleCredentialRef,
+} from '../shared/utils/role-credentials';
 
 /**
- * Auth Setup (template core)
+ * Auth Setup — multi-role discovery
  *
- * Official Playwright pattern: project `setup` materializes storage state under `.auth/`.
- * Generated authenticated specs override via:
- *   test.use({ storageState: '.auth/<role>.json' })
+ * Discovers every login-ready role from process.env (TEST_USER_*, FINANCE_*, …)
+ * and materializes `.auth/{APP_ENV}/{role}.json` for each.
  *
- * Safe defaults for the template kit (no guaranteed target app):
- * - Missing credentials → write empty storage state and skip UI login (demos stay green).
- * - Credentials present → generic form login, then save storage state.
- * - Login failure → empty storage + warning (does not hard-fail the whole suite).
- *
- * Multi-role files (finance, hrd, …) are produced by `npm run setup:wizard` / `env:edit`.
+ * - Role **user** = default account for pipeline mode "general" (not a role named general).
+ * - Login id: LOGIN_ID_PREF → EMAIL → USERNAME → PHONE
+ * - If no role is login-ready, writes empty storage for `user` so unauthenticated demos still run.
  *
  * Run: npx playwright test src/support/auth.setup.ts --project=setup
  */
 
-const AUTH_DIR = '.auth';
-const USER_AUTH_FILE = path.join(AUTH_DIR, 'user.json');
-
 function ensureAuthDir(): void {
-  if (!fs.existsSync(AUTH_DIR)) {
-    fs.mkdirSync(AUTH_DIR, { recursive: true });
-  }
+  ensureAuthDirForEnv();
 }
 
 function writeEmptyStorageState(filePath: string): void {
   ensureAuthDir();
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   if (fs.existsSync(filePath)) {
     try {
       fs.copyFileSync(filePath, `${filePath}.bak`);
@@ -40,19 +46,24 @@ function writeEmptyStorageState(filePath: string): void {
   fs.writeFileSync(filePath, JSON.stringify({ cookies: [], origins: [] }, null, 2), 'utf8');
 }
 
-function resolveUserCredentials(): { email: string; password: string } | null {
-  const email = (process.env.TEST_USER_EMAIL ?? process.env.USER_EMAIL ?? '').trim();
-  const password = (process.env.TEST_USER_PASSWORD ?? process.env.USER_PASSWORD ?? '').trim();
-  if (!email || !password) {
-    return null;
-  }
-  return { email, password };
+function envMap(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter((e): e is [string, string] => typeof e[1] === 'string'),
+  );
+}
+
+function resolveRoleLogin(ref: RoleCredentialRef): { loginId: string; password: string } | null {
+  const map = envMap();
+  if (!isRoleLoginReady(map, ref)) return null;
+  const resolved = resolveLoginIdentifier(map, ref);
+  if ('error' in resolved) return null;
+  const password = (map[ref.passwordKey] ?? '').trim();
+  if (!password) return null;
+  return { loginId: resolved.value, password };
 }
 
 function hasNonEmptyStorageState(filePath: string): boolean {
-  if (!fs.existsSync(filePath)) {
-    return false;
-  }
+  if (!fs.existsSync(filePath)) return false;
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8')) as {
       cookies?: unknown[];
@@ -66,20 +77,12 @@ function hasNonEmptyStorageState(filePath: string): boolean {
   }
 }
 
-setup('authenticate:user', async ({ page, browser }) => {
-  ensureAuthDir();
-
-  const credentials = resolveUserCredentials();
-  if (!credentials) {
-    writeEmptyStorageState(USER_AUTH_FILE);
-    console.log(
-      'ℹ [Auth Setup] TEST_USER_EMAIL/PASSWORD not set — wrote empty .auth/user.json. ' +
-        'Authenticated specs that need a real session must set credentials (npm run env:edit) ' +
-        'or run setup:wizard. Demos and unauthenticated tests are unaffected.',
-    );
-    return;
-  }
-
+function loginPaths(): {
+  baseURL: string;
+  loginPath: string;
+  loginUrl: string;
+  successUrlFragment: string;
+} {
   const baseURL = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
   const loginPath = process.env.AUTH_LOGIN_URL_PATH ?? '/login';
   const successPath = process.env.AUTH_SUCCESS_URL_PATH ?? '/dashboard';
@@ -87,61 +90,98 @@ setup('authenticate:user', async ({ page, browser }) => {
     ? loginPath
     : `${baseURL}${loginPath.startsWith('/') ? '' : '/'}${loginPath}`;
   const successUrlFragment = successPath.replace(/^\//, '');
+  return { baseURL, loginPath, loginUrl, successUrlFragment };
+}
 
-  // Reuse session if storage state looks valid and success URL does not bounce to login
-  if (hasNonEmptyStorageState(USER_AUTH_FILE)) {
-    const context = await browser.newContext({ storageState: USER_AUTH_FILE });
-    const probe = await context.newPage();
-    try {
-      await probe.goto(`${baseURL}/${successUrlFragment}`, { waitUntil: 'domcontentloaded' });
-      const bouncedToLogin = probe
-        .url()
-        .toLowerCase()
-        .includes(loginPath.toLowerCase().replace(/^\//, ''));
-      if (!bouncedToLogin) {
-        await context.storageState({ path: USER_AUTH_FILE });
-        console.log('✔ [Auth Setup] Existing session still valid — refreshed .auth/user.json');
-        await context.close();
-        return;
-      }
-    } catch {
-      console.log('⚠ [Auth Setup] Could not validate existing session — logging in again');
-    } finally {
-      await context.close().catch(() => undefined);
+/** Prefer login-ready roles; if none, still emit empty user storage. */
+function rolesToAuthenticate(): RoleCredentialRef[] {
+  const map = envMap();
+  const discovered = parseRolesFromEnvMap(map).filter((r) => isRoleLoginReady(map, r));
+  if (discovered.length > 0) return discovered;
+  return [roleCredentialKeys('user')];
+}
+
+// One-time legacy migration before any setup() registration
+migrateLegacyAuthFiles();
+
+const roles = rolesToAuthenticate();
+
+for (const ref of roles) {
+  const readPath = authStatePath(ref.name);
+  const writePath = authStateWritePath(ref.name);
+
+  setup(`authenticate:${ref.name}`, async ({ page, browser }) => {
+    ensureAuthDir();
+
+    const credentials = resolveRoleLogin(ref);
+    if (!credentials) {
+      writeEmptyStorageState(writePath);
+      console.log(
+        `ℹ [Auth Setup] ${ref.name}: not login-ready — wrote empty storage. ` +
+          `Set ${ref.passwordKey} + ≥1 of EMAIL/USERNAME/PHONE (npm run env:edit).`,
+      );
+      return;
     }
-  }
 
-  await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
+    const { baseURL, loginPath, loginUrl, successUrlFragment } = loginPaths();
 
-  await page
-    .locator(
-      'input[type="email"], input[name="email"], input[name="username"], input[id*="email" i], input[id*="user" i]',
-    )
-    .first()
-    .fill(credentials.email);
+    if (hasNonEmptyStorageState(readPath)) {
+      const context = await browser.newContext({ storageState: readPath });
+      const probe = await context.newPage();
+      try {
+        await probe.goto(`${baseURL}/${successUrlFragment}`, { waitUntil: 'domcontentloaded' });
+        const bouncedToLogin = probe
+          .url()
+          .toLowerCase()
+          .includes(loginPath.toLowerCase().replace(/^\//, ''));
+        if (!bouncedToLogin) {
+          ensureAuthDir();
+          await context.storageState({ path: writePath });
+          console.log('✔ [Auth Setup] Existing session still valid — refreshed', writePath);
+          await context.close();
+          return;
+        }
+      } catch {
+        console.log(`⚠ [Auth Setup] ${ref.name}: could not validate session — logging in again`);
+      } finally {
+        await context.close().catch(() => undefined);
+      }
+    }
 
-  await page
-    .locator('input[type="password"], input[name="password"], input[id*="pass" i]')
-    .first()
-    .fill(credentials.password);
+    await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
 
-  await page
-    .locator(
-      'button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Masuk"), button:has-text("Sign in"), button:has-text("Log in")',
-    )
-    .first()
-    .click();
+    await page
+      .locator(
+        'input[type="email"], input[name="email"], input[name="username"], input[name="phone"], input[id*="email" i], input[id*="user" i], input[id*="phone" i]',
+      )
+      .first()
+      .fill(credentials.loginId);
 
-  try {
-    await page.waitForURL(new RegExp(successUrlFragment, 'i'), { timeout: 20_000 });
-    await page.context().storageState({ path: USER_AUTH_FILE });
-    console.log('✔ [Auth Setup] Session saved to', USER_AUTH_FILE);
-  } catch (error) {
-    writeEmptyStorageState(USER_AUTH_FILE);
-    console.warn(
-      '⚠ [Auth Setup] Login did not reach success URL — wrote empty storage state. ' +
-        'Fix selectors in src/support/auth.setup.ts or credentials. Detail:',
-      error instanceof Error ? error.message : error,
-    );
-  }
-});
+    await page
+      .locator('input[type="password"], input[name="password"], input[id*="pass" i]')
+      .first()
+      .fill(credentials.password);
+
+    await page
+      .locator(
+        'button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Masuk"), button:has-text("Sign in"), button:has-text("Log in")',
+      )
+      .first()
+      .click();
+
+    ensureAuthDir();
+
+    try {
+      await page.waitForURL(new RegExp(successUrlFragment, 'i'), { timeout: 20_000 });
+      await page.context().storageState({ path: writePath });
+      console.log('✔ [Auth Setup] Session saved to', writePath);
+    } catch (error) {
+      writeEmptyStorageState(writePath);
+      console.warn(
+        `⚠ [Auth Setup] ${ref.name}: login did not reach success URL — wrote empty storage. ` +
+          'Fix selectors or credentials. Detail:',
+        error instanceof Error ? error.message : error,
+      );
+    }
+  });
+}

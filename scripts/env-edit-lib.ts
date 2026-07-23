@@ -1,109 +1,32 @@
 /// <reference types="node" />
 /**
- * Pure helpers for env-edit CLI — role ↔ env key naming (no I/O).
+ * Pure helpers for env-edit CLI — role ↔ env key naming + dotenv text utils.
  *
- * Convention (source of truth = setup wizard):
- * - default/user → TEST_USER_EMAIL / TEST_USER_PASSWORD → .auth/user.json
- * - finance      → FINANCE_EMAIL / FINANCE_PASSWORD     → .auth/finance.json
- * - super-admin  → SUPER_ADMIN_EMAIL / SUPER_ADMIN_PASSWORD → .auth/super-admin.json
+ * Credential schema lives in src/shared/utils/role-credentials.ts (re-exported here).
  *
  * @module scripts/env-edit-lib
  */
 
-export interface RoleCredentialRef {
-  /** Role name kebab-case, or 'user' for default TEST_USER_* */
-  name: string;
-  authFile: string;
-  emailKey: string;
-  passwordKey: string;
-  usernameKey?: string;
-  phoneKey?: string;
-}
-
-/** Role name: lowercase letters, digits, hyphens only. */
-export function isValidRoleName(name: string): boolean {
-  return /^[a-z0-9-]+$/.test(name.trim());
-}
-
-/**
- * Map role name to env key prefix.
- * default|user → TEST_USER; super-admin → SUPER_ADMIN
- */
-export function roleToEnvPrefix(roleName: string): string {
-  const n = roleName.trim().toLowerCase();
-  if (n === 'default' || n === 'user') return 'TEST_USER';
-  return n.toUpperCase().replace(/-/g, '_');
-}
-
-/**
- * Map env prefix back to role name used in auth files.
- * TEST_USER → user; SUPER_ADMIN → super-admin
- */
-export function envPrefixToRole(prefix: string): string {
-  const p = prefix.trim().toUpperCase();
-  if (p === 'TEST_USER') return 'user';
-  return p.toLowerCase().replace(/_/g, '-');
-}
-
-/**
- * Auth storage path for a role.
- * default|user → .auth/user.json
- */
-export function roleAuthFile(roleName: string): string {
-  const n = roleName.trim().toLowerCase();
-  if (n === 'default' || n === 'user') return '.auth/user.json';
-  return `.auth/${n}.json`;
-}
-
-/** Build credential key refs for a role name. */
-export function roleCredentialKeys(roleName: string): RoleCredentialRef {
-  const name = roleName.trim().toLowerCase() === 'default' ? 'user' : roleName.trim().toLowerCase();
-  const prefix = roleToEnvPrefix(name);
-  const ref: RoleCredentialRef = {
-    name,
-    authFile: roleAuthFile(name),
-    emailKey: `${prefix}_EMAIL`,
-    passwordKey: `${prefix}_PASSWORD`,
-  };
-  if (prefix === 'TEST_USER') {
-    ref.usernameKey = 'TEST_USER_USERNAME';
-    ref.phoneKey = 'TEST_USER_PHONE';
-  }
-  return ref;
-}
-
-/**
- * Discover roles from a flat env map (decrypted KEY→value).
- * Includes user when TEST_USER_EMAIL is present.
- * Scans *_EMAIL keys (excluding TEST_USER handled above).
- */
-export function parseRolesFromEnvMap(map: Record<string, string>): RoleCredentialRef[] {
-  const roles: RoleCredentialRef[] = [];
-  const seen = new Set<string>();
-
-  if (map.TEST_USER_EMAIL !== undefined && map.TEST_USER_EMAIL !== '') {
-    const r = roleCredentialKeys('user');
-    roles.push(r);
-    seen.add(r.name);
-  }
-
-  for (const key of Object.keys(map)) {
-    const m = /^([A-Z0-9_]+)_EMAIL$/.exec(key);
-    if (!m) continue;
-    const prefix = m[1];
-    if (prefix === 'TEST_USER') continue;
-    if (prefix === 'DOTENV_PUBLIC_KEY') continue;
-    const roleName = envPrefixToRole(prefix);
-    if (seen.has(roleName)) continue;
-    // Skip empty values
-    if (!map[key] || map[key].trim() === '') continue;
-    const r = roleCredentialKeys(roleName);
-    roles.push(r);
-    seen.add(roleName);
-  }
-
-  return roles.sort((a, b) => a.name.localeCompare(b.name));
-}
+export {
+  type LoginIdKind,
+  type RoleCredentialRef,
+  type ResolvedLoginId,
+  type ResolveLoginIdResult,
+  type WizardRoleInput,
+  type NormalizeWizardRolesResult,
+  canonicalRoleName,
+  isValidRoleName,
+  roleToEnvPrefix,
+  envPrefixToRole,
+  roleAuthFile,
+  roleCredentialKeys,
+  isRoleLoginReady,
+  resolveLoginIdentifier,
+  roleFieldsToEnvUpserts,
+  normalizeWizardRoles,
+  parseRolesFromEnvMap,
+  hasDefaultUserCredentials,
+} from '../src/shared/utils/role-credentials';
 
 /**
  * Mask secrets for display.

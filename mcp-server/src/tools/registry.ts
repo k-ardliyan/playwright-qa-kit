@@ -59,7 +59,8 @@ const REQUIREMENTS_TEXT_OR_PATH: JsonSchemaObject = {
     requirementsText: { type: 'string' },
     requirementPath: {
       type: 'string',
-      description: 'Top-level path matching requirements/<name>.md (no subdirectories).',
+      description:
+        'Repo-relative path under requirements/ — top-level requirements/<name>.md or nested requirements/<domain>/<name>.md.',
     },
   },
 };

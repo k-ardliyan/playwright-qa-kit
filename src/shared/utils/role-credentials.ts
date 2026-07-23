@@ -108,12 +108,56 @@ function nonEmpty(map: Record<string, string>, key: string): string {
   return (map[key] ?? '').trim();
 }
 
+/**
+ * Values that look like template/example credentials — never treat as login-ready.
+ * Keep in sync with docs templates (your_password_here, test@example.com, …).
+ */
+const PLACEHOLDER_CREDENTIAL_VALUES = new Set([
+  '',
+  'changeme',
+  'change-me',
+  'your_email',
+  'your_password',
+  'your_password_here',
+  'test@example.com',
+  'qa@example.com',
+  'invalid-password-placeholder',
+]);
+
+/** True when a credential field is empty or still a template placeholder. */
+export function isPlaceholderCredential(value: string | undefined | null): boolean {
+  if (value === undefined || value === null) return true;
+  const v = value.trim();
+  if (!v) return true;
+  if (PLACEHOLDER_CREDENTIAL_VALUES.has(v.toLowerCase())) return true;
+  // Common template patterns from *.env.example
+  if (/^your[_-]?/i.test(v)) return true;
+  if (/placeholder/i.test(v)) return true;
+  return false;
+}
+
+/**
+ * True when BASE_URL is missing or still the kit dummy host
+ * (e.g. https://staging.your-app.example.com/).
+ */
+export function isPlaceholderBaseUrl(value: string | undefined | null): boolean {
+  if (value === undefined || value === null) return true;
+  const u = value.trim().toLowerCase();
+  if (!u) return true;
+  return u.includes('your-app.example.com') || u.includes('your-app.example.');
+}
+
 export function isRoleLoginReady(map: Record<string, string>, role: RoleCredentialRef): boolean {
   const password = nonEmpty(map, role.passwordKey);
-  if (!password) return false;
-  return Boolean(
-    nonEmpty(map, role.emailKey) || nonEmpty(map, role.usernameKey) || nonEmpty(map, role.phoneKey),
-  );
+  if (isPlaceholderCredential(password)) return false;
+  const email = nonEmpty(map, role.emailKey);
+  const username = nonEmpty(map, role.usernameKey);
+  const phone = nonEmpty(map, role.phoneKey);
+  const id =
+    (!isPlaceholderCredential(email) && email) ||
+    (!isPlaceholderCredential(username) && username) ||
+    (!isPlaceholderCredential(phone) && phone);
+  return Boolean(id);
 }
 
 /**

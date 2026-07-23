@@ -85,9 +85,9 @@ npm run setup:wizard 2>&1 | head -20
 
 ### Error #5: `local.env` Sudah Dienkripsi Tapi Kunci Hilang
 
-**Gejala:** Setup di mesin baru, file `local.env` isinya `encrypted:BA+84...` tapi `.env.keys` tidak ada.
+**Gejala:** Setup di mesin baru, file `local.env` isinya `encrypted:BA+84...` tapi `.env.keys` tidak ada. Log: `[SECURITY] Decryption keys missing … Falling back to dummy template`.
 
-**Root cause:** Kunci dekripsi dotenvx disimpan lokal di `~/.dotenvx-keys/` — tidak ikut ke Git.
+**Root cause:** Kunci dekripsi dotenvx disimpan lokal di `~/.dotenvx-keys/` — tidak ikut ke Git. Guard hanya aktif bila file **encrypted** (`encrypted:`); file plaintext (termasuk yang di-materialize CI) tetap di-load.
 
 **Fix:**
 
@@ -103,6 +103,26 @@ npm run setup:wizard 2>&1 | head -20
    ```
 
 Panduan lengkap: [CREDENTIALS.md](CREDENTIALS.md).
+
+---
+
+### Error #5d: Nightly / E2E CI → `net::ERR_NAME_NOT_RESOLVED` di `staging.your-app.example.com`
+
+**Gejala:** Job `authenticate:user` gagal ke URL placeholder; log `Falling back to dummy template: environments/staging.env.example`.
+
+**Root cause (historis + ops):**
+
+1. Secret `BASE_URL` (dan kredensial) belum di-set di repo → workflow materialize `BASE_URL=` kosong, atau job jalan tanpa secret.
+2. Bug lama: env-loader fallback ke `.env.example` hanya karena keys hilang, **meski** file CI plaintext. Sudah diperbaiki: fallback hanya jika file berisi `encrypted:`.
+3. Kredensial template (`test@example.com` / `your_password_here`) dulu dianggap login-ready → auth.setup tetap `page.goto` ke dummy URL. Sekarang `isRoleLoginReady` menolak placeholder.
+
+**Fix:**
+
+1. Set GitHub secrets: `BASE_URL`, `TEST_USER_EMAIL` (atau USERNAME/PHONE), `TEST_USER_PASSWORD`.
+2. Workflow `e2e.yml` / `nightly-e2e.yml` punya job `check-secrets` — tanpa `BASE_URL` job E2E di-skip (bukan fail DNS dummy).
+3. Step **Materialize CI environment file** fail-fast bila secret kosong / masih `your-app.example.com` / password atau identity hilang.
+4. Auth setup di CI: throw jika `BASE_URL` masih placeholder kit.
+5. Jangan commit `environments/staging.env` encrypted ke CI; biarkan materialize menulis plaintext ephemeral.
 
 ---
 

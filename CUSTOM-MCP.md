@@ -88,7 +88,7 @@ Template reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
 
 ```json
 {
-  "requirementPath": "requirements/sample-login-empty-fields.md"
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
 }
 ```
 
@@ -147,7 +147,7 @@ Scenarios with `(@manual)` in the heading return `automatable: false`.
 
 ```json
 {
-  "requirementPath": "requirements/sample-login-empty-fields.md"
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
 }
 ```
 
@@ -203,7 +203,7 @@ Validates requirement markdown structure before the Planner runs. Returns a scor
 
 ```json
 {
-  "requirementPath": "requirements/sample-login-empty-fields.md"
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
 }
 ```
 

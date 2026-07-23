@@ -4,3 +4,5 @@ playwright-report/
 reports/
 .auth/
 package-lock.json
+# Optional local share deck — not part of quality gate unless explicitly committed
+docs/playwright-qa-kit-sharing.html

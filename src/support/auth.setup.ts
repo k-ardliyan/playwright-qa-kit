@@ -12,6 +12,7 @@ import {
   resolveLoginIdentifier,
   isRoleLoginReady,
   roleCredentialKeys,
+  isPlaceholderBaseUrl,
   type RoleCredentialRef,
 } from '../shared/utils/role-credentials';
 import {
@@ -131,6 +132,18 @@ for (const ref of roles) {
     }
 
     const { baseURL, loginPath, loginUrl, successUrlFragment } = loginPaths();
+
+    if (isPlaceholderBaseUrl(baseURL)) {
+      const msg =
+        `[Auth Setup] ${ref.name}: BASE_URL is missing or still a kit placeholder ` +
+        `(${baseURL}). Set a real BASE_URL in environments/{APP_ENV}.env or CI secrets.`;
+      if (process.env.CI === 'true') {
+        throw new Error(msg);
+      }
+      writeEmptyStorageState(writePath);
+      console.warn(`⚠ ${msg} — wrote empty storage.`);
+      return;
+    }
 
     if (hasNonEmptyStorageState(readPath)) {
       const context = await browser.newContext({ storageState: readPath });

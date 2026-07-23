@@ -38,7 +38,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has-base-url: ${{ steps.check.outputs.has-base-url }}
+    steps:
+      - name: Check if BASE_URL secret is set
+        id: check
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+        shell: bash
+        run: |
+          if [ -n "$BASE_URL" ]; then
+            echo "has-base-url=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-base-url=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e-matrix:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-base-url == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -68,6 +87,25 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
         run: |
+          set -euo pipefail
+          if [ -z "${BASE_URL// }" ]; then
+            echo "::error::BASE_URL secret is empty. Configure repository secrets before running nightly E2E."
+            exit 1
+          fi
+          case "${BASE_URL}" in
+            *your-app.example.com*|*your-app.example.*)
+              echo "::error::BASE_URL still looks like a kit placeholder (${BASE_URL}). Set a real staging URL secret."
+              exit 1
+              ;;
+          esac
+          if [ -z "${TEST_USER_PASSWORD// }" ]; then
+            echo "::error::TEST_USER_PASSWORD secret is required for auth setup."
+            exit 1
+          fi
+          if [ -z "${TEST_USER_EMAIL// }" ] && [ -z "${TEST_USER_USERNAME// }" ] && [ -z "${TEST_USER_PHONE// }" ]; then
+            echo "::error::Provide at least one of TEST_USER_EMAIL, TEST_USER_USERNAME, or TEST_USER_PHONE."
+            exit 1
+          fi
           {
             printf 'BASE_URL=%s\n' "${BASE_URL}"
             [ -n "${TEST_USER_EMAIL}" ]    && printf 'TEST_USER_EMAIL=%s\n'    "${TEST_USER_EMAIL}"
@@ -77,8 +115,11 @@ jobs:
             printf 'AUTH_SUCCESS_URL_PATH=/dashboard\n'
             printf 'AUTH_LOGIN_URL_PATH=login\n'
             printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
+            # CI uses plaintext secrets — never encrypt this ephemeral file
+            printf 'AUTH_CHALLENGE_MODE=none\n'
           } > "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
+          echo "Materialized environments/${TARGET_ENV}.env (plaintext CI profile)"
 
       - name: Build playwright-qa MCP server
         run: npm run mcp:build
@@ -93,9 +134,15 @@ jobs:
           PW_BLOB: '1'
           CI: 'true'
         run: |
+          TOTAL="${SHARD_TOTAL}"
+          INDEX="${{ matrix.shardIndex }}"
+          if [ "$INDEX" -gt "$TOTAL" ]; then
+            echo "Shard $INDEX skipped (total=$TOTAL)"
+            exit 0
+          fi
           npx playwright test \
             --project=chromium \
-            --shard=${{ matrix.shardIndex }}/$SHARD_TOTAL \
+            --shard=${{ matrix.shardIndex }}/$TOTAL \
             --grep-invert @demo
 
       - name: Upload blob report (for merge-reports)
@@ -126,9 +173,20 @@ jobs:
             reports/html/
           retention-days: 30
 
+  e2e-skipped:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-base-url != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip nightly E2E — BASE_URL secret not configured
+        run: |
+          echo "Nightly E2E skipped: configure BASE_URL and credential secrets in repository settings."
+          echo "Required secrets: BASE_URL, TEST_USER_EMAIL (or USERNAME/PHONE), TEST_USER_PASSWORD"
+          echo "Optional: TEST_USER_USERNAME, TEST_USER_PHONE"
+
   merge-blob-reports:
-    needs: e2e-matrix
-    if: always()
+    needs: [check-secrets, e2e-matrix]
+    if: always() && needs.check-secrets.outputs.has-base-url == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -174,10 +232,11 @@ jobs:
           retention-days: 30
 
   cross-browser:
+    needs: check-secrets
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Optional matrix job — does not block pages publish
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Optional matrix job — does not block pages publish; requires BASE_URL secret
+    if: needs.check-secrets.outputs.has-base-url == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -200,6 +259,25 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
         run: |
+          set -euo pipefail
+          if [ -z "${BASE_URL// }" ]; then
+            echo "::error::BASE_URL secret is empty. Configure repository secrets before running cross-browser E2E."
+            exit 1
+          fi
+          case "${BASE_URL}" in
+            *your-app.example.com*|*your-app.example.*)
+              echo "::error::BASE_URL still looks like a kit placeholder (${BASE_URL}). Set a real staging URL secret."
+              exit 1
+              ;;
+          esac
+          if [ -z "${TEST_USER_PASSWORD// }" ]; then
+            echo "::error::TEST_USER_PASSWORD secret is required for auth setup."
+            exit 1
+          fi
+          if [ -z "${TEST_USER_EMAIL// }" ] && [ -z "${TEST_USER_USERNAME// }" ] && [ -z "${TEST_USER_PHONE// }" ]; then
+            echo "::error::Provide at least one of TEST_USER_EMAIL, TEST_USER_USERNAME, or TEST_USER_PHONE."
+            exit 1
+          fi
           {
             printf 'BASE_URL=%s\n' "${BASE_URL}"
             [ -n "${TEST_USER_EMAIL}" ]    && printf 'TEST_USER_EMAIL=%s\n'    "${TEST_USER_EMAIL}"
@@ -209,13 +287,17 @@ jobs:
             printf 'AUTH_SUCCESS_URL_PATH=/dashboard\n'
             printf 'AUTH_LOGIN_URL_PATH=login\n'
             printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
+            printf 'AUTH_CHALLENGE_MODE=none\n'
           } > "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
+          echo "Materialized environments/${TARGET_ENV}.env (plaintext CI profile)"
 
       - name: Install Playwright browsers (chromium, firefox, webkit)
         run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run cross-browser suite
+        env:
+          CI: 'true'
         run: |
           npx playwright test -c playwright.cross-browser.config.ts \
             --grep-invert @demo
@@ -233,8 +315,8 @@ jobs:
           retention-days: 14
 
   publish-reports:
-    needs: [e2e-matrix, merge-blob-reports]
-    if: always()
+    needs: [check-secrets, e2e-matrix, merge-blob-reports]
+    if: always() && needs.check-secrets.outputs.has-base-url == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write

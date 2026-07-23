@@ -19,7 +19,7 @@ Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-
 | Tulis requirement                 | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
 | Rapikan catatan (ChatGPT/Gemini)  | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
 | Pipeline AI                       | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
-| Contoh requirement valid (sample) | [requirements/sample-login-empty-fields.md](../requirements/sample-login-empty-fields.md)                                |
+| Contoh requirement valid (sample) | [requirements/auth/sample-login-empty-fields.md](../requirements/auth/sample-login-empty-fields.md)                      |
 
 ---
 
@@ -162,7 +162,7 @@ npm run qa:run -- requirements/login.md
 
 ```bash
 # 1. Validasi format sample
-npm run validate:requirement -- requirements/sample-login-empty-fields.md
+npm run validate:requirement -- requirements/auth/sample-login-empty-fields.md
 
 # 2. Di Hermes, kirim prompt pipeline (lihat section Prompt Siap Pakai)
 #    Sample ini butuh POM loginPage — bukan default setup awal

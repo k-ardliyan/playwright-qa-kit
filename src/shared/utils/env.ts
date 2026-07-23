@@ -5,7 +5,11 @@
  * Role credentials: getRoleLoginId / getRolePassword (uniform schema).
  */
 
-import { roleCredentialKeys, resolveLoginIdentifier } from './role-credentials';
+import {
+  roleCredentialKeys,
+  resolveLoginIdentifier,
+  isPlaceholderCredential,
+} from './role-credentials';
 
 function requireEnv(key: string, fallback?: string): string {
   const value = process.env[key] ?? fallback;
@@ -18,21 +22,9 @@ function requireEnv(key: string, fallback?: string): string {
   return value;
 }
 
-const UNSAFE_VALUES = new Set([
-  '',
-  'changeme',
-  'change-me',
-  'your_email',
-  'your_password',
-  'your_password_here',
-  'test@example.com',
-  'qa@example.com',
-  'invalid-password-placeholder',
-]);
-
 function requireSecretEnv(key: string): string {
   const value = requireEnv(key).trim();
-  if (UNSAFE_VALUES.has(value.toLowerCase())) {
+  if (isPlaceholderCredential(value)) {
     throw new Error(
       `[Config Error] Environment variable '${key}' kosong atau masih placeholder.\n` +
         `Isi dengan credential QA yang valid di file .env lokal Anda.`,
@@ -47,7 +39,7 @@ function optionalSecretEnv(key: string): string | undefined {
     return undefined;
   }
   const value = raw.trim();
-  if (value.length === 0 || UNSAFE_VALUES.has(value.toLowerCase())) {
+  if (isPlaceholderCredential(value)) {
     return undefined;
   }
   return value;

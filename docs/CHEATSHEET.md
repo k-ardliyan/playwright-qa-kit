@@ -126,4 +126,4 @@ generate_page_object (playwright-qa) — featureName, pageName
 ---
 
 > **Tips:** Setup awal = `requirements/login.md` (hasil wizard, per website + `snapshot_page`).
-> Sample format saja: `requirements/sample-login-empty-fields.md` / `sample-network-hybrid.md`.
+> Sample format saja: `requirements/auth/sample-login-empty-fields.md` / `requirements/auth/sample-network-hybrid.md`.

@@ -229,11 +229,13 @@ Adjust `url` if the target app does not run on port 3000.
 
 ### CI secrets
 
-Add minimum secrets in your CI provider:
+Add minimum secrets in your CI provider (repo **Settings → Secrets and variables → Actions**):
 
-- `BASE_URL`
-- `TEST_USER_EMAIL`
+- `BASE_URL` — required; without it, `e2e.yml` / `nightly-e2e.yml` skip live runs via `check-secrets`
+- `TEST_USER_EMAIL` (or `TEST_USER_USERNAME` / `TEST_USER_PHONE`)
 - `TEST_USER_PASSWORD`
+
+Workflows materialize a **plaintext** `environments/{APP_ENV}.env` each job from those secrets. Do not rely on encrypted local `.env` files or dotenvx keys in CI.
 
 Add other secrets as your app domain requires.
 

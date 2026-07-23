@@ -154,28 +154,45 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
         `Create environments/${appEnv}.env and replace placeholder values before running tests.`,
     );
   } else {
-    // [SECURITY GUARD] If the file is encrypted but no decryption key is available,
-    // fallback to loading the plaintext dummy .env.example instead of ciphertext values.
-    const secureKeysPath = getSecureKeysPath();
-    const appEnvUpper = appEnv.toUpperCase();
-    const hasEnvKey =
-      process.env.DOTENV_PRIVATE_KEY ||
-      process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}DEVELOPMENT`] ||
-      process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}`];
+    // [SECURITY GUARD] Only when the primary file is encrypted (contains `encrypted:`)
+    // and no decryption key is available, fall back to the plaintext .env.example.
+    // Plaintext files (CI-materialized secrets, local unencrypted) must load as-is —
+    // missing keys alone must NOT discard a real environments/{APP_ENV}.env.
+    const fileText = fs.readFileSync(loaded.resolvedPath, 'utf8');
+    const isEncrypted = fileText.includes('encrypted:');
 
-    const hasKeys = fs.existsSync(secureKeysPath) || hasEnvKey;
+    if (isEncrypted) {
+      const secureKeysPath = getSecureKeysPath();
+      const appEnvUpper = appEnv.toUpperCase();
+      const hasEnvKey =
+        process.env.DOTENV_PRIVATE_KEY ||
+        process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}DEVELOPMENT`] ||
+        process.env[`DOTENV_PRIVATE_KEY_${appEnvUpper}`];
 
-    if (!hasKeys) {
-      const fallbackPath = path.resolve(cwd, `environments/${appEnv}.env.example`);
-      if (fs.existsSync(fallbackPath)) {
-        dotenvx.config({ path: fallbackPath });
-        logger.warn(
-          `[SECURITY] Decryption keys missing. Falling back to dummy template: environments/${appEnv}.env.example`,
-        );
-        if (options?.adapterEnv) {
-          loadAdapterEnvOverlay(options.adapterEnv, cwd);
+      const hasKeys = fs.existsSync(secureKeysPath) || Boolean(hasEnvKey);
+
+      if (!hasKeys) {
+        const fallbackPath = path.resolve(cwd, `environments/${appEnv}.env.example`);
+        if (fs.existsSync(fallbackPath)) {
+          dotenvx.config({ path: fallbackPath });
+          // Re-assert after dotenv — file must not hijack APP_ENV
+          process.env.APP_ENV = appEnv;
+          process.env.APP_ENV_SOURCE = resolved.source;
+          logger.warn(
+            `[SECURITY] Decryption keys missing for encrypted environments/${appEnv}.env. ` +
+              `Falling back to dummy template: environments/${appEnv}.env.example`,
+          );
+          if (options?.adapterEnv) {
+            loadAdapterEnvOverlay(options.adapterEnv, cwd);
+          }
+          return;
         }
-        return;
+        throw new Error(
+          `Encrypted environments/${appEnv}.env found but no dotenvx private key is available, ` +
+            `and environments/${appEnv}.env.example is missing.\n` +
+            `Fix: restore ~/.dotenvx-keys/<project>/.env.keys, or recreate a plaintext ` +
+            `environments/${appEnv}.env (CI materialize / npm run env:edit).`,
+        );
       }
     }
   }

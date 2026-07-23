@@ -41,7 +41,7 @@
     "manifest:generate": "tsx scripts/generate-manifest.ts",
     "validate:agents": "tsx scripts/validate-agents.ts",
     "quality:check-code": "npm run format:check && npm run lint && npm run typecheck && npm run mcp:typecheck",
-    "quality:check-rules": "npm run validate && npm run validate:requirement -- requirements/sample-login-empty-fields.md && npm run test:property",
+    "quality:check-rules": "npm run validate && npm run validate:requirement -- requirements/auth/sample-login-empty-fields.md && npm run test:property",
     "test:quality": "npm run setup:check && npm run quality:check-code && npm run quality:check-rules && npm run mcp:build && npm run health:check",
     "test:custom": "tsx src/shared/utils/cli-runner.ts",
     "test:headed": "npx playwright test --headed --grep-invert @demo",

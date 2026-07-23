@@ -161,6 +161,14 @@ test('isRoleLoginReady', () => {
     true,
   );
   assert.equal(isRoleLoginReady({ TEST_USER_PASSWORD: 'x' }, role), false);
+  // Template/example values must never count as login-ready (CI dummy env)
+  assert.equal(
+    isRoleLoginReady(
+      { TEST_USER_PASSWORD: 'your_password_here', TEST_USER_EMAIL: 'test@example.com' },
+      role,
+    ),
+    false,
+  );
 });
 
 test('normalize multi N=1 finance + mirror writes TEST_USER and FINANCE', () => {

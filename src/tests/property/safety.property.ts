@@ -41,12 +41,16 @@ runCase('getRepoRoot returns the same value as findRepoRoot(__dirname)', () => {
 });
 
 runCase('resolveAllowedPath accepts repo-relative requirements paths', () => {
-  const result = resolveAllowedPath('requirements/sample-login-empty-fields.md', 'requirements', {
-    mustExist: false,
-  });
+  const result = resolveAllowedPath(
+    'requirements/auth/sample-login-empty-fields.md',
+    'requirements',
+    {
+      mustExist: false,
+    },
+  );
   assert.equal(result.ok, true);
   if (result.ok) {
-    assert.equal(result.relativePath, 'requirements/sample-login-empty-fields.md');
+    assert.equal(result.relativePath, 'requirements/auth/sample-login-empty-fields.md');
   }
 });
 
@@ -67,7 +71,7 @@ runCase('resolveAllowedPath rejects test-results outside the repo (security gate
 
 runCase('resolveAllowedPath rejects parent-traversal paths', () => {
   const result = resolveAllowedPath(
-    '../requirements/sample-login-empty-fields.md',
+    '../requirements/auth/sample-login-empty-fields.md',
     'requirements',
     {
       mustExist: false,

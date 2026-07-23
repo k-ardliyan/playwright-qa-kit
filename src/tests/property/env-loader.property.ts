@@ -76,7 +76,7 @@ async function main(): Promise<void> {
     { numRuns: 24 },
   );
 
-  // Unset APP_ENV → default local with info (not warn "APP_ENV is not set")
+  // Unset APP_ENV → pin (if present) or default local; never warn "APP_ENV is not set"
   {
     const previousAppEnv = process.env.APP_ENV;
     const previousSource = process.env.APP_ENV_SOURCE;
@@ -102,17 +102,34 @@ async function main(): Promise<void> {
         warnings.some((msg) => msg.includes('APP_ENV is not set')),
         false,
       );
-      assert.equal(process.env.APP_ENV, 'local');
-      assert.ok(process.env.APP_ENV_SOURCE === 'default' || process.env.APP_ENV_SOURCE === 'pin');
-      assert.equal(
-        infos.some(
-          (msg) =>
-            msg.includes('Using default APP_ENV=local') ||
-            msg.includes('Using APP_ENV=local from environments/.active-env') ||
-            msg.includes("Loaded environment 'local'"),
-        ),
-        true,
-      );
+      // Without OS APP_ENV: pin wins when present (local-only), else default=local
+      const source = process.env.APP_ENV_SOURCE;
+      assert.ok(source === 'default' || source === 'pin', `unexpected source: ${source}`);
+      if (source === 'default') {
+        assert.equal(process.env.APP_ENV, 'local');
+        assert.equal(
+          infos.some(
+            (msg) =>
+              msg.includes('Using default APP_ENV=local') ||
+              msg.includes("Loaded environment 'local'"),
+          ),
+          true,
+        );
+      } else {
+        // pin — APP_ENV must be a known profile from environments/.active-env
+        assert.ok(
+          process.env.APP_ENV && KNOWN.has(process.env.APP_ENV),
+          `pinned APP_ENV not known: ${process.env.APP_ENV}`,
+        );
+        assert.equal(
+          infos.some(
+            (msg) =>
+              msg.includes(`Using APP_ENV=${process.env.APP_ENV} from environments/.active-env`) ||
+              msg.includes(`Loaded environment '${process.env.APP_ENV}'`),
+          ),
+          true,
+        );
+      }
     } finally {
       logger.warn = originalWarn;
       logger.info = originalInfo;

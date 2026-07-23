@@ -72,7 +72,7 @@ export function getRepoRoot(): string {
 
 /**
  * Valid target for a requirement file under `requirements/`.
- * Default: allows examples; still blocks _TEMPLATE, README, and nested paths.
+ * Default: allows examples and nested domain paths; still blocks _TEMPLATE, README.
  * Pass `{ blockExamples: true }` for the pipeline-tooling view that excludes
  * example-* files (matches the previous isPipelineRequirementRelativePath).
  */
@@ -81,12 +81,14 @@ export function isValidRequirementRelativePath(
   opts: { blockExamples?: boolean } = {},
 ): boolean {
   const normalized = relativePath.replace(/\\/g, '/');
-  const match = normalized.match(/^requirements\/([^/]+)\.md$/);
+  // Allow: requirements/<name>.md  OR  requirements/<domain>/<name>.md (nested)
+  const match = normalized.match(/^requirements\/([\w-]+(\/[\w-]+)*)\.md$/);
   if (!match) {
     return false;
   }
 
-  const basename = match[1];
+  // basename is the last path segment (the filename without .md)
+  const basename = match[1].split('/').pop()!;
   if (basename.startsWith('_')) {
     return false;
   }
@@ -191,7 +193,7 @@ export function resolveAllowedPath(
         ok: false,
         error: {
           code: 'PATH_NOT_ALLOWED',
-          message: `Path must be a feature file at requirements/<name>.md (not _TEMPLATE, README, or nested paths). Received: '${relative}'.`,
+          message: `Path must be a feature file at requirements/<name>.md or requirements/<domain>/<name>.md (not _TEMPLATE or README). Received: '${relative}'.`,
         },
       };
     }

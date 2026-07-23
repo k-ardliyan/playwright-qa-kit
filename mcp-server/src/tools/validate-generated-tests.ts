@@ -12,12 +12,16 @@ export interface ValidationViolation {
   filePath: string;
   lineNumber: number;
   ruleName: string;
+  /** Optional severity — defaults to 'error' when absent (backward compat). */
+  severity?: 'error' | 'warning';
 }
 
 export interface ValidateGeneratedTestsOutput {
-  status: 'success' | 'error';
+  status: 'success' | 'error' | 'warning';
   validatedCount: number;
   violations: ValidationViolation[];
+  /** Violations with severity 'warning' only — subset of violations. */
+  warnings: ValidationViolation[];
   message: string;
 }
 
@@ -152,6 +156,18 @@ function validateTraceabilityRule(
       lineNumber: 1,
       ruleName:
         'Traceability rule: must include // seed: src/tests/seed.spec.ts comment before imports',
+    });
+  }
+
+  // Warning: // req: closes the traceability loop back to the source requirement.
+  // Severity is 'warning' (not error) so existing specs without it are not broken.
+  if (!/\/\/\s*req:\s*.+/m.test(content)) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Traceability rule: missing // req: <requirements/feature.md> — add to close provenance loop',
+      severity: 'warning',
     });
   }
 
@@ -298,6 +314,7 @@ export function validateGeneratedTests(filePath?: string): ValidateGeneratedTest
         status: 'error',
         validatedCount: 0,
         violations: [],
+        warnings: [],
         message: resolved.error.message,
       };
     }
@@ -307,6 +324,7 @@ export function validateGeneratedTests(filePath?: string): ValidateGeneratedTest
         status: 'error',
         validatedCount: 0,
         violations: [],
+        warnings: [],
         message: 'Only .spec.ts files can be validated.',
       };
     }
@@ -337,12 +355,26 @@ export function validateGeneratedTests(filePath?: string): ValidateGeneratedTest
     filePath: path.relative(repoRoot, v.filePath).replace(/\\/g, '/'),
   }));
 
-  if (relativeViolations.length > 0) {
+  const errorViolations = relativeViolations.filter((v) => (v.severity ?? 'error') === 'error');
+  const warnViolations = relativeViolations.filter((v) => v.severity === 'warning');
+
+  if (errorViolations.length > 0) {
     return {
       status: 'error',
       validatedCount: specFiles.length,
       violations: relativeViolations,
-      message: `Found ${relativeViolations.length} violation(s) across ${specFiles.length} file(s).`,
+      warnings: warnViolations,
+      message: `Found ${errorViolations.length} error(s) and ${warnViolations.length} warning(s) across ${specFiles.length} file(s).`,
+    };
+  }
+
+  if (warnViolations.length > 0) {
+    return {
+      status: 'warning',
+      validatedCount: specFiles.length,
+      violations: relativeViolations,
+      warnings: warnViolations,
+      message: `Validated ${specFiles.length} test file(s); 0 errors, ${warnViolations.length} warning(s).`,
     };
   }
 
@@ -350,6 +382,7 @@ export function validateGeneratedTests(filePath?: string): ValidateGeneratedTest
     status: 'success',
     validatedCount: specFiles.length,
     violations: [],
+    warnings: [],
     message: `Validated ${specFiles.length} test file(s); all structural checks passed.`,
   };
 }

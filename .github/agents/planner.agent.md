@@ -73,9 +73,12 @@ If `Role scope` is **not** present, plan in **general mode** — single auth con
 
 ## Output Format
 
-Save to `specs/<feature-name>-test-plan.md`.
+Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requirements/<domain>/<feature>.md`), save to `specs/<domain>/<feature>-test-plan.md`.
 
 ```markdown
+<!-- req: requirements/<feature-name>.md -->
+<!-- generated-at: <ISO8601 timestamp> -->
+
 # Test Plan: <Feature Name>
 
 ## Application Overview

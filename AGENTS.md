@@ -266,7 +266,7 @@ For each stage (`planner`, `generator`, `healer`, `reporter`):
 **Pipeline lengkap:**
 
 ```
-Run full pipeline for requirements/sample-login-empty-fields.md and return unresolved failures if any.
+Run full pipeline for requirements/auth/sample-login-empty-fields.md and return unresolved failures if any.
 ```
 
 **Automatic mode:**

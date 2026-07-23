@@ -20,6 +20,7 @@ function makeSpecContent(hasImport: boolean, hasDescribe: boolean, hasStep: bool
   }
 
   if (hasImport && hasDescribe && hasStep) {
+    lines.push('// req: requirements/__property_validator__-feature.md');
     lines.push('// spec: specs/__property_validator__-test-plan.md');
     lines.push('// seed: src/tests/seed.spec.ts');
   }

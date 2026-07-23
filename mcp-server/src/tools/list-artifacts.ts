@@ -37,26 +37,9 @@ function listFilesRecursive(dirPath: string, extension: string): string[] {
 function listRequirementFeatures(): string[] {
   const repoRoot = getRepoRoot();
   const requirementsDir = path.join(repoRoot, 'requirements');
-
-  if (!fs.existsSync(requirementsDir)) {
-    return [];
-  }
-
-  const files: string[] = [];
-  const entries = fs.readdirSync(requirementsDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) {
-      continue;
-    }
-
-    const relative = `requirements/${entry.name}`;
-    if (isPipelineRequirementRelativePath(relative)) {
-      files.push(relative);
-    }
-  }
-
-  return files.sort((a, b) => a.localeCompare(b));
+  // Reuse the recursive walker — supports both flat and nested domain subfolders
+  const all = listFilesRecursive(requirementsDir, '.md');
+  return all.filter((relative) => isPipelineRequirementRelativePath(relative));
 }
 
 export function listArtifacts(): ListArtifactsOutput {

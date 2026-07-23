@@ -92,11 +92,52 @@ Before calling `browser_snapshot` for live verification, check `selector-catalog
 
 ## File Naming Convention
 
-| Scenario scope    | File name pattern                    | Example                                                  |
-| ----------------- | ------------------------------------ | -------------------------------------------------------- |
-| General (no role) | `src/tests/<feature>.spec.ts`        | `src/tests/login-empty-fields.spec.ts`                   |
-| Role-specific     | `src/tests/<feature>-<role>.spec.ts` | `src/tests/invoice-finance.spec.ts`                      |
-| Multiple roles    | One file per role                    | `invoice-finance.spec.ts`, `invoice-super-admin.spec.ts` |
+Spec path **mirrors the requirement path domain**. Strip `requirements/` prefix, replace `.md` with `.spec.ts`, add role suffix if role-specific.
+
+| Requirement path                             | Spec path                              |
+| -------------------------------------------- | -------------------------------------- |
+| `requirements/login.md`                      | `src/tests/login.spec.ts`              |
+| `requirements/login.md` (role: finance)      | `src/tests/login-finance.spec.ts`      |
+| `requirements/auth/login.md`                 | `src/tests/auth/login.spec.ts`         |
+| `requirements/auth/login.md` (role: finance) | `src/tests/auth/login-finance.spec.ts` |
+| `requirements/customers/create.md`           | `src/tests/customers/create.spec.ts`   |
+
+**Rule:** derive the spec path directly from the requirement path — no separate decision needed.
+
+- Flat requirement → flat spec (existing files stay flat, no migration needed)
+- Nested requirement → nested spec (create subdirectory automatically)
+- Role suffix appended after feature slug, before `.spec.ts`
+- Multiple roles → one file per role
+
+## Provenance Header
+
+Every spec file generated **must** begin with these lines before the first `import`:
+
+```ts
+// req: requirements/<feature>.md
+// spec: specs/<feature>-test-plan.md
+// seed: src/tests/seed.spec.ts
+// generated-at: <ISO8601 timestamp>
+```
+
+Rules:
+
+- `// req:` — path to the source requirement file. Closes the traceability loop back to requirements.
+- `// spec:` — path to the test plan under `specs/`. Already enforced by `validate_generated_tests`.
+- `// seed:` — always `src/tests/seed.spec.ts`. Already enforced by `validate_generated_tests`.
+- `// generated-at:` — ISO 8601 timestamp of when the file was first written. Write-once; do not update on subsequent heals.
+- All four lines must appear before any `import` statement.
+
+Example complete header:
+
+```ts
+// req: requirements/auth/login.md
+// spec: specs/auth/login-test-plan.md
+// seed: src/tests/seed.spec.ts
+// generated-at: 2026-07-23T14:30:22Z
+
+import { test, expect } from '@/fixtures/base.fixture';
+```
 
 Never put all role scenarios in a single file — each role gets its own file so they can run independently and report separately.
 

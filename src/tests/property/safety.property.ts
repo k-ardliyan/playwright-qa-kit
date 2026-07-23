@@ -50,14 +50,11 @@ runCase('resolveAllowedPath accepts repo-relative requirements paths', () => {
   }
 });
 
-runCase('resolveAllowedPath rejects nested requirements paths (no subdirectory features)', () => {
+runCase('resolveAllowedPath accepts nested requirements paths (domain subfolder support)', () => {
   const result = resolveAllowedPath('requirements/auth/login-flow.md', 'requirements', {
     mustExist: false,
   });
-  assert.equal(result.ok, false);
-  if (!result.ok) {
-    assert.equal(result.error.code, 'PATH_NOT_ALLOWED');
-  }
+  assert.equal(result.ok, true);
 });
 
 runCase('resolveAllowedPath rejects test-results outside the repo (security gate)', () => {

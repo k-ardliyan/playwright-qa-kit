@@ -36,8 +36,8 @@ npm run qa:run -- requirements/login.md
 
 ## Sample (latihan format saja)
 
-- [`sample-login-empty-fields.md`](sample-login-empty-fields.md) — empty-field + `@manual` CAPTCHA (Path B sample)
-- [`sample-network-hybrid.md`](sample-network-hybrid.md) — `@network` + `@hybrid` + `@aria`
+- [`sample-login-empty-fields.md`](auth/sample-login-empty-fields.md) — empty-field + `@manual` CAPTCHA (Path B sample)
+- [`sample-network-hybrid.md`](auth/sample-network-hybrid.md) — `@network` + `@hybrid` + `@aria`
 - [`_GOOD_EXAMPLE.md`](_GOOD_EXAMPLE.md) / [`_BAD_EXAMPLE.md`](_BAD_EXAMPLE.md)
 
 ## Mode penulisan

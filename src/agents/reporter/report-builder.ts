@@ -39,6 +39,7 @@ export interface PipelineReport {
   runId: string;
   timestamp: string;
   duration: number;
+  requirementPath?: string; // provenance — source requirement file
   summary: {
     scenariosPlanned: number;
     testsGenerated: number;
@@ -58,6 +59,7 @@ export interface BuildReportInput {
   runId: string;
   startedAt: string; // ISO 8601
   completedAt: string; // ISO 8601
+  requirementPath?: string; // provenance — path to source requirement file
   scenariosPlanned: number;
   testsGenerated: number;
   testResults: {
@@ -102,6 +104,7 @@ export function buildReport(input: BuildReportInput): PipelineReport {
     runId: input.runId,
     timestamp: input.completedAt,
     duration,
+    requirementPath: input.requirementPath,
     summary: {
       scenariosPlanned: input.scenariosPlanned,
       testsGenerated: input.testsGenerated,
@@ -134,7 +137,13 @@ export function buildReport(input: BuildReportInput): PipelineReport {
 export function writeReportMarkdown(report: PipelineReport): string {
   const lines: string[] = [];
 
-  // Title
+  // Provenance header — machine-readable, hidden from rendered markdown
+  lines.push(`<!-- run-id: ${report.runId} -->`);
+  if (report.requirementPath) {
+    lines.push(`<!-- requirement: ${report.requirementPath} -->`);
+  }
+  lines.push(`<!-- generated-at: ${report.timestamp} -->`);
+  lines.push('');
   lines.push(`# Pipeline Report — ${report.runId}`);
   lines.push('');
 

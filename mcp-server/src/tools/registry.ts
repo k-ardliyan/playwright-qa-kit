@@ -39,7 +39,7 @@ export interface ToolEntry {
 function isStatusError(payload: unknown): boolean {
   if (typeof payload !== 'object' || payload === null) return false;
   const status = (payload as { status?: unknown }).status;
-  return status === 'error';
+  return status === 'error' || status === 'warning';
 }
 
 const GET_TEST_FAILURES_INPUT: JsonSchemaObject = {

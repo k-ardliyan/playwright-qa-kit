@@ -63,15 +63,54 @@ Helper: `authStatePath('finance')` / `authStateWritePath('finance')` di `src/sup
 
 **Disarankan:** biarkan discovery otomatis di `src/support/auth.setup.ts` (setelah `env:edit` / wizard).
 
-```bash
-npx playwright test src/support/auth.setup.ts --project=setup
-```
-
 Setup mendaftarkan satu test `authenticate:<role>` per role yang **login-ready**  
 (password + minimal satu EMAIL | USERNAME | PHONE). Login id: `LOGIN_ID_PREF` → email → username → phone.
 
+```bash
+npm run auth:setup
+# OTP / CAPTCHA di browser:
+npm run auth:setup:headed
+# setara:
+npx playwright test src/support/auth.setup.ts --project=setup --workers=1
+```
+
 Regenerate template multi-role (opsional): `npm run env:edit` → _Regenerasi auth.setup.ts_  
 (atau `setup:wizard` Phase 5). Core discovery tetap jalan tanpa regenerate.
+
+---
+
+## Assisted human challenge (OTP / CAPTCHA)
+
+Session bootstrap boleh **dibantu manusia** (local only) lewat env:
+
+| Mode              | Arti                                                       | Headless   | Terminal               |
+| ----------------- | ---------------------------------------------------------- | ---------- | ---------------------- |
+| `none` (default)  | Tidak ada assist                                           | ya         | —                      |
+| `otp-browser`     | **OTP di browser** (disarankan)                            | **tidak**  | tidak untuk isi OTP UI |
+| `otp-stdin`       | OTP diketik di terminal                                    | boleh      | **wajib TTY**          |
+| `captcha-browser` | CAPTCHA di browser                                         | **tidak**  | **ditolak**            |
+| `auto`            | Deteksi: CAPTCHA→browser; OTP→browser dulu, fallback stdin | tergantung | tergantung             |
+
+```bash
+# environments/{APP_ENV}.env
+AUTH_CHALLENGE_MODE=otp-browser
+HEADLESS=false
+SLOW_MO=100
+# AUTH_CHALLENGE_TIMEOUT_MS=180000
+# AUTH_OTP_INPUT_SELECTOR=
+# AUTH_OTP_SUBMIT_SELECTOR=
+```
+
+**Atur lewat UI (bukan hanya raw env):**
+
+- `npm run setup:wizard` → Phase 5 (setelah form login)
+- `npm run env:edit` → _Edit BASE_URL / browser / OTP-CAPTCHA_
+
+**CI:** `AUTH_CHALLENGE_MODE` interaktif **dilarang** (fail fast).  
+Skenario requirement OTP/CAPTCHA tetap ditandai `(@manual)` (skip di pipeline).  
+Fitur ini hanya membantu **menyimpan sesi** `.auth/{APP_ENV}/role.json`.
+
+Implementasi: `src/support/human-challenge.ts` dipanggil dari `auth.setup.ts` setelah submit password.
 
 ---
 

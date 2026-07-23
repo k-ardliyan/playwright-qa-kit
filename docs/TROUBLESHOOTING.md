@@ -113,8 +113,27 @@ Panduan lengkap: [CREDENTIALS.md](CREDENTIALS.md).
 ```bash
 npm run env:edit
 # menu → Edit kredensial role / Tambah role → Simpan & encrypt
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
+# OTP / CAPTCHA (browser terlihat):
+npm run auth:setup:headed
 ```
+
+---
+
+### Error #5c: Auth stuck di OTP / CAPTCHA
+
+**Gejala:** Login password OK tapi tidak sampai dashboard; empty storage state; atau hang.
+
+**Fix:**
+
+1. Set mode lewat `npm run env:edit` → _Edit BASE_URL / browser / OTP-CAPTCHA_
+   - OTP: **otp-browser** (disarankan) atau **otp-stdin**
+   - CAPTCHA: **captcha-browser** saja (terminal tidak bisa)
+2. Jalankan `npm run auth:setup:headed` (browser terlihat + workers=1)
+3. Isi OTP/CAPTCHA di browser, atau Resume di Playwright Inspector
+4. CI: biarkan `AUTH_CHALLENGE_MODE=none` — mode interaktif dilarang di CI
+
+Detail: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
 
 ---
 
@@ -138,7 +157,7 @@ npx playwright test src/support/auth.setup.ts --project=setup
    Tolong perbaiki src/support/auth.setup.ts untuk login page di https://staging.myapp.com/login.
    Pakai snapshot_page dulu untuk lihat selector yang ada.
    ```
-4. Jalankan ulang: `npx playwright test src/support/auth.setup.ts --project=setup`
+4. Jalankan ulang: `npm run auth:setup` / `npm run auth:setup:headed`
 
 ---
 

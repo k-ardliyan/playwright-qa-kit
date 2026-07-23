@@ -254,16 +254,32 @@ function parseHintList(raw: string | undefined): string[] {
     .filter((s) => s.length > 0);
 }
 
-function runCmd(cmd: string, opts: { cwd?: string } = {}): { ok: boolean; output: string } {
+function runCmd(
+  cmd: string,
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv; inheritStdio?: boolean } = {},
+): { ok: boolean; output: string } {
   try {
+    if (opts.inheritStdio) {
+      execSync(cmd, {
+        cwd: opts.cwd ?? ROOT,
+        stdio: 'inherit',
+        encoding: 'utf-8',
+        env: opts.env ? { ...process.env, ...opts.env } : process.env,
+      });
+      return { ok: true, output: '' };
+    }
     const out = execSync(cmd, {
       cwd: opts.cwd ?? ROOT,
       stdio: 'pipe',
       encoding: 'utf-8',
+      env: opts.env ? { ...process.env, ...opts.env } : process.env,
     });
     return { ok: true, output: String(out ?? '') };
   } catch (err: unknown) {
-    const e = err as Error & { stderr?: string; stdout?: string };
+    const e = err as Error & { stderr?: string; stdout?: string; status?: number };
+    if (opts.inheritStdio) {
+      return { ok: false, output: e.message ?? String(err) };
+    }
     const msg = e.stderr ?? e.stdout ?? e.message ?? String(err);
     return { ok: false, output: msg };
   }
@@ -996,15 +1012,18 @@ async function phase5(state: WizardState): Promise<void> {
     const loginPath = state.loginUrl || '/login';
     process.stdout.write('\n  SSO belum siap diotomatisasi wizard.\n');
     process.stdout.write('  Setup akun/file env tetap jalan; sesi login SSO\n');
-    process.stdout.write('  perlu dibantu Hermes setelah wizard selesai.\n\n');
+    process.stdout.write('  perlu dibantu Hermes setelah wizard selesai.\n');
+    process.stdout.write('  Jika SSO minta OTP/CAPTCHA, set lewat env:edit:\n');
+    process.stdout.write('    AUTH_CHALLENGE_MODE=otp-browser | captcha-browser\n\n');
     process.stdout.write('  Salin prompt ini ke Hermes:\n');
     process.stdout.write('  ' + hr('-', 60) + '\n');
     const ssoPrompt = [
       `Tolong buatkan / perbaiki src/support/auth.setup.ts untuk login SSO/OAuth.`,
       `BASE_URL=${base}, path login ${loginPath}, APP_ENV=${envLabel}.`,
       `Simpan storage state ke .auth/${envLabel}/user.json (dan role lain bila ada).`,
-      `Jelaskan langkah manual sekali (klik provider, izin) lalu cara re-run:`,
-      `npx playwright test src/support/auth.setup.ts --project=setup`,
+      `Pakai handlePostLoginChallenge dari src/support/human-challenge.ts setelah login.`,
+      `Jelaskan langkah manual sekali (klik provider, OTP/CAPTCHA, izin) lalu cara re-run:`,
+      `npm run auth:setup:headed`,
     ].join(' ');
     for (const line of ssoPrompt.match(/.{1,58}/g) ?? [ssoPrompt]) {
       process.stdout.write('  ' + line + '\n');
@@ -1073,6 +1092,106 @@ async function phase5(state: WizardState): Promise<void> {
   state.passwordFieldHints = parseHintList(hintAnswers.passwordFieldHints);
   state.submitButtonHints = parseHintList(hintAnswers.submitButtonHints);
 
+  // Langkah tambahan setelah password (OTP / CAPTCHA) — human challenge
+  process.stdout.write('\n  Beberapa aplikasi minta OTP atau CAPTCHA setelah password.\n');
+  process.stdout.write(
+    '  Framework bisa bantu (assisted) saat simpan sesi — bukan full auto di CI.\n\n',
+  );
+
+  const { extraStep } = await prompts({
+    type: 'select',
+    name: 'extraStep',
+    message: 'Setelah password, apakah ada langkah tambahan?',
+    choices: [
+      { title: 'Tidak (langsung masuk dashboard)', value: 'none' },
+      {
+        title: 'OTP / kode verifikasi — isi di browser (disarankan)',
+        value: 'otp-browser',
+      },
+      {
+        title: 'OTP / kode verifikasi — ketik di terminal (boleh tanpa UI browser)',
+        value: 'otp-stdin',
+      },
+      {
+        title: 'CAPTCHA / "bukan robot" — selesaikan di browser (terminal tidak bisa)',
+        value: 'captcha-browser',
+      },
+      {
+        title: 'Auto deteksi (OTP: browser dulu, fallback terminal; CAPTCHA: browser)',
+        value: 'auto',
+      },
+    ],
+    initial: 0,
+  });
+  if (extraStep === undefined) {
+    printWarn('Dibatalkan.');
+    return;
+  }
+
+  const challengeMode = String(extraStep || 'none');
+  // Lazy require to avoid circular weight in wizard cold path
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { challengeModeEnvUpserts } = require('../src/support/human-challenge') as {
+    challengeModeEnvUpserts: (
+      mode: string,
+      current?: { headless?: string; slowMo?: string },
+    ) => Record<string, string>;
+  };
+
+  let otpInputSel = '';
+  let otpSubmitSel = '';
+  if (
+    challengeMode === 'otp-browser' ||
+    challengeMode === 'otp-stdin' ||
+    challengeMode === 'auto'
+  ) {
+    const { advanced } = await prompts({
+      type: 'confirm',
+      name: 'advanced',
+      message: 'Atur selector kolom OTP manual? (biasanya tidak perlu)',
+      initial: false,
+    });
+    if (advanced) {
+      const selAns = await prompts([
+        {
+          type: 'text',
+          name: 'otpInput',
+          message: 'Selector input OTP (CSS, kosong = auto-detect):',
+          initial: '',
+        },
+        {
+          type: 'text',
+          name: 'otpSubmit',
+          message: 'Selector tombol verifikasi OTP (CSS, kosong = auto):',
+          initial: '',
+        },
+      ]);
+      otpInputSel = String(selAns.otpInput ?? '').trim();
+      otpSubmitSel = String(selAns.otpSubmit ?? '').trim();
+    }
+  }
+
+  const envUpserts = challengeModeEnvUpserts(challengeMode as 'none', {
+    headless: 'true',
+    slowMo: '0',
+  });
+  writeEnvSection(
+    state.envName || 'local',
+    {
+      ...envUpserts,
+      AUTH_CHALLENGE_TIMEOUT_MS: '180000',
+      ...(otpInputSel ? { AUTH_OTP_INPUT_SELECTOR: otpInputSel } : {}),
+      ...(otpSubmitSel ? { AUTH_OTP_SUBMIT_SELECTOR: otpSubmitSel } : {}),
+      AUTH_LOGIN_URL_PATH: String(loginInfo.loginUrl),
+      AUTH_SUCCESS_URL_PATH: String(loginInfo.successUrlPath),
+    },
+    'Human challenge (OTP/CAPTCHA) + login paths',
+  );
+  printOk(
+    `Langkah tambahan login: ${challengeMode}` +
+      (envUpserts.HEADLESS === 'false' ? ' (browser terlihat)' : ''),
+  );
+
   const appEnv = state.envName || 'local';
   const defaultAuth = `.auth/${appEnv}/user.json`;
   const roles =
@@ -1103,17 +1222,53 @@ async function phase5(state: WizardState): Promise<void> {
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
 
   // Tanya apakah mau jalankan auth setup sekarang
+  const needsHeaded =
+    challengeMode === 'otp-browser' ||
+    challengeMode === 'captcha-browser' ||
+    challengeMode === 'auto';
+  const runMsg = needsHeaded
+    ? 'Jalankan login sekarang (browser terlihat) untuk menyimpan sesi?'
+    : 'Jalankan login sekarang untuk menyimpan sesi?';
   const { runNow } = await prompts({
     type: 'confirm',
     name: 'runNow',
-    message: 'Jalankan login sekarang di browser untuk menyimpan sesi?',
+    message: runMsg,
     initial: true,
   });
 
   if (runNow) {
-    process.stdout.write('\n  Membuka browser & menyimpan sesi login...\n');
+    if (challengeMode === 'otp-browser' || challengeMode === 'auto') {
+      process.stdout.write(
+        '\n  Siapkan HP/email untuk OTP. Browser akan dibuka; isi kode di halaman atau Resume Inspector.\n',
+      );
+    } else if (challengeMode === 'captcha-browser') {
+      process.stdout.write(
+        '\n  Selesaikan CAPTCHA di browser (terminal tidak bisa), lalu Resume di Inspector.\n',
+      );
+    } else if (challengeMode === 'otp-stdin') {
+      process.stdout.write('\n  Siapkan kode OTP — akan diminta di terminal ini.\n');
+    } else {
+      process.stdout.write('\n  Membuka browser & menyimpan sesi login...\n');
+    }
+
+    // Ensure child process sees challenge env (file may still be plaintext pre Phase 6)
+    const childEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      APP_ENV: appEnv,
+      AUTH_CHALLENGE_MODE: challengeMode,
+      ...(envUpserts.HEADLESS ? { HEADLESS: envUpserts.HEADLESS } : {}),
+      ...(envUpserts.SLOW_MO ? { SLOW_MO: envUpserts.SLOW_MO } : {}),
+    };
+    if (needsHeaded) {
+      childEnv.HEADLESS = 'false';
+    }
+
+    const headedFlag = needsHeaded ? ' --headed' : '';
+    // Interactive OTP/CAPTCHA needs real TTY + console (not piped stdio)
+    const interactiveAuth = challengeMode !== 'none';
     const result = runCmd(
-      'npx playwright test src/support/auth.setup.ts --project=setup --reporter=line',
+      `npx playwright test src/support/auth.setup.ts --project=setup --workers=1 --reporter=line${headedFlag}`,
+      { env: childEnv, inheritStdio: interactiveAuth },
     );
     if (result.ok || result.output.includes('passed')) {
       printOk('Login & simpan sesi berhasil');
@@ -1132,14 +1287,18 @@ async function phase5(state: WizardState): Promise<void> {
           JSON.stringify(
             'Tolong perbaiki src/support/auth.setup.ts untuk login page di ' +
               (state.baseUrl ?? '') +
-              loginInfo.loginUrl,
+              loginInfo.loginUrl +
+              ' (AUTH_CHALLENGE_MODE=' +
+              challengeMode +
+              ')',
           ) +
           '\n\n',
       );
     }
   } else {
     printInfo(
-      'Dilewati. Jalankan nanti: npx playwright test src/support/auth.setup.ts --project=setup',
+      'Dilewati. Jalankan nanti: npm run auth:setup' +
+        (needsHeaded ? '  atau  npm run auth:setup:headed' : ''),
     );
   }
 

@@ -414,7 +414,7 @@ CI mengabaikan pin (`CI=true`). Setelah `env:use`, restart MCP servers.
 - **Halaman baru** tanpa POM → Generator pakai inline locators dari selector-catalog. POM opsional — lihat [Path A vs Path B](writing-requirements.md#path-a-vs-path-b-kapan-pakai-pom).
 - **`(@manual)`** → tes di-skip otomatis (CAPTCHA, email nyata, biometric).
 - **Healer** → menggunakan prioritization berbasis pattern; tidak ada cap arbitrer.
-- **Role auth file** → `.auth/{APP_ENV}/<role>.json` harus dibuat dulu via auth setup (`src/support/auth.setup.ts`).
+- **Role auth file** → `.auth/{APP_ENV}/<role>.json` harus dibuat dulu via `npm run auth:setup`.
 - **Environment** → tiap QA pakai file `environments/{APP_ENV}.env` sendiri (BASE_URL + kredensial per env).
 - **Selector catalog** → di-cache per-hash. `snapshot_page` skip re-capture kalau UI tidak berubah — aman di-run berulang.
 

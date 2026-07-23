@@ -98,13 +98,17 @@ After customization, tests import `@/fixtures/base.fixture` and receive your POM
 
 ### Auth setup (forks using a setup project)
 
+Template core ships multi-role discovery auth at [`src/support/auth.setup.ts`](../src/support/auth.setup.ts)  
+(with OTP/CAPTCHA assist via `src/support/human-challenge.ts` + `AUTH_CHALLENGE_MODE`).
+
 If your Playwright config uses a `setup` project with `storageState`:
 
-1. Create `support/auth.setup.ts` in your project tree (not under template `src/support/`).
-2. Use your login POM for UI login — see [`example/erpku/support/auth.setup.ts`](../example/erpku/support/auth.setup.ts).
-3. Point the setup project at `./support` in your `playwright.config.ts`.
-
-The template core has **no** auth setup file; only the ERPKU reference adapter ships one.
+1. Prefer template core: keep `src/support/auth.setup.ts` (wizard / `env:edit` regenerate).  
+   Or create `support/auth.setup.ts` in your project tree for a custom POM flow.
+2. For POM-based login, see [`example/erpku/support/auth.setup.ts`](../example/erpku/support/auth.setup.ts)  
+   (also calls `handlePostLoginChallenge` for OTP/CAPTCHA).
+3. Point the setup project at the correct `testDir` in your `playwright.config.ts`.
+4. Refresh session: `npm run auth:setup` — OTP/CAPTCHA: `npm run auth:setup:headed`.
 
 ---
 

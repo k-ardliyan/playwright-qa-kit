@@ -167,7 +167,7 @@ test.use({ storageState: `.auth/${process.env.APP_ENV || 'local'}/finance.json` 
 
 These files are created by `src/support/auth.setup.ts` (discovers all login-ready roles from env).  
 If a role file does not exist yet, generate the test with a comment  
-`// AUTH SETUP REQUIRED: run npx playwright test src/support/auth.setup.ts --project=setup`.
+`// AUTH SETUP REQUIRED: run npm run auth:setup`.
 
 **Vocabulary:** plan column `Role: general` = non-role-aware mode → storage **`user`**. Never create `.auth/.../general.json`.
 

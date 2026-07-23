@@ -96,7 +96,7 @@ function printHelp(): void {
     npm run env:edit -- --help             # bantuan ini
 
   Yang bisa diedit:
-    - BASE_URL / HEADLESS / SLOW_MO
+    - BASE_URL / HEADLESS / SLOW_MO / AUTH_CHALLENGE_MODE (OTP/CAPTCHA)
     - Kredensial tiap role (TEST_USER_*, FINANCE_*, SUPER_ADMIN_*, dll)
     - Tambah / hapus role
     - Key bebas (advanced)
@@ -104,9 +104,11 @@ function printHelp(): void {
     - Regenerasi src/support/auth.setup.ts
 
   Refresh session login setelah edit:
-    npx playwright test src/support/auth.setup.ts --project=setup
+    npm run auth:setup
+    # OTP/CAPTCHA browser:
+    npm run auth:setup:headed
 
-  Docs: docs/CREDENTIALS.md
+  Docs: docs/CREDENTIALS.md · docs/AUTH-CONTEXT-CONVENTION.md
 
 `);
 }
@@ -314,7 +316,8 @@ function saveEnvMap(filePath: string, content: string, keysPath: string | null):
   printOk(`${path.relative(ROOT, filePath)} tersimpan & terenkripsi`);
   printInfo(
     'Session lama mungkin invalid. Jalankan:\n' +
-      '    npx playwright test src/support/auth.setup.ts --project=setup',
+      '    npm run auth:setup\n' +
+      '    # OTP/CAPTCHA: npm run auth:setup:headed',
   );
 }
 
@@ -356,18 +359,54 @@ function printRoleTable(map: Record<string, string>): void {
   }
   process.stdout.write(`    HEADLESS  = ${map.HEADLESS ?? 'true'}\n`);
   process.stdout.write(`    SLOW_MO   = ${map.SLOW_MO ?? '0'}\n`);
+  process.stdout.write(`    CHALLENGE = ${map.AUTH_CHALLENGE_MODE ?? 'none'}\n`);
+  if (map.AUTH_CHALLENGE_TIMEOUT_MS) {
+    process.stdout.write(`    CHALLENGE_TIMEOUT_MS = ${map.AUTH_CHALLENGE_TIMEOUT_MS}\n`);
+  }
   process.stdout.write('\n');
 }
 
 // ─── Menu actions ──────────────────────────────────────────────────────────
 
 async function actionEditBase(content: string, map: Record<string, string>): Promise<string> {
+  const modeChoices = [
+    { title: 'none — tanpa langkah tambahan (default / CI)', value: 'none' },
+    {
+      title: 'otp-browser — OTP di browser terlihat (disarankan)',
+      value: 'otp-browser',
+    },
+    {
+      title: 'otp-stdin — OTP diketik di terminal (headless OK)',
+      value: 'otp-stdin',
+    },
+    {
+      title: 'captcha-browser — CAPTCHA di browser (terminal tidak bisa)',
+      value: 'captcha-browser',
+    },
+    {
+      title: 'auto — deteksi (OTP: browser dulu, fallback terminal)',
+      value: 'auto',
+    },
+  ];
+  const currentMode = (map.AUTH_CHALLENGE_MODE ?? 'none').trim().toLowerCase();
+  const modeInitial = Math.max(
+    0,
+    modeChoices.findIndex((c) => c.value === currentMode),
+  );
+
   const ans = await prompts([
     {
       type: 'text',
       name: 'baseUrl',
       message: 'BASE_URL:',
       initial: map.BASE_URL || 'http://localhost:3000',
+    },
+    {
+      type: 'select',
+      name: 'challengeMode',
+      message: 'Langkah tambahan setelah login (OTP/CAPTCHA):',
+      choices: modeChoices,
+      initial: modeInitial,
     },
     {
       type: 'select',
@@ -388,12 +427,45 @@ async function actionEditBase(content: string, map: Record<string, string>): Pro
       max: 10000,
       validate: (v: number) => (Number.isFinite(v) && v >= 0) || 'Harus angka >= 0',
     },
+    {
+      type: 'number',
+      name: 'challengeTimeout',
+      message: 'Timeout langkah tambahan (ms, min 5000):',
+      initial: parseInt(map.AUTH_CHALLENGE_TIMEOUT_MS ?? '180000', 10) || 180000,
+      min: 5000,
+      max: 900000,
+    },
   ]);
   if (ans.baseUrl === undefined) return content;
+
+  const mode = String(ans.challengeMode ?? 'none');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { challengeModeEnvUpserts } = require('../src/support/human-challenge') as {
+    challengeModeEnvUpserts: (
+      m: string,
+      cur?: { headless?: string; slowMo?: string },
+    ) => Record<string, string>;
+  };
+
+  const userHeadless = String(ans.headless ?? 'true');
+  const userSlow = String(Math.max(0, Math.floor(Number(ans.slowMo ?? 0))));
+  const fromMode = challengeModeEnvUpserts(mode as 'none', {
+    headless: userHeadless,
+    slowMo: userSlow,
+  });
+
+  // Browser modes force headed; otherwise keep user choice
+  const headless = fromMode.HEADLESS ?? userHeadless;
+  const slowMo = fromMode.SLOW_MO ?? userSlow;
+
   return upsertEnvContent(content, {
     BASE_URL: String(ans.baseUrl).trim().replace(/\/$/, ''),
-    HEADLESS: String(ans.headless ?? 'true'),
-    SLOW_MO: String(Math.max(0, Math.floor(Number(ans.slowMo ?? 0)))),
+    HEADLESS: headless,
+    SLOW_MO: slowMo,
+    AUTH_CHALLENGE_MODE: mode,
+    AUTH_CHALLENGE_TIMEOUT_MS: String(
+      Math.max(5000, Math.floor(Number(ans.challengeTimeout ?? 180000))),
+    ),
   });
 }
 
@@ -723,7 +795,7 @@ async function main(): Promise<void> {
       message: 'Pilih aksi:',
       choices: [
         { title: 'Lihat kredensial (masked)', value: 'list' },
-        { title: 'Edit BASE_URL / HEADLESS / SLOW_MO', value: 'base' },
+        { title: 'Edit BASE_URL / browser / OTP-CAPTCHA', value: 'base' },
         { title: 'Edit kredensial role', value: 'edit-role' },
         { title: 'Tambah role', value: 'add-role' },
         { title: 'Hapus role', value: 'remove-role' },
@@ -769,7 +841,7 @@ async function main(): Promise<void> {
         content = next;
         map = parseEnvText(content);
         dirty = true;
-        printOk('BASE_URL / HEADLESS / SLOW_MO di-update (belum disimpan ke disk)');
+        printOk('BASE_URL / browser / challenge di-update (belum disimpan ke disk)');
       }
       continue;
     }

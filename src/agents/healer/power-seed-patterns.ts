@@ -65,7 +65,7 @@ const SEEDS: SeedDef[] = [
       strategy: 'add_state_setup',
       beforePattern: 'test.describe(',
       afterTemplate:
-        "test.use({ storageState: `.auth/${process.env.APP_ENV || 'local'}/<role>.json` });\n// ensure setup project ran: npx playwright test src/support/auth.setup.ts --project=setup\ntest.describe(",
+        "test.use({ storageState: `.auth/${process.env.APP_ENV || 'local'}/<role>.json` });\n// ensure setup project ran: npm run auth:setup  (OTP/CAPTCHA: npm run auth:setup:headed)\ntest.describe(",
       requiredImports: [],
     },
     tags: ['auth', 'env', 'power'],

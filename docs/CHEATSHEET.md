@@ -11,7 +11,8 @@ npm install
 npm run setup:wizard
 npm run setup:check && npm run health:check
 # ganti kredensial nanti: npm run env:edit
-# refresh session: npx playwright test src/support/auth.setup.ts --project=setup
+# refresh session: npm run auth:setup
+# OTP/CAPTCHA di browser: npm run auth:setup:headed
 ```
 
 Manual (tanpa wizard):
@@ -46,7 +47,9 @@ cp requirements/_TEMPLATE.md requirements/fitur-saya.md
 | ----------------------------------- | ----------------------------------------------------- |
 | `npm run qa:run -- X`               | Preflight + cetak prompt Hermes + auto-buka dashboard |
 | `npm run validate:requirement -- X` | Cek requirement saja                                  |
-| `npm run env:edit`                  | Ganti password / tambah / hapus role                  |
+| `npm run env:edit`                  | Ganti password / role / browser / OTP-CAPTCHA         |
+| `npm run auth:setup`                | Refresh session (workers=1)                           |
+| `npm run auth:setup:headed`         | Session + OTP/CAPTCHA di browser                      |
 | `npm run manual:check`              | List semua skenario `(@manual)`                       |
 | `npm test`                          | Jalankan semua test                                   |
 | `npm run test:smoke`                | Cuma smoke test                                       |
@@ -91,7 +94,7 @@ generate_page_object (playwright-qa) — featureName, pageName
 | `health_check` fail          | `npm run mcp:build` lalu restart IDE       |
 | `validate_requirement` error | Baca hint di output → perbaiki → coba lagi |
 | Test gagal semua satu role   | Cek `.auth/<role>.json` ada atau belum     |
-| Auth file missing            | `npx playwright test auth.setup.ts`        |
+| Auth file missing            | `npm run auth:setup` / `auth:setup:headed` |
 | Exit `2` (escalate)          | Hubungi Framework Maintainer               |
 
 ---

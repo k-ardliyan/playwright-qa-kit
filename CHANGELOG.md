@@ -8,6 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Assisted human challenge (OTP / CAPTCHA) for auth session bootstrap**
+  - `src/support/human-challenge.ts` — modes: `none` | `otp-browser` (primary) | `otp-stdin` | `captcha-browser` | `auto`
+  - Wired into `src/support/auth.setup.ts` + generated `wizard-auth-template`
+  - Setup wizard Phase 5 + `env:edit` for challenge mode (not raw-env-only)
+  - Scripts: `npm run auth:setup`, `npm run auth:setup:headed`
+  - Health check warns/fails on interactive mode under CI
+  - CAPTCHA is browser-only (terminal rejected); CI forbids interactive modes
+  - Scenario OTP/CAPTCHA remain `(@manual)` in pipeline (v1 = session assist only)
 - **Playwright power helpers** (`src/support/pw/`):
   - `network-mock.ts` — `mockJson`, `mockServerError`, `mockAbort`, `unmockAll` (official `page.route`)
   - `api-seed.ts` — `apiJson`, `apiSeed`, `apiCleanup` (official `request` / `APIRequestContext`)

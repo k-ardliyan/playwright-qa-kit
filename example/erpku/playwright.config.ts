@@ -40,6 +40,8 @@ export default defineConfig({
       name: 'setup',
       testDir: './support',
       testMatch: /.*\.setup\.ts/,
+      // OTP stdin / browser pause must not race across roles
+      fullyParallel: false,
     },
 
     {

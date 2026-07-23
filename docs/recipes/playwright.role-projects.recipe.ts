@@ -3,7 +3,8 @@
  * Copy patterns into your playwright.config.ts or import buildRoleProjects.
  *
  * Prerequisites:
- * - src/support/auth.setup.ts writes .auth/<role>.json
+ * - src/support/auth.setup.ts writes .auth/{APP_ENV}/<role>.json
+ * - OTP/CAPTCHA session: AUTH_CHALLENGE_MODE + npm run auth:setup:headed
  * - Specs named src/tests/<feature>-<role>.spec.ts
  *
  * Not the default root config (template stays single chromium + empty default storage).

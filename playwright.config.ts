@@ -18,11 +18,13 @@ export default defineConfig({
   }),
   projects: [
     // Auth setup — materializes .auth/{APP_ENV}/<role>.json for every login-ready role.
-    // Run explicitly: npx playwright test src/support/auth.setup.ts --project=setup
+    // Run: npm run auth:setup  |  npm run auth:setup:headed (OTP/CAPTCHA)
     {
       name: 'setup',
       testDir: './src/support',
       testMatch: /auth\.setup\.ts/,
+      // Multi-role auth must not race (OTP stdin / browser pause).
+      fullyParallel: false,
     },
     {
       name: 'chromium',

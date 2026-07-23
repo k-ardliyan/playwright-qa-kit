@@ -93,8 +93,9 @@ npm run health:check
 ```bash
 npm run env:status                 # APP_ENV aktif + source (os|pin|default)
 npm run env:use -- staging         # pin environment (local work)
-npm run env:edit                   # ganti BASE_URL / password / role di file aktif
-npx playwright test src/support/auth.setup.ts --project=setup   # refresh session
+npm run env:edit                   # ganti BASE_URL / password / role / OTP-CAPTCHA di file aktif
+npm run auth:setup                 # refresh session
+npm run auth:setup:headed          # OTP/CAPTCHA (browser terlihat)
 ```
 
 **Catatan:** Setiap environment punya file sendiri (`environments/local.env`, `dev.env`, …) dengan **BASE_URL dan kredensial sendiri**. Jangan mengasumsikan URL sama di semua env.

@@ -70,27 +70,29 @@ function main(): void {
 
   if (exists) {
     try {
-      // Prefer already-loaded process env if present; else parse file keys only for non-secret display
+      // Always load env profile so challenge/HEADLESS/roles reflect active file
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { loadEnvironment } = require('../src/utils/env-loader') as {
+          loadEnvironment: () => void;
+        };
+        loadEnvironment();
+      } catch {
+        // non-fatal — may lack keys for encrypted files
+      }
+
       if (process.env.BASE_URL) {
         baseUrl = maskHost(process.env.BASE_URL);
-      }
-      const map = parseEnvText(fs.readFileSync(envPath, 'utf8'));
-      // Encrypted values won't parse to real URLs — load via dotenv if keys available
-      if (!process.env.BASE_URL || map.BASE_URL?.startsWith('encrypted:')) {
-        try {
-          // Dynamic load without printing secrets
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { loadEnvironment } = require('../src/utils/env-loader') as {
-            loadEnvironment: () => void;
-          };
-          loadEnvironment();
-          if (process.env.BASE_URL) baseUrl = maskHost(process.env.BASE_URL);
-        } catch {
+      } else {
+        const map = parseEnvText(fs.readFileSync(envPath, 'utf8'));
+        if (map.BASE_URL?.startsWith('encrypted:')) {
           baseUrl = '(encrypted — set keys or run after decrypt)';
+        } else if (map.BASE_URL) {
+          baseUrl = maskHost(map.BASE_URL);
         }
-      } else if (map.BASE_URL) {
-        baseUrl = maskHost(map.BASE_URL);
       }
+
+      const map = parseEnvText(fs.readFileSync(envPath, 'utf8'));
       const roleMap = Object.fromEntries(
         Object.entries({ ...map, ...process.env }).filter(
           (e): e is [string, string] => typeof e[1] === 'string',
@@ -117,6 +119,10 @@ function main(): void {
   process.stdout.write(
     `  roles     = ${roles.length > 0 ? roles.join(', ') : '(none detected)'}\n`,
   );
+
+  const challengeNote = process.env.AUTH_CHALLENGE_MODE || 'none';
+  process.stdout.write(`  challenge = ${challengeNote}\n`);
+  process.stdout.write(`  HEADLESS  = ${process.env.HEADLESS ?? '(unset)'}\n`);
 
   const authDir = path.join(ROOT, '.auth', resolved.appEnv);
   const legacyAuth = path.join(ROOT, '.auth');

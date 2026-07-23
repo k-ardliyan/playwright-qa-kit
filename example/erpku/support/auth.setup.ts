@@ -8,6 +8,12 @@ import {
   ensureAuthDirForEnv,
   migrateLegacyAuthFiles,
 } from '../../../src/support/auth-paths';
+import {
+  handlePostLoginChallenge,
+  resolveChallengeMode,
+  isInteractiveChallengeMode,
+  resolveChallengeTimeoutMs,
+} from '../../../src/support/human-challenge';
 
 function requireAuthEnv(name: string, value: string | undefined): string {
   if (!value) {
@@ -23,6 +29,12 @@ function requireAuthEnv(name: string, value: string | undefined): string {
  * ERPKU adapter auth setup — session refresh + UI login via LoginPage POM.
  * Storage: `.auth/{APP_ENV}/user.json` (legacy `.auth/user.json` migrated once).
  * Login id: resolve via env.getRoleLoginId('user') when possible (email|username|phone).
+ * OTP/CAPTCHA: AUTH_CHALLENGE_MODE via src/support/human-challenge.ts
+ *
+ * Run:
+ *   npx playwright test -c example/erpku/playwright.config.ts --project=setup --workers=1
+ *   # headed OTP/CAPTCHA:
+ *   npx playwright test -c example/erpku/playwright.config.ts --project=setup --workers=1 --headed
  */
 setup('authenticate:user', async ({ page, playwright }) => {
   migrateLegacyAuthFiles();
@@ -79,9 +91,29 @@ setup('authenticate:user', async ({ page, playwright }) => {
   await loginPage.goto();
   await loginPage.doLogin(loginId, password, false);
 
-  await expect(page).toHaveURL(new RegExp(successUrlPath, 'i'), { timeout: 20_000 });
-  await expect(page.getByText(successText, { exact: false })).toBeVisible({ timeout: 10_000 });
+  const challengeMode = resolveChallengeMode();
+  const successTimeout = isInteractiveChallengeMode(challengeMode)
+    ? resolveChallengeTimeoutMs()
+    : 20_000;
 
-  await page.context().storageState({ path: writePath });
-  console.log('✔ [Auth Setup] Session saved to', writePath);
+  try {
+    const detected = await handlePostLoginChallenge(page, { mode: challengeMode });
+    if (detected !== 'none') {
+      console.log(`ℹ [Auth Setup] user: post-login challenge handled (${detected})`);
+    }
+
+    await expect(page).toHaveURL(new RegExp(successUrlPath, 'i'), { timeout: successTimeout });
+    await expect(page.getByText(successText, { exact: false })).toBeVisible({ timeout: 10_000 });
+
+    await page.context().storageState({ path: writePath });
+    console.log('✔ [Auth Setup] Session saved to', writePath);
+  } catch (error) {
+    if (isInteractiveChallengeMode(challengeMode)) {
+      console.error(
+        `✖ [Auth Setup] user: assisted login failed (AUTH_CHALLENGE_MODE=${challengeMode}).`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+    throw error;
+  }
 });

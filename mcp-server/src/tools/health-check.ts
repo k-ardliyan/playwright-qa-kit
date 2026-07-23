@@ -162,6 +162,62 @@ function checkBaseUrl(): HealthCheckItem {
   };
 }
 
+function checkAuthChallengeMode(): HealthCheckItem {
+  const mode = (process.env.AUTH_CHALLENGE_MODE ?? 'none').trim().toLowerCase() || 'none';
+  const interactive = mode !== 'none' && mode !== '';
+  const ci = (() => {
+    const v = (process.env.CI ?? '').trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes';
+  })();
+
+  if (interactive && ci) {
+    return {
+      name: 'auth_challenge',
+      status: 'fail',
+      message:
+        `AUTH_CHALLENGE_MODE=${mode} is interactive and forbidden under CI. ` +
+        'Set AUTH_CHALLENGE_MODE=none for CI, or run auth:setup locally.',
+    };
+  }
+
+  if (interactive) {
+    // auto can fall back to otp-stdin under headless+TTY; only warn hard for browser-only modes
+    const needsHeaded = mode === 'otp-browser' || mode === 'captcha-browser';
+    const autoHeadless = mode === 'auto';
+    const headless = (process.env.HEADLESS ?? 'true').trim().toLowerCase();
+    const isHeadless = !(headless === 'false' || headless === '0' || headless === 'no');
+    if (needsHeaded && isHeadless) {
+      return {
+        name: 'auth_challenge',
+        status: 'warn',
+        message:
+          `AUTH_CHALLENGE_MODE=${mode} requires HEADLESS=false. ` +
+          'Use npm run auth:setup:headed or set HEADLESS=false via env:edit.',
+      };
+    }
+    if (autoHeadless && isHeadless) {
+      return {
+        name: 'auth_challenge',
+        status: 'ok',
+        message:
+          `AUTH_CHALLENGE_MODE=auto with HEADLESS=true — OTP will use stdin if TTY available; ` +
+          'prefer auth:setup:headed for browser-first OTP.',
+      };
+    }
+    return {
+      name: 'auth_challenge',
+      status: 'ok',
+      message: `AUTH_CHALLENGE_MODE=${mode} (local assisted — not for CI)`,
+    };
+  }
+
+  return {
+    name: 'auth_challenge',
+    status: 'ok',
+    message: 'AUTH_CHALLENGE_MODE=none',
+  };
+}
+
 function checkJsonReporterOutput(): HealthCheckItem {
   const relativePath = getJsonResultsPath();
   const resultsJson = path.join(getRepoRoot(), relativePath);
@@ -192,6 +248,7 @@ export function healthCheck(): HealthCheckOutput {
     checkEnvironmentFile(),
     checkPlaywrightConfig(),
     checkBaseUrl(),
+    checkAuthChallengeMode(),
     checkJsonReporterOutput(),
   ];
 

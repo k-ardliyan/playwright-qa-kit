@@ -14,6 +14,12 @@ import {
   roleCredentialKeys,
   type RoleCredentialRef,
 } from '../shared/utils/role-credentials';
+import {
+  handlePostLoginChallenge,
+  resolveChallengeMode,
+  isInteractiveChallengeMode,
+  resolveChallengeTimeoutMs,
+} from './human-challenge';
 
 /**
  * Auth Setup — multi-role discovery
@@ -25,7 +31,8 @@ import {
  * - Login id: LOGIN_ID_PREF → EMAIL → USERNAME → PHONE
  * - If no role is login-ready, writes empty storage for `user` so unauthenticated demos still run.
  *
- * Run: npx playwright test src/support/auth.setup.ts --project=setup
+ * Run: npm run auth:setup
+ *      npm run auth:setup:headed   # OTP/CAPTCHA browser
  */
 
 function ensureAuthDir(): void {
@@ -171,16 +178,35 @@ for (const ref of roles) {
 
     ensureAuthDir();
 
+    const challengeMode = resolveChallengeMode();
+    const successTimeout = isInteractiveChallengeMode(challengeMode)
+      ? resolveChallengeTimeoutMs()
+      : 20_000;
+
     try {
-      await page.waitForURL(new RegExp(successUrlFragment, 'i'), { timeout: 20_000 });
+      const detected = await handlePostLoginChallenge(page, { mode: challengeMode });
+      if (detected !== 'none') {
+        console.log(`ℹ [Auth Setup] ${ref.name}: post-login challenge handled (${detected})`);
+      }
+
+      await page.waitForURL(new RegExp(successUrlFragment, 'i'), { timeout: successTimeout });
       await page.context().storageState({ path: writePath });
       console.log('✔ [Auth Setup] Session saved to', writePath);
     } catch (error) {
+      const detail = error instanceof Error ? error.message : error;
+      // Interactive challenge modes: fail the setup test (do not hide as empty storage)
+      if (isInteractiveChallengeMode(challengeMode)) {
+        console.error(
+          `✖ [Auth Setup] ${ref.name}: assisted login failed (AUTH_CHALLENGE_MODE=${challengeMode}).`,
+          detail,
+        );
+        throw error instanceof Error ? error : new Error(String(detail));
+      }
       writeEmptyStorageState(writePath);
       console.warn(
         `⚠ [Auth Setup] ${ref.name}: login did not reach success URL — wrote empty storage. ` +
-          'Fix selectors or credentials. Detail:',
-        error instanceof Error ? error.message : error,
+          'Fix selectors, credentials, or AUTH_CHALLENGE_MODE (otp-browser / captcha-browser). Detail:',
+        detail,
       );
     }
   });

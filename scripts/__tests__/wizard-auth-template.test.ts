@@ -44,6 +44,8 @@ assert.equal(bak, v1);
 const v2 = fs.readFileSync(out, 'utf-8');
 assert.ok(v2.includes('authenticate:finance'));
 assert.ok(v2.includes('/home'));
+assert.ok(v2.includes('human-challenge') || v2.includes('handlePostLoginChallenge'));
+assert.ok(v2.includes('AUTH_CHALLENGE_MODE') || v2.includes('resolveChallengeMode'));
 
 fs.rmSync(tmp, { recursive: true, force: true });
 process.stdout.write('wizard-auth-template backup tests passed\n');

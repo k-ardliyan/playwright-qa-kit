@@ -102,23 +102,27 @@ npm run env:edit -- --list
 npm run env:edit -- --env staging
 ```
 
-| Kebutuhan                  | Aksi                                     |
-| -------------------------- | ---------------------------------------- |
-| Ganti password / identitas | **Edit kredensial role**                 |
-| Tambah role                | **Tambah role** (bukan nama `general`)   |
-| Hapus role                 | **Hapus role**                           |
-| Ganti URL                  | **Edit BASE_URL / HEADLESS / SLOW_MO**   |
-| Simpan                     | **Simpan & encrypt**                     |
-| Regenerasi auth setup      | **Regenerasi src/support/auth.setup.ts** |
+| Kebutuhan                         | Aksi                                      |
+| --------------------------------- | ----------------------------------------- |
+| Ganti password / identitas        | **Edit kredensial role**                  |
+| Tambah role                       | **Tambah role** (bukan nama `general`)    |
+| Hapus role                        | **Hapus role**                            |
+| Ganti URL / browser / OTP-CAPTCHA | **Edit BASE_URL / browser / OTP-CAPTCHA** |
+| Simpan                            | **Simpan & encrypt**                      |
+| Regenerasi auth setup             | **Regenerasi src/support/auth.setup.ts**  |
 
 Auth session: `.auth/{APP_ENV}/<role>.json` (legacy `.auth/<role>.json` masih dibaca untuk `local`).
+
+OTP/CAPTCHA **session assist** (bukan full auto skenario): `AUTH_CHALLENGE_MODE` — lihat [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
 
 ---
 
 ## Refresh session
 
 ```bash
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
+# headed (OTP browser / CAPTCHA):
+npm run auth:setup:headed
 ```
 
 ---

@@ -48,7 +48,8 @@ function printHelp(): void {
 
   Then:
     npm run env:status
-    npx playwright test src/support/auth.setup.ts --project=setup
+    npm run auth:setup
+    # OTP/CAPTCHA: npm run auth:setup:headed
     # restart MCP servers (playwright-qa / playwright-test)
 
 `);
@@ -110,7 +111,8 @@ function main(): void {
   printInfo(`Pin file: ${path.relative(ROOT, pinPath)}`);
   process.stdout.write('\n  Next:\n');
   process.stdout.write('    1. npm run env:status\n');
-  process.stdout.write('    2. npx playwright test src/support/auth.setup.ts --project=setup\n');
+  process.stdout.write('    2. npm run auth:setup\n');
+  process.stdout.write('       (OTP/CAPTCHA: npm run auth:setup:headed)\n');
   process.stdout.write(
     '    3. Restart MCP servers (playwright-qa / playwright-test) in Hermes\n\n',
   );

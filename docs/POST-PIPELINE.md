@@ -53,7 +53,8 @@ App menyimpan session di **localStorage** (bukan cookies). Pastikan `.auth/<role
 
 ```bash
 npm run env:edit            # pastikan credentials benar
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
+# OTP/CAPTCHA: npm run auth:setup:headed
 ```
 
 ### ❌ "Test pass tapi dashboard `/login?redirect=%2Fdashboard`"
@@ -77,7 +78,7 @@ Template `auth.setup.ts` lama men-overwrite session valid dengan empty state. Su
 generator Juli 2026. **Re-run:**
 
 ```bash
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
 ```
 
 ### ❌ "Hermes bilang prompt di-paste tapi tidak ada yang terjadi"
@@ -92,7 +93,8 @@ menunjukkan `MCP ● 3 servers`.
 npm run env:edit
 
 # Refresh session setelah ganti kredensial
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
+# OTP/CAPTCHA: npm run auth:setup:headed
 
 # Tulis requirement fitur berikutnya
 cp requirements/_TEMPLATE.md requirements/fitur-baru.md

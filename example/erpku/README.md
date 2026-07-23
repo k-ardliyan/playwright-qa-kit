@@ -4,16 +4,16 @@ Runnable reference implementation for ERPKU on top of the generic template core.
 
 ## Contents
 
-| Path                             | Purpose                                                          |
-| -------------------------------- | ---------------------------------------------------------------- |
-| `support/auth.setup.ts`          | ERPKU auth setup (`LoginPage` POM → `.auth/{APP_ENV}/user.json`) |
-| `fixtures/project.fixture.ts`    | ERPKU POM registration (`loginPage`, `dashboardPage`)            |
-| `pages/ui/`                      | Login and dashboard POMs                                         |
-| `pages/customers/`               | Customers domain POMs                                            |
-| `tests/`                         | Smoke, auth, dashboard, and customers specs                      |
-| `mock-data/login.data.json`      | Login failure DDT data                                           |
-| `environments/erpku.env.example` | ERPKU-specific auth defaults                                     |
-| `playwright.config.ts`           | Runnable Playwright config for this adapter                      |
+| Path                             | Purpose                                                                                        |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `support/auth.setup.ts`          | ERPKU auth setup (`LoginPage` POM + human-challenge OTP/CAPTCHA → `.auth/{APP_ENV}/user.json`) |
+| `fixtures/project.fixture.ts`    | ERPKU POM registration (`loginPage`, `dashboardPage`)                                          |
+| `pages/ui/`                      | Login and dashboard POMs                                                                       |
+| `pages/customers/`               | Customers domain POMs                                                                          |
+| `tests/`                         | Smoke, auth, dashboard, and customers specs                                                    |
+| `mock-data/login.data.json`      | Login failure DDT data                                                                         |
+| `environments/erpku.env.example` | ERPKU-specific auth defaults                                                                   |
+| `playwright.config.ts`           | Runnable Playwright config for this adapter                                                    |
 
 ## Run locally
 
@@ -24,7 +24,13 @@ Runnable reference implementation for ERPKU on top of the generic template core.
 npm run test:erpku-example              # full suite (smoke + regression)
 npm run test:erpku-example -- --project=smoke
 npm run test:erpku-example -- --project=chromium
+# refresh session only:
+npx playwright test -c example/erpku/playwright.config.ts --project=setup --workers=1
+# OTP/CAPTCHA (browser terlihat):
+npx playwright test -c example/erpku/playwright.config.ts --project=setup --workers=1 --headed
 ```
+
+OTP/CAPTCHA session assist: set `AUTH_CHALLENGE_MODE` di env (lihat root `docs/AUTH-CONTEXT-CONVENTION.md`).
 
 ## Framework vs adapter
 

@@ -61,7 +61,9 @@ Framework memakai `dotenvx` untuk enkripsi otomatis. Setelah wizard atau `setup:
 npm run env:edit
 
 # Refresh session login
-npx playwright test src/support/auth.setup.ts --project=setup
+npm run auth:setup
+# OTP / CAPTCHA di browser:
+npm run auth:setup:headed
 ```
 
 Panduan lengkap: **[docs/CREDENTIALS.md](docs/CREDENTIALS.md)**.

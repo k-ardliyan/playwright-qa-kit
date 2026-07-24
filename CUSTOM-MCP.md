@@ -293,7 +293,7 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated te
 
 ## Tool: `validate_generated_tests`
 
-Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo, example adapter), and capability tags (`@network` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
+Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo, example adapter), and capability tags (`@network` / `@network-assert` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
 
 Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `src/tests`).
 

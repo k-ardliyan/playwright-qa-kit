@@ -221,9 +221,24 @@ function validateCapabilityPowerRules(
     /\bassertFileMagic\b/.test(content) ||
     /\bdetectMagic\b/.test(content) ||
     /\bdetectFileKind\b/.test(content);
+  const hasNetworkAssertApi =
+    /\bwaitForApi\b/.test(content) ||
+    /\bwaitAndAssertApi\b/.test(content) ||
+    /\bassertNetworkContract\b/.test(content) ||
+    /\bassertNetworkMatch\b/.test(content) ||
+    /\bstartNetworkRecorder\b/.test(content) ||
+    /\bwaitForResponse\b/.test(content) ||
+    /\bwaitForRequest\b/.test(content);
 
+  // Live observe first — @network\b alone would also match @network-assert
+  const mentionsNetworkAssert =
+    /@network-assert\b/.test(lower) ||
+    /\(@network-assert\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@network-assert'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@network-assert"/.test(lower);
+  // Mock-only: exclude @network-assert (negative lookahead after "network")
   const mentionsNetwork =
-    /@network\b/.test(lower) ||
+    /@network(?!-assert)\b/.test(lower) ||
     /\(@network\)/.test(lower) ||
     /tag:\s*\[[^\]]*'@network'/.test(lower) ||
     /tag:\s*\[[^\]]*"@network"/.test(lower);
@@ -264,6 +279,15 @@ function validateCapabilityPowerRules(
       lineNumber: 1,
       ruleName:
         'Capability rule (@network): must use page.route or import mockJson/mockServerError/mockAbort from @/support/pw',
+    });
+  }
+
+  if (mentionsNetworkAssert && !hasNetworkAssertApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@network-assert): must use waitAndAssertApi/waitForApi/assertNetworkContract/assertNetworkMatch/startNetworkRecorder or page.waitForResponse/waitForRequest',
     });
   }
 

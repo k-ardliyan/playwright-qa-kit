@@ -78,32 +78,34 @@ generate_page_object (playwright-qa) — featureName, pageName
 
 ## Tipe Skenario
 
-| Tag                     | Artinya                                                |
-| ----------------------- | ------------------------------------------------------ |
-| `(@success)`            | Happy path — alur normal                               |
-| `(@failure)`            | Negative path — validasi, input salah                  |
-| `(@access-restriction)` | Role tidak berhak, akses ditolak                       |
-| `(@manual)`             | Tidak bisa diotomasi (CAPTCHA, OTP, layout PDF visual) |
-| `(@network)`            | Mock/intercept HTTP                                    |
-| `(@hybrid)`             | Seed API + assert UI                                   |
-| `(@aria)` / `(@visual)` | ARIA snapshot / visual regression                      |
-| `(@download)`           | Download file → `downloadAndSave`                      |
-| `(@upload)`             | Upload fixture-first → `uploadFixture`                 |
-| `(@file-content)`       | PDF teks / Excel header (needle skenario)              |
+| Tag                     | Artinya                                                 |
+| ----------------------- | ------------------------------------------------------- |
+| `(@success)`            | Happy path — alur normal                                |
+| `(@failure)`            | Negative path — validasi, input salah                   |
+| `(@access-restriction)` | Role tidak berhak, akses ditolak                        |
+| `(@manual)`             | Tidak bisa diotomasi (CAPTCHA, OTP, layout PDF visual)  |
+| `(@network)`            | Mock/intercept HTTP                                     |
+| `(@network-assert)`     | Live payload + response (`waitAndAssertApi` / contract) |
+| `(@hybrid)`             | Seed API + assert UI                                    |
+| `(@aria)` / `(@visual)` | ARIA snapshot / visual regression                       |
+| `(@download)`           | Download file → `downloadAndSave`                       |
+| `(@upload)`             | Upload fixture-first → `uploadFixture`                  |
+| `(@file-content)`       | PDF teks / Excel header (needle skenario)               |
 
 ---
 
 ## File fixtures (local-first)
 
-| Path                     | Isi                                                                         |
-| ------------------------ | --------------------------------------------------------------------------- |
-| `test-fixtures/pdf/`     | Sample PDF untuk upload / content assert                                    |
-| `test-fixtures/excel/`   | Sample xlsx                                                                 |
-| `test-fixtures/images/`  | Sample image upload                                                         |
-| `test-fixtures/invalid/` | Negative (empty / spoofed)                                                  |
-| Helpers                  | `@/support/pw` — `uploadFixture`, `downloadAndSave`, `assertPdfContains`, … |
+| Path                     | Isi                                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `test-fixtures/pdf/`     | Sample PDF untuk upload / content assert                                                                                               |
+| `test-fixtures/excel/`   | Sample xlsx                                                                                                                            |
+| `test-fixtures/images/`  | Sample image upload                                                                                                                    |
+| `test-fixtures/invalid/` | Negative (empty / spoofed)                                                                                                             |
+| `test-fixtures/network/` | Contract partial untuk `@network-assert` (demo only)                                                                                   |
+| Helpers                  | `@/support/pw` — `waitAndAssertApi`, `waitForApi`, `assertNetworkContract`, `uploadFixture`, `downloadAndSave`, `assertPdfContains`, … |
 
-Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`.
+Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`. Live payload/response = `@network-assert` (bukan overload `@network` mock).
 
 Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`** di IDE (Hermes reload MCP).
 
@@ -111,14 +113,15 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 
 ## Kalau Gagal — Cek Ini Dulu
 
-| Gejala                       | Pertama Cek                                                |
-| ---------------------------- | ---------------------------------------------------------- |
-| `health_check` fail          | `npm run mcp:build` lalu **restart `playwright-qa`** / IDE |
-| Tool MCP baru tidak muncul   | `npm run mcp:build` → restart `playwright-qa`              |
-| `validate_requirement` error | Baca hint di output → perbaiki → coba lagi                 |
-| Test gagal semua satu role   | Cek `.auth/<role>.json` ada atau belum                     |
-| Auth file missing            | `npm run auth:setup` / `auth:setup:headed`                 |
-| Exit `2` (escalate)          | Hubungi Framework Maintainer                               |
+| Gejala                       | Pertama Cek                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `health_check` fail          | `npm run mcp:build` lalu **restart `playwright-qa`** / IDE                        |
+| Tool MCP baru tidak muncul   | `npm run mcp:build` → restart `playwright-qa`                                     |
+| `validate_requirement` error | Baca hint di output → perbaiki → coba lagi                                        |
+| Test gagal semua satu role   | Cek `.auth/<role>.json` ada atau belum                                            |
+| Auth file missing            | `npm run auth:setup` / `auth:setup:headed`                                        |
+| `@network-assert` timeout    | `waitForApi` **sebelum** click; cek urlIncludes/method; `serviceWorkers: 'block'` |
+| Exit `2` (escalate)          | Hubungi Framework Maintainer                                                      |
 
 ---
 
@@ -149,4 +152,4 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 ---
 
 > **Tips:** Setup awal = `requirements/login.md` (hasil wizard, per website + `snapshot_page`).
-> Sample format saja: `requirements/auth/sample-login-empty-fields.md` / `requirements/auth/sample-network-hybrid.md`.
+> Sample format saja: `requirements/auth/sample-login-empty-fields.md` / `requirements/auth/sample-network-hybrid.md` / `requirements/auth/sample-network-assert.md`.

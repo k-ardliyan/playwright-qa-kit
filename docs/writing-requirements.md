@@ -60,10 +60,11 @@ Capability tags (opsional, digabung di judul SC):
 | `(@upload)`             | Upload fixture-first — `uploadFixture` / `setInputFiles` (bukan OS picker) |
 | `(@file-content)`       | Assert isi PDF/Excel — needles dari **Hasil** skenario                     |
 | `(@network)`            | Mock HTTP                                                                  |
+| `(@network-assert)`     | Live payload + response (`waitAndAssertApi` / partial contract)            |
 | `(@hybrid)`             | Seed API + assert UI                                                       |
 | `(@aria)` / `(@visual)` | Snapshot a11y / screenshot                                                 |
 
-Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`. Lihat [MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md) dan recipes file di `docs/recipes/`.
+Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`. Lihat [MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md) dan recipes file di `docs/recipes/`. Live network payload/response = `@network-assert` (bukan `@manual`, bukan overload `@network` mock) — lihat [network-assert.md](recipes/network-assert.md).
 
 Jika tidak diberi tag tipe, skenario dianggap `(@success)` secara default.
 

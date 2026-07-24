@@ -277,6 +277,12 @@ import {
   mockJson,
   mockServerError,
   unmockAll,
+  waitAndAssertApi,
+  waitForApi,
+  assertNetworkContract,
+  assertNetworkMatch,
+  startNetworkRecorder,
+  attachNetworkCapture,
   apiJson,
   apiSeed,
   apiCleanup,
@@ -296,23 +302,24 @@ import {
 } from '@/support/pw';
 ```
 
-| Capability (title tag / metadata tags) | When                                                      | Generate                                                                                                                                                                                         |
-| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `(@network)` or `#network`             | Failure depends on HTTP status / offline / API error body | `mockJson` / `mockServerError` / `mockAbort` **before** the UI action; `unmockAll` in cleanup step                                                                                               |
-| `(@hybrid)` or `#hybrid`               | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                 |
-| `(@aria)` or `#aria`                   | Structural a11y / landmark regression                     | If `selector-catalog/<feature>/<page>.aria.yml` exists → `expectAriaMatchesCatalog(page.getByRole('main'), 'selector-catalog/...')`; else `expectAriaSnapshot` with a small inline YAML baseline |
-| `(@visual)` or `#visual`               | Layout/CSS regression                                     | After UI stabilizes: `await expectVisual(locator, { name: '<name>.png' })` or `toHaveScreenshot` (scope to a stable region)                                                                      |
-| `(@download)` or `#download`           | Scenario triggers file download / export                  | `downloadAndSave(page, () => click…)` or `page.waitForEvent('download')` **before** the trigger; then envelope/content asserts as needed                                                         |
-| `(@upload)` or `#upload`               | Scenario uploads file(s)                                  | Fixture-first: `uploadFixture(locator, 'test-fixtures/…')` or `uploadViaChooser(page, open, 'test-fixtures/…')` or `setInputFiles` — **never** `page.pause()` for OS file pick                   |
-| `(@file-content)` or `#file-content`   | Assert PDF/Excel/CSV content or file envelope             | `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary` / `assertDownloadedEnvelope` / `assertFileMagic` — **needles/headers from THIS scenario only**                |
-| Multi-field `(@failure)` validation    | Several fields show errors at once                        | Prefer `expect.soft(...)` or `expectSoftFieldErrors([...])` so one test reports all field failures                                                                                               |
-| Time-sensitive UI                      | Date picker / countdown / "expires at"                    | `freezeTime` / `advanceTime` from `@/support/pw` (`page.clock`)                                                                                                                                  |
+| Capability (title tag / metadata tags)   | When                                                      | Generate                                                                                                                                                                                                                                    |
+| ---------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `(@network)` or `#network`               | Failure depends on HTTP status / offline / API error body | `mockJson` / `mockServerError` / `mockAbort` **before** the UI action; `unmockAll` in cleanup step                                                                                                                                          |
+| `(@network-assert)` or `#network-assert` | Live request payload + response after UI action           | Prefer **`waitAndAssertApi`** (one call) with **inline** `assert` from Input Data keys; optional `contract` path if listed. Fallback: `waitForApi` + `assertNetworkMatch`. Never invent endpoints — discover first if unknown (see recipe). |
+| `(@hybrid)` or `#hybrid`                 | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                                                            |
+| `(@aria)` or `#aria`                     | Structural a11y / landmark regression                     | If `selector-catalog/<feature>/<page>.aria.yml` exists → `expectAriaMatchesCatalog(page.getByRole('main'), 'selector-catalog/...')`; else `expectAriaSnapshot` with a small inline YAML baseline                                            |
+| `(@visual)` or `#visual`                 | Layout/CSS regression                                     | After UI stabilizes: `await expectVisual(locator, { name: '<name>.png' })` or `toHaveScreenshot` (scope to a stable region)                                                                                                                 |
+| `(@download)` or `#download`             | Scenario triggers file download / export                  | `downloadAndSave(page, () => click…)` or `page.waitForEvent('download')` **before** the trigger; then envelope/content asserts as needed                                                                                                    |
+| `(@upload)` or `#upload`                 | Scenario uploads file(s)                                  | Fixture-first: `uploadFixture(locator, 'test-fixtures/…')` or `uploadViaChooser(page, open, 'test-fixtures/…')` or `setInputFiles` — **never** `page.pause()` for OS file pick                                                              |
+| `(@file-content)` or `#file-content`     | Assert PDF/Excel/CSV content or file envelope             | `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary` / `assertDownloadedEnvelope` / `assertFileMagic` — **needles/headers from THIS scenario only**                                                           |
+| Multi-field `(@failure)` validation      | Several fields show errors at once                        | Prefer `expect.soft(...)` or `expectSoftFieldErrors([...])` so one test reports all field failures                                                                                                                                          |
+| Time-sensitive UI                        | Date picker / countdown / "expires at"                    | `freezeTime` / `advanceTime` from `@/support/pw` (`page.clock`)                                                                                                                                                                             |
 
-**Validator:** `validate_generated_tests` fails if file mentions `@network`/`@hybrid`/`@aria`/`@visual`/`@download`/`@upload`/`@file-content` (tags) without the matching API usage.
+**Validator:** `validate_generated_tests` fails if file mentions `@network`/`@network-assert`/`@hybrid`/`@aria`/`@visual`/`@download`/`@upload`/`@file-content` (tags) without the matching API usage.
 
 **Visual baselines:** update intentionally with `npx playwright test --update-snapshots path/to/spec.ts`. Do not update snapshots to hide product bugs.
 
-**Service workers:** if route mocks never fire, add `test.use({ serviceWorkers: 'block' })` on the describe/file.
+**Service workers:** if route mocks / network events never fire, add `test.use({ serviceWorkers: 'block' })` on the describe/file.
 
 ### Network mock pattern
 
@@ -324,6 +331,45 @@ await test.step('Mock API failure', async () => {
 await test.step('Cleanup routes', async () => {
   await unmockAll(page);
 });
+```
+
+### Network live assert pattern (`@network-assert`)
+
+**Prefer one-shot inline match** when Input Data has method/url/status/keys (no contract file required):
+
+```typescript
+import { waitAndAssertApi } from '@/support/pw';
+
+await test.step('Submit + assert network', async () => {
+  await waitAndAssertApi(
+    page,
+    {
+      method: 'POST', // from Input Data
+      urlIncludes: '/api/…', // from Input Data or discovery — never invent
+      status: [200, 201],
+      assert: {
+        request: { requiredKeys: [/* from Input Data */] },
+        response: { matchObject: {/* from Input Data / Hasil */} },
+      },
+      // contract: 'test-fixtures/network/contracts/…' // only if path given in Input Data
+    },
+    async () => {
+      await page.getByRole('button', { name: '…' }).click();
+    },
+  );
+  // UI observable asserts from Expected Result
+});
+```
+
+**If endpoint unknown:** do not invent. During Plan/Generate exploratory step, open the page with playwright MCP/`browser_network_requests` (or headed DevTools), perform the action once, copy method+URL+key names into requirement Input Data, then generate. Committed specs always use helpers — never call MCP network tools at runtime.
+
+Fallback split form:
+
+```typescript
+const { hit } = await waitForApi(page, { method: 'POST', urlIncludes: '/api/…', status: [200, 201] }, async () => {
+  await page.getByRole('button', { name: '…' }).click();
+});
+assertNetworkMatch(hit, { request: { requiredKeys: […] }, response: { matchObject: { … } } });
 ```
 
 ### Hybrid API + UI pattern
@@ -407,7 +453,7 @@ Return:
 - any skipped/unmappable scenarios with reasons,
 - any skeleton files generated with the reason,
 - scenarios deferred to Healer (with last failure message),
-- capability tags applied (`network` / `hybrid` / `aria` / `visual` / `download` / `upload` / `file-content`) per file.
+- capability tags applied (`network` / `network-assert` / `hybrid` / `aria` / `visual` / `download` / `upload` / `file-content`) per file.
 
 ## Example Prompts
 
@@ -415,5 +461,6 @@ Return:
 - "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `src/tests/invoice-finance.spec.ts` and `src/tests/invoice-super-admin.spec.ts`."
 - "Generate access-restriction test from SC-03 in `specs/finance-approve-invoice-test-plan.md` for role hrd."
 - "Generate `@network` failure test that mocks `**/api/invoices/**` 500 using `@/support/pw` helpers."
+- "Generate `@network-assert` submit test with `waitAndAssertApi` (inline assert keys from plan Input Data); optional contract path only if listed."
 - "Generate `@download` + `@file-content` export test using `downloadAndSave` and `assertPdfContains` with tokens from the plan Expected Result only."
 - "Generate `@upload` test with `uploadFixture` / `uploadViaChooser` from `test-fixtures/` — never `page.pause()`."

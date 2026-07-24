@@ -38,6 +38,7 @@ npm run qa:run -- requirements/login.md
 
 - [`sample-login-empty-fields.md`](auth/sample-login-empty-fields.md) — empty-field + `@manual` CAPTCHA (Path B sample)
 - [`sample-network-hybrid.md`](auth/sample-network-hybrid.md) — `@network` + `@hybrid` + `@aria`
+- [`sample-network-assert.md`](auth/sample-network-assert.md) — `@network-assert` live payload/response (+ mock failure)
 - [`_GOOD_EXAMPLE.md`](_GOOD_EXAMPLE.md) / [`_BAD_EXAMPLE.md`](_BAD_EXAMPLE.md)
 
 ## Mode penulisan

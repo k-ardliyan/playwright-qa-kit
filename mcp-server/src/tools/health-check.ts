@@ -273,6 +273,41 @@ function checkFileContentCapability(): HealthCheckItem {
   };
 }
 
+/** Soft check: network-assert helpers + demo contract fixture. */
+function checkNetworkAssertCapability(): HealthCheckItem {
+  const root = getRepoRoot();
+  const missing: string[] = [];
+  const helper = path.join(root, 'src', 'support', 'pw', 'network-assert.ts');
+  const core = path.join(root, 'src', 'support', 'pw', 'network-assert-core.ts');
+  const contract = path.join(
+    root,
+    'test-fixtures',
+    'network',
+    'contracts',
+    'demo',
+    'submit-success.json',
+  );
+  if (!fs.existsSync(helper)) missing.push('src/support/pw/network-assert.ts');
+  if (!fs.existsSync(core)) missing.push('src/support/pw/network-assert-core.ts');
+  if (!fs.existsSync(contract)) {
+    missing.push('test-fixtures/network/contracts/demo/submit-success.json');
+  }
+  if (missing.length > 0) {
+    return {
+      name: 'network_assert',
+      status: 'warn',
+      message:
+        `Network-assert capability incomplete (missing: ${missing.join(', ')}). ` +
+        'Restore network-assert helpers and demo contract for @network-assert.',
+    };
+  }
+  return {
+    name: 'network_assert',
+    status: 'ok',
+    message: 'network-assert helpers + demo contract available for live payload/response checks',
+  };
+}
+
 export function healthCheck(): HealthCheckOutput {
   const checks = [
     checkNodeVersion(),
@@ -285,6 +320,7 @@ export function healthCheck(): HealthCheckOutput {
     checkAuthChallengeMode(),
     checkJsonReporterOutput(),
     checkFileContentCapability(),
+    checkNetworkAssertCapability(),
   ];
 
   const hasFail = checks.some((c) => c.status === 'fail');

@@ -1,0 +1,25 @@
+{
+  "id": "demo.submit.success",
+  "match": {
+    "method": "POST",
+    "urlIncludes": "/api/demo/submit",
+    "status": [200, 201]
+  },
+  "request": {
+    "requiredKeys": ["name", "qty"],
+    "matchObject": {
+      "name": "QA-KIT-NETWORK-OK"
+    },
+    "forbidKeys": ["password", "token"]
+  },
+  "response": {
+    "requiredKeys": ["ok", "id"],
+    "matchObject": {
+      "ok": true
+    }
+  },
+  "redact": {
+    "headers": ["authorization", "cookie", "set-cookie"],
+    "bodyPaths": ["token", "secret"]
+  }
+}

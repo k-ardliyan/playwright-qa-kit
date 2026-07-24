@@ -2,6 +2,8 @@
  * Network mock helpers — thin wrappers around official Playwright `page.route`.
  *
  * Prefer these in generated `(@failure)` / `@network` scenarios instead of ad-hoc routes.
+ * For **live** payload/response checks use `@network-assert` helpers in `network-assert.ts`
+ * (`waitForApi`, `assertNetworkContract`) — do not overload this mock module.
  *
  * Reliability tip: if route events seem missing because the app uses a Service Worker
  * (or MSW), set in the test/project:
@@ -9,6 +11,7 @@
  * See https://playwright.dev/docs/network#missing-network-events-and-service-workers
  *
  * @see https://playwright.dev/docs/network
+ * @see ./network-assert.ts
  */
 
 import type { Page, Route } from '@playwright/test';

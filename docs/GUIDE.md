@@ -68,18 +68,19 @@ Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum gener
 
 Helper tipis di `src/support/pw/` membungkus API resmi (bukan abstraksi berat):
 
-| Kebutuhan                     | Tag skenario                        | Helper / API                                                                    |
-| ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------- |
-| Mock HTTP / error API         | `(@network)` / `#network`           | `mockJson`, `mockServerError`, `unmockAll` → `page.route`                       |
-| Seed data via API + assert UI | `(@hybrid)` / `#hybrid`             | `apiSeed`, `apiCleanup` + fixture `request`                                     |
-| Struktur accessibility        | `(@aria)` / `#aria`                 | `expectAriaMatchesCatalog` → `toMatchAriaSnapshot`                              |
-| Visual regression             | `(@visual)` / `#visual`             | `expectVisual` → `toHaveScreenshot`                                             |
-| Download file                 | `(@download)` / `#download`         | `downloadAndSave`, `assertDownloadedEnvelope` → `page.waitForEvent('download')` |
-| Upload file (fixture-first)   | `(@upload)` / `#upload`             | `uploadFixture`, `uploadViaChooser` → `setInputFiles` / filechooser             |
-| PDF teks / Excel header       | `(@file-content)` / `#file-content` | `assertPdfContains`, `extractPdfText`, `assertExcelHeaders`, `readExcelSummary` |
-| Multi-field validation        | `(@failure)` multi-error            | `expect.soft` / `expectSoftFieldErrors`                                         |
-| Time-sensitive UI             | date/countdown                      | `freezeTime` / `advanceTime` → `page.clock`                                     |
-| Multi-role projects           | Role scope                          | `buildRoleProjects` + recipe `playwright.role-projects.recipe.ts`               |
+| Kebutuhan                     | Tag skenario                            | Helper / API                                                                                                      |
+| ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Mock HTTP / error API         | `(@network)` / `#network`               | `mockJson`, `mockServerError`, `unmockAll` → `page.route`                                                         |
+| Live payload + response       | `(@network-assert)` / `#network-assert` | `waitAndAssertApi` (prefer), `waitForApi`, `assertNetworkMatch` / `assertNetworkContract`, `startNetworkRecorder` |
+| Seed data via API + assert UI | `(@hybrid)` / `#hybrid`                 | `apiSeed`, `apiCleanup` + fixture `request`                                                                       |
+| Struktur accessibility        | `(@aria)` / `#aria`                     | `expectAriaMatchesCatalog` → `toMatchAriaSnapshot`                                                                |
+| Visual regression             | `(@visual)` / `#visual`                 | `expectVisual` → `toHaveScreenshot`                                                                               |
+| Download file                 | `(@download)` / `#download`             | `downloadAndSave`, `assertDownloadedEnvelope` → `page.waitForEvent('download')`                                   |
+| Upload file (fixture-first)   | `(@upload)` / `#upload`                 | `uploadFixture`, `uploadViaChooser` → `setInputFiles` / filechooser                                               |
+| PDF teks / Excel header       | `(@file-content)` / `#file-content`     | `assertPdfContains`, `extractPdfText`, `assertExcelHeaders`, `readExcelSummary`                                   |
+| Multi-field validation        | `(@failure)` multi-error                | `expect.soft` / `expectSoftFieldErrors`                                                                           |
+| Time-sensitive UI             | date/countdown                          | `freezeTime` / `advanceTime` → `page.clock`                                                                       |
+| Multi-role projects           | Role scope                              | `buildRoleProjects` + recipe `playwright.role-projects.recipe.ts`                                                 |
 
 Semua helper di atas diimpor dari `@/support/pw` (lihat `src/support/pw/files.ts` + `file-content-core.ts` untuk file).
 
@@ -88,10 +89,11 @@ Semua helper di atas diimpor dari `@/support/pw` (lihat `src/support/pw/files.ts
 - Upload **selalu** fixture-first dari `test-fixtures/` — **bukan** `@manual`, **bukan** headed OS picker pause.
 - Needle PDF / header Excel **milik skenario** (Hasil yang Diharapkan / Input Data) — jangan hardcode skema domain (judul/kode/nama tetap).
 - MCP inspect-time: `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`. Test committed tetap assert lewat helper, bukan memanggil MCP di runtime.
-- Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md).
+- Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md) · [network-assert.md](recipes/network-assert.md).
 - Demo: `npx playwright test src/tests/demo/demo-file-capabilities.spec.ts --project=demo`
+- Demo network: `npx playwright test src/tests/demo/demo-network-assert.spec.ts --project=demo`
 
-**Validator capability:** `npm run validate` gagal jika file memakai tag `@network`/`@hybrid`/`@aria`/`@visual`/`@download`/`@upload`/`@file-content` tanpa API terkait.
+**Validator capability:** `npm run validate` gagal jika file memakai tag `@network`/`@network-assert`/`@hybrid`/`@aria`/`@visual`/`@download`/`@upload`/`@file-content` tanpa API terkait.
 
 **Visual baselines:**
 
@@ -101,16 +103,22 @@ npx playwright test --update-snapshots src/tests/path/to/visual.spec.ts
 
 Jangan update snapshot hanya untuk menutupi product bug.
 
-**Service Worker + mock:** jika `page.route` tidak menangkap request, set `test.use({ serviceWorkers: 'block' })`.
+**Service Worker + mock/network events:** jika `page.route` atau `waitForApi` tidak menangkap request, set `test.use({ serviceWorkers: 'block' })`.
 
 Demo self-contained:
 
 ```bash
 npx playwright test src/tests/demo/demo-pw-power.spec.ts --project=demo
 npx playwright test src/tests/demo/demo-pw-power-extended.spec.ts --project=demo
+npx playwright test src/tests/demo/demo-network-assert.spec.ts --project=demo
+npm run test:network-assert
 ```
 
-Contoh requirement capability: `requirements/sample-network-hybrid.md`.
+Contoh requirement capability:
+
+- Mock + hybrid: `requirements/auth/sample-network-hybrid.md`
+- Live assert: `requirements/auth/sample-network-assert.md`
+- Recipe: [recipes/network-assert.md](recipes/network-assert.md)
 
 Auth resmi: project `setup` + `dependencies: ['setup']`. Lihat [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
 

@@ -2,7 +2,7 @@
 
 /**
  * Property: capability tags require matching Playwright power APIs.
- * Covers @network (baseline) and @download / @upload / @file-content.
+ * Covers @network, @network-assert, @download / @upload / @file-content.
  */
 
 import assert from 'node:assert/strict';
@@ -66,6 +66,67 @@ test.describe('Capability Case', { tag: ['@network'] }, () => {
     await test.step('step', async () => {
       await mockJson(page, '**/api/**', { ok: true });
       await expect(page.locator('body')).toBeVisible();
+    });
+  });
+});
+`);
+  assertNoCap();
+
+  // @network-assert without observe API → fail
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('NetworkAssert', { tag: ['@network-assert'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await expect(page.locator('body')).toBeVisible();
+    });
+  });
+});
+`);
+  assertHasCap('Capability rule (@network-assert)');
+  // Must NOT also require mock @network when only @network-assert is present
+  {
+    const v = violations().filter((x) => x.ruleName.includes('Capability rule (@network)'));
+    assert.equal(v.length, 0, `cross-match @network on @network-assert: ${JSON.stringify(v)}`);
+  }
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+import { waitForApi, assertNetworkContract } from '@/support/pw';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('NetworkAssert', { tag: ['@network-assert'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      const { hit } = await waitForApi(page, { urlIncludes: '/api/x', method: 'POST' }, async () => {
+        await page.getByRole('button').click();
+      });
+      assertNetworkContract(hit, 'test-fixtures/network/contracts/demo/submit-success.json');
+    });
+  });
+});
+`);
+  assertNoCap();
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+import { waitAndAssertApi } from '@/support/pw';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('NetworkAssertOneShot', { tag: ['@network-assert'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await waitAndAssertApi(
+        page,
+        {
+          method: 'POST',
+          urlIncludes: '/api/x',
+          status: [200, 201],
+          assert: { request: { requiredKeys: ['a'] }, response: { matchObject: { ok: true } } },
+        },
+        async () => {
+          await page.getByRole('button').click();
+        },
+      );
     });
   });
 });

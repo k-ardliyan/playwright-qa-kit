@@ -8,6 +8,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Network live assert capability** (`@network-assert`)
+  - `src/support/pw/network-assert-core.ts` + `network-assert.ts` — pure redact/partial match/contract load; Playwright `waitForApi`, `assertNetworkContract`, `assertNetworkMatch`, `startNetworkRecorder`, `attachNetworkCapture`, optional `useHar`
+  - Tag split: `@network` = mock only; `@network-assert` = live observe only (validator uses `@network(?!-assert)` so tags do not cross-match)
+  - Fixtures: `test-fixtures/network/contracts/demo/submit-success.json` (demo token `QA-KIT-NETWORK-OK`)
+  - Unit tests `npm run test:network-assert`; demo `src/tests/demo/demo-network-assert.spec.ts`
+  - Validator capability rule + planner/generator/**healer** docs + recipe `docs/recipes/network-assert.md`
+  - Sample requirement `requirements/auth/sample-network-assert.md`
+  - Scenario-owned keys only — no domain schema patent; secrets redacted on capture
+  - Prefer `waitAndAssertApi` one-shot with inline `assert` keys from Input Data; use `contract` file only when path is listed
+  - Health check `network_assert`; validator accepts `waitAndAssertApi`
+  - Recipe documents discover-then-freeze when QA does not know API path yet
+
 - **File / PDF / Excel capability helpers** (scenario-driven content, fixture-first upload)
   - `src/support/pw/file-content-core.ts` + `files.ts` — magic bytes, `fixturePath`, `extractPdfText`, `readExcelSummary`, `downloadAndSave`, `uploadFixture`, `uploadViaChooser`, envelope/content asserts (`assertPdfContains`, `assertPdfMatches`)
   - `test-fixtures/` bank (demo tokens only: `QA-KIT-SAMPLE-PDF`, `ColA/B/C`)

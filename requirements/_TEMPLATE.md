@@ -81,7 +81,8 @@
 > - `(@failure)` — negative path, input salah, validasi gagal
 > - `(@access-restriction)` — role tidak berhak, akses ditolak
 > - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, layout visual PDF, dsb)
-> - `(@network)` — butuh intercept/mock network (`page.route` / helper `@/support/pw`)
+> - `(@network)` — mock/intercept HTTP (`page.route` / `mockJson` / `mockServerError`) — **bukan** live assert payload
+> - `(@network-assert)` — live observe/assert request payload + response setelah aksi UI (`waitForApi` / contract partial) — **bukan** mock
 > - `(@hybrid)` — seed/cleanup via API (`request` fixture) + assert di UI
 > - `(@aria)` — assert struktur ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
 > - `(@visual)` — visual regression (`toHaveScreenshot`)
@@ -89,10 +90,12 @@
 > - `(@upload)` — upload fixture-first (`uploadFixture` / `setInputFiles` — **bukan** OS picker manual)
 > - `(@file-content)` — assert isi PDF teks / header Excel; **token/needle milik skenario** (dari Hasil / Input Data), bukan skema domain tetap
 >
-> Capability tags boleh digabung, contoh: `(@failure @network)`, `(@success @hybrid)`, `(@success @download @file-content)`.
-> Alternatif di Metadata Tags: `#network #hybrid #aria #visual #download #upload #file-content`.
+> Capability tags boleh digabung, contoh: `(@failure @network)`, `(@success @network-assert)`, `(@success @hybrid)`, `(@success @download @file-content)`.
+> Alternatif di Metadata Tags: `#network #network-assert #hybrid #aria #visual #download #upload #file-content`.
 >
 > **Konten file scenario-owned:** tulis token yang harus ada di PDF/Excel di **Hasil yang Diharapkan** atau **Input Data**. Generator/helper hanya match token itu — jangan hardcode judul/kode/nama produk di helper.
+>
+> **Network live assert scenario-owned:** method, urlIncludes/endpoint, status, request/response keys di **Input Data** / **Hasil**. Optional path contract: `test-fixtures/network/contracts/...`. Jangan invent endpoint.
 >
 > Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 >

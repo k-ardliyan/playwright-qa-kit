@@ -55,22 +55,25 @@ Jangan pakai `(@manual)` hanya karena "ribet" — biasanya bisa diotomasi dengan
 - **Upload file** → **bukan manual**. Pakai fixture-first: `setInputFiles()` / `uploadFixture()` / `uploadViaChooser()` dari `@/support/pw` dengan path di `test-fixtures/`. Tag skenario `(@upload)`. **Jangan** pause headed untuk OS file picker.
 - **Download file** → `downloadAndSave()` + envelope assert (`assertDownloadedEnvelope`). Tag `(@download)`.
 - **PDF teks / Excel struktur** → **bisa diotomasi** dengan `@file-content`: `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary`. Token/needle **milik skenario** (dari Hasil yang Diharapkan) — bukan skema domain tetap.
+- **Cek payload/response API setelah klik submit** → **bukan manual**. Tag `(@network-assert)` + `waitAndAssertApi` / contract partial. Mock error API = `(@network)`, bukan live assert.
 - Drag-and-drop → `page.dragAndDrop()` bisa handle
 
 ### File / PDF / Excel — manual vs automatable
 
-| Kebutuhan                                           | Tag               | Manual?          | Cara otomasi                                                    |
-| --------------------------------------------------- | ----------------- | ---------------- | --------------------------------------------------------------- |
-| Upload lampiran / import                            | `(@upload)`       | **Tidak**        | Fixture di `test-fixtures/` + `uploadFixture` / `setInputFiles` |
-| Download export                                     | `(@download)`     | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`                  |
-| Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)` | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`                  |
-| Header/kolom Excel dari requirement                 | `(@file-content)` | **Tidak**        | `assertExcelHeaders(path, headersFromScenario)`                 |
-| Layout visual PDF (spasi, alignment, warna)         | `(@manual)`       | **Ya**           | Review mata manusia; bukan `assertPdfContains`                  |
-| OS file-picker pause (headed)                       | —                 | **Anti-pattern** | Selalu fixture-first; tidak ada pause pipeline                  |
+| Kebutuhan                                           | Tag                 | Manual?          | Cara otomasi                                                    |
+| --------------------------------------------------- | ------------------- | ---------------- | --------------------------------------------------------------- |
+| Upload lampiran / import                            | `(@upload)`         | **Tidak**        | Fixture di `test-fixtures/` + `uploadFixture` / `setInputFiles` |
+| Download export                                     | `(@download)`       | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`                  |
+| Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)`   | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`                  |
+| Header/kolom Excel dari requirement                 | `(@file-content)`   | **Tidak**        | `assertExcelHeaders(path, headersFromScenario)`                 |
+| Live payload + response setelah aksi UI             | `(@network-assert)` | **Tidak**        | `waitAndAssertApi` / partial contract (keys dari skenario)      |
+| Mock HTTP 500 / offline untuk error UX              | `(@network)`        | **Tidak**        | `mockServerError` / `mockAbort`                                 |
+| Layout visual PDF (spasi, alignment, warna)         | `(@manual)`         | **Ya**           | Review mata manusia; bukan `assertPdfContains`                  |
+| OS file-picker pause (headed)                       | —                   | **Anti-pattern** | Selalu fixture-first; tidak ada pause pipeline                  |
 
-**Prinsip:** fixture-first + local-first. MCP tools (`inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`) untuk **inspect-time** saja; test yang di-commit tetap assert lewat helper `@/support/pw`.
+**Prinsip:** fixture-first + local-first. MCP tools (`inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`, `browser_network_requests`) untuk **inspect-time** saja; test yang di-commit tetap assert lewat helper `@/support/pw`.
 
-Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md).
+Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md) · [network-assert.md](recipes/network-assert.md).
 
 Kalau ragu, tanya maintainer framework dulu sebelum tandai `(@manual)`.
 

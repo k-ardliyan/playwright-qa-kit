@@ -93,12 +93,12 @@ Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requ
 
 ## Scenarios
 
-### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @hybrid | @aria | @visual | @download | @upload | @file-content)
+### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @network-assert | @hybrid | @aria | @visual | @download | @upload | @file-content)
 
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
-**Capabilities:** <none | network | hybrid | aria | visual | download | upload | file-content — derived from title tags / requirement Tags>
+**Capabilities:** <none | network | network-assert | hybrid | aria | visual | download | upload | file-content — derived from title tags / requirement Tags>
 
 | Scenario Name | Steps | Expected Result | Capabilities         |
 | ------------- | ----- | --------------- | -------------------- |
@@ -149,7 +149,8 @@ Always suffix the heading with at least one primary type, and optional capabilit
 - `(@failure)` — negative path, input error, validation failure
 - `(@access-restriction)` — role not permitted, access denied
 - `(@manual)` — cannot be automated (CAPTCHA, OTP, biometric, visual review, PDF **layout** beauty)
-- `(@network)` — needs `page.route` / `@/support/pw` network helpers
+- `(@network)` — mock/intercept HTTP (`page.route` / `mockJson` / `mockServerError`) — **not** live payload assert
+- `(@network-assert)` — live observe/assert request payload + response after UI action (`waitAndAssertApi` / `waitForApi` + partial contract)
 - `(@hybrid)` — API seed/cleanup via `request` + UI assert
 - `(@aria)` — ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
 - `(@visual)` — screenshot comparison (`toHaveScreenshot` / `expectVisual`)
@@ -157,7 +158,7 @@ Always suffix the heading with at least one primary type, and optional capabilit
 - `(@upload)` — uploads file(s) via fixture (`setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile`)
 - `(@file-content)` — assert PDF/Excel/CSV content or envelope using **scenario-owned** tokens/headers
 
-Combinations are valid: `(@failure @network)`, `(@success @hybrid @aria)`, `(@success @download @file-content)`, `(@failure @upload)`.
+Combinations are valid: `(@failure @network)`, `(@success @network-assert)`, `(@success @hybrid @aria)`, `(@success @download @file-content)`, `(@failure @upload)`.
 
 ### Catalog → @aria recommendation
 
@@ -187,7 +188,7 @@ When the requirement mentions download, upload, or PDF/Excel **content** checks,
 
 ### Capabilities column
 
-Populate plan **Capabilities** from title tags and metadata `#network #hybrid #aria #visual #download #upload #file-content` so Generator emits the matching `@/support/pw` imports.
+Populate plan **Capabilities** from title tags and metadata `#network #network-assert #hybrid #aria #visual #download #upload #file-content` so Generator emits the matching `@/support/pw` imports.
 
 ---
 
@@ -201,11 +202,13 @@ Populate plan **Capabilities** from title tags and metadata `#network #hybrid #a
 6. Repeat the **Role**, **Auth Context**, and **Seed** fields under each scenario for Generator traceability.
 7. Do not invent steps — if the requirement is unclear, put the scenario in Coverage Gap.
 8. When `Data scope` mentions API seed/endpoints, mark scenarios `(@hybrid)` and list the endpoint in Steps.
-9. When failure depends on HTTP status / offline, mark `(@network)` and name the URL glob.
-10. When `selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
-11. When requirement mentions download/export, mark `(@download)`. When it mentions upload/pilih file, mark `(@upload)` and put the `test-fixtures/` path in Input Data.
-12. When Hasil/Expected Result includes PDF text, Excel headers/cells, or file magic/envelope checks, mark `(@file-content)` and copy those **scenario tokens** into Expected Result / Input Data — do not invent fields.
-13. PDF **layout-only** stays `(@manual)` or `(@visual)`; do not over-manual textual PDF/Excel content checks.
+9. When failure depends on HTTP status / offline, mark `(@network)` and name the URL glob (mock only).
+10. When Hasil/Expected mentions request payload fields, response body/status from backend after a UI action, or “cek network/payload API”, mark `(@network-assert)` and put method + urlIncludes + expected status/keys (or contract path) in Input Data — do **not** invent endpoints; do **not** use `@network` for live observe.
+    - If endpoint unknown: Coverage Gap or Manual Notes “discover Network once (DevTools / browser_network_requests), then freeze path+keys into Input Data” — do not plan invented URLs.
+11. When `selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
+12. When requirement mentions download/export, mark `(@download)`. When it mentions upload/pilih file, mark `(@upload)` and put the `test-fixtures/` path in Input Data.
+13. When Hasil/Expected Result includes PDF text, Excel headers/cells, or file magic/envelope checks, mark `(@file-content)` and copy those **scenario tokens** into Expected Result / Input Data — do not invent fields.
+14. PDF **layout-only** stays `(@manual)` or `(@visual)`; do not over-manual textual PDF/Excel content checks.
 
 ---
 
@@ -236,4 +239,5 @@ If there are no manual scenarios, write: `No manual scenarios.`
 - "Plan test scenarios from `requirements/sample-login-empty-fields.md` and save to `specs/sample-login-empty-fields-test-plan.md`."
 - "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
 - "Plan capability scenarios from `requirements/sample-network-hybrid.md` including @network @hybrid @aria."
+- "Plan live network-assert scenarios from `requirements/auth/sample-network-assert.md` — @network-assert with method/url/keys in Input Data."
 - "Plan file scenarios with @download @upload @file-content; copy expected PDF/Excel tokens from Hasil into Input Data / Expected Result."

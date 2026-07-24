@@ -62,6 +62,11 @@ const CHECKS: Array<{ label: string; path: string; hint: string }> = [
     path: path.join('src', 'support', 'pw', 'files.ts'),
     hint: 'restore src/support/pw/files.ts from repo',
   },
+  {
+    label: 'network assert helpers',
+    path: path.join('src', 'support', 'pw', 'network-assert.ts'),
+    hint: 'restore src/support/pw/network-assert.ts from repo',
+  },
 ];
 
 function checkPlaywrightTestVersion(): void {

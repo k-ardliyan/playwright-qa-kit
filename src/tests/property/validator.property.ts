@@ -128,32 +128,62 @@ async function testProperty12(): Promise<void> {
 }
 
 // ─── Property 13: Validator invalid MCP reference detection ───────────────────
+//
+// Tool registry checks apply only to rows whose Server column is `playwright-qa`
+// (see extractMcpToolReferences). Other servers (playwright, playwright-test, …)
+// may list tools that are not in mcp-server TOOL_REGISTRY and must not flag
+// invalid-mcp-tool. Invalid server names are still always reported.
 
 async function testProperty13(): Promise<void> {
   await fc.assert(
     fc.asyncProperty(
-      fc.array(serverNameArb, { minLength: 1, maxLength: 3 }),
+      fc.array(serverNameArb, { minLength: 0, maxLength: 2 }),
       fc.array(toolNameArb, { minLength: 1, maxLength: 3 }),
       serverNameArb,
       toolNameArb,
-      async (validServers, validTools, invalidServer, invalidTool) => {
+      toolNameArb,
+      async (extraServers, validTools, invalidServer, invalidTool, foreignTool) => {
+        // playwright-qa is the only server whose tools are registry-validated
+        const validServers = [
+          'playwright-qa',
+          ...extraServers.filter((s) => s !== 'playwright-qa' && s !== invalidServer),
+        ];
+
         // Ensure the invalid references are not accidentally valid
-        if (validServers.includes(invalidServer) || validTools.includes(invalidTool)) return;
+        if (
+          validServers.includes(invalidServer) ||
+          validTools.includes(invalidTool) ||
+          validTools.includes(foreignTool) ||
+          invalidTool === foreignTool
+        ) {
+          return;
+        }
 
         const env = createTestEnv(validServers, validTools);
 
         try {
-          // Build markdown with an MCP Dependencies table that references both valid and invalid servers/tools
+          // Build markdown with an MCP Dependencies table that exercises:
+          // - valid playwright-qa tool (no error)
+          // - invalid tool on playwright-qa → invalid-mcp-tool
+          // - invalid server → invalid-mcp-server (tool column ignored for registry)
+          // - optional other known server + unregistered tool → no invalid-mcp-tool
           let md = '# Test Agent\n\n';
           md += '## Role\n\nTest role.\n\n';
           md += '## Input Format\n\nTest input.\n\n';
           md += '## MCP Dependencies\n\n';
           md += '| Server | Tool | Purpose |\n';
           md += '|--------|------|--------|\n';
-          // Valid reference
-          md += `| \`${validServers[0]}\` | \`${validTools[0]}\` | Valid reference |\n`;
-          // Invalid server reference
-          md += `| \`${invalidServer}\` | \`${invalidTool}\` | Bad reference |\n`;
+          md += `| \`playwright-qa\` | \`${validTools[0]}\` | Valid playwright-qa tool |\n`;
+          md += `| \`playwright-qa\` | \`${invalidTool}\` | Bad playwright-qa tool |\n`;
+          md += `| \`${invalidServer}\` | \`${invalidTool}\` | Bad server reference |\n`;
+          if (extraServers.length > 0) {
+            const otherServer = extraServers.find(
+              (s) => s !== 'playwright-qa' && s !== invalidServer,
+            );
+            if (otherServer) {
+              md += `| \`${otherServer}\` | \`${foreignTool}\` | Other server — not registry-checked |\n`;
+            }
+          }
           md += '\n## Output Format\n\nTest output.\n\n';
 
           const agentFile = path.join(env.agentDir, 'test.agent.md');
@@ -175,16 +205,26 @@ async function testProperty13(): Promise<void> {
             `Expected an 'invalid-mcp-server' error for '${invalidServer}', got none. Errors: ${JSON.stringify(result.errors)}`,
           );
 
-          // Should have an error for the invalid tool reference
+          // Invalid tool on playwright-qa must produce invalid-mcp-tool
           const toolErrors = result.errors.filter(
             (e) => e.type === 'invalid-mcp-tool' && e.message.includes(invalidTool),
           );
           assert.ok(
             toolErrors.length > 0,
-            `Expected an 'invalid-mcp-tool' error for '${invalidTool}', got none. Errors: ${JSON.stringify(result.errors)}`,
+            `Expected an 'invalid-mcp-tool' error for '${invalidTool}' on playwright-qa, got none. Errors: ${JSON.stringify(result.errors)}`,
           );
 
-          // Each error should have a line number
+          // Unregistered tools on non-playwright-qa servers must NOT be flagged
+          const foreignToolErrors = result.errors.filter(
+            (e) => e.type === 'invalid-mcp-tool' && e.message.includes(foreignTool),
+          );
+          assert.equal(
+            foreignToolErrors.length,
+            0,
+            `Tools on non-playwright-qa servers must not produce invalid-mcp-tool for '${foreignTool}'. Errors: ${JSON.stringify(result.errors)}`,
+          );
+
+          // Each reported server/tool error should have a line number
           for (const err of [...serverErrors, ...toolErrors]) {
             assert.ok(
               typeof err.line === 'number' && err.line > 0,

@@ -376,9 +376,10 @@ function extractMcpServerReferences(lines: string[]): McpReference[] {
 
 /**
  * Extract MCP tool references from file content.
- * Looks for:
- * - Table rows in MCP Dependencies section: second column with backtick-quoted tool names
- * - Backtick-quoted names that look like tool references (snake_case)
+ * Only table rows in ## MCP Dependencies where the **server** column is
+ * `playwright-qa` are validated against mcp-server registry. Tools from
+ * `playwright` / `playwright-test` (or other servers) are intentionally ignored
+ * here — they are not registered in playwright-qa's TOOL_REGISTRY.
  */
 function extractMcpToolReferences(lines: string[]): McpReference[] {
   const refs: McpReference[] = [];
@@ -388,12 +389,10 @@ function extractMcpToolReferences(lines: string[]): McpReference[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].replace(/\r$/, '');
 
-    // Track if we're in an MCP Dependencies section (or a sub-section within it)
     if (/^## MCP Dependencies/.test(line)) {
       inMcpSection = true;
       continue;
     }
-    // Exit MCP section when we hit another top-level ## section
     if (/^## /.test(line) && !/^## MCP Dependencies/.test(line) && inMcpSection) {
       inMcpSection = false;
       continue;
@@ -401,20 +400,27 @@ function extractMcpToolReferences(lines: string[]): McpReference[] {
 
     if (!inMcpSection) continue;
 
-    // Skip table header/separator rows
-    if (/^\|[\s-]+\|/.test(line) && !/`/.test(line)) continue;
+    // Only pipe tables — skip prose that may mention browser_snapshot etc.
+    if (!line.trim().startsWith('|')) continue;
+    if (/^\|[\s-|]+$/.test(line.replace(/`/g, ''))) continue;
 
-    // Extract tool names from table rows (second column or any column with backtick-quoted tool names)
-    const toolMatches = line.matchAll(/`([a-z][a-z0-9_]+)`/g);
-    for (const match of toolMatches) {
-      const toolName = match[1];
-      // Skip known server names (they contain hyphens typically)
-      // Tools use snake_case with underscores
-      if (toolName.includes('_') && !seen.has(toolName)) {
-        seen.add(toolName);
-        refs.push({ name: toolName, line: i + 1 });
-      }
-    }
+    const columns = line
+      .split('|')
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0);
+    if (columns.length < 2) continue;
+
+    const serverMatch = columns[0].match(/`([^`]+)`/);
+    const toolMatch = columns[1].match(/`([a-z][a-z0-9_]+)`/);
+    if (!serverMatch || !toolMatch) continue;
+
+    // Registry under mcp-server only lists playwright-qa tools
+    if (serverMatch[1] !== 'playwright-qa') continue;
+
+    const toolName = toolMatch[1];
+    if (!toolName.includes('_') || seen.has(toolName)) continue;
+    seen.add(toolName);
+    refs.push({ name: toolName, line: i + 1 });
   }
 
   return refs;

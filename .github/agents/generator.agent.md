@@ -444,7 +444,7 @@ await test.step('Assert PDF content', async () => {
 - Prefer `assertPdfContains(path, tokensFromThisScenario)` over inventing fields after `extractPdfText`.
 - Envelope-only (magic/size/ext) → `assertDownloadedEnvelope` / `assertFileMagic` without inventing content needles.
 
-## Output Contract
+## Output Format
 
 Return:
 

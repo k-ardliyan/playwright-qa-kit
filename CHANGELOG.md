@@ -8,6 +8,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **File / PDF / Excel capability helpers** (scenario-driven content, fixture-first upload)
+  - `src/support/pw/file-content-core.ts` + `files.ts` — magic bytes, `fixturePath`, `extractPdfText`, `readExcelSummary`, `downloadAndSave`, `uploadFixture`, `uploadViaChooser`, envelope/content asserts (`assertPdfContains`, `assertPdfMatches`)
+  - `test-fixtures/` bank (demo tokens only: `QA-KIT-SAMPLE-PDF`, `ColA/B/C`)
+  - Capability tags `@download` `@upload` `@file-content` + validator rules
+  - MCP tools: `inspect_file`, `extract_pdf_text` (raw text only), `read_excel_summary`, `list_test_fixtures`
+  - Demo `src/tests/demo/demo-file-capabilities.spec.ts`
+  - `npm run sync:file-core` / auto-sync inside `mcp:build` (single source of truth for pure core)
+  - Recipe `docs/recipes/multi-session-sync.md` for dual-context admin↔user
+  - Content needles/headers always from the scenario — no patented business field schema
+  - Docs/recipes: MANUAL-SCENARIOS, GUIDE, CHEATSHEET, `_TEMPLATE`, file-upload-download, pdf-excel-content-assert, multi-session-sync
+  - Health check `file_content`; setup-check fixture bank; healer seeds for download/upload
+
 - **Assisted human challenge (OTP / CAPTCHA) for auth session bootstrap**
   - `src/support/human-challenge.ts` — modes: `none` | `otp-browser` (primary) | `otp-stdin` | `captcha-browser` | `auto`
   - Wired into `src/support/auth.setup.ts` + generated `wizard-auth-template`
@@ -41,7 +53,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - PR `e2e.yml` artifact path `reports/html/`; optional matrix shards
 - Nightly shards upload `blob-report/` + merge via `playwright merge-reports`
 - Generator/Planner/Healer agent instructions document official Playwright power patterns
-- `requirements/_TEMPLATE.md` — capability scenario tags
+- `requirements/_TEMPLATE.md` — capability scenario tags including `@download` `@upload` `@file-content` (scenario-owned content tokens)
+- `docs/MANUAL-SCENARIOS.md` — upload not manual; PDF text automatable; PDF layout visual remains `@manual`; fixture-first not headed pause
+- `docs/GUIDE.md` / `docs/CHEATSHEET.md` — file power features + `test-fixtures/` paths + restart `playwright-qa` after `mcp:build`
 - `validate_generated_tests` — capability tag ↔ API usage enforcement (demo/seed exempt)
 
 ### Added (prior)

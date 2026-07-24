@@ -8,6 +8,7 @@ export interface ListArtifactsOutput {
   requirements: string[];
   specs: string[];
   tests: string[];
+  fixtures: string[];
   message: string;
 }
 
@@ -49,12 +50,33 @@ export function listArtifacts(): ListArtifactsOutput {
     path.join(getRepoRoot(), ...getPlaywrightTestRoot().split('/')),
     '.spec.ts',
   );
+  const fixturesRoot = path.join(getRepoRoot(), 'test-fixtures');
+  const fixtures = listAllFixtureFiles(fixturesRoot);
 
   return {
     status: 'success',
     requirements,
     specs,
     tests,
-    message: `Found ${requirements.length} requirement(s), ${specs.length} spec(s), ${tests.length} test file(s).`,
+    fixtures,
+    message: `Found ${requirements.length} requirement(s), ${specs.length} spec(s), ${tests.length} test file(s), ${fixtures.length} fixture file(s).`,
   };
+}
+
+function listAllFixtureFiles(dirPath: string): string[] {
+  if (!fs.existsSync(dirPath)) return [];
+  const repoRoot = getRepoRoot();
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && entry.name.toLowerCase() !== 'readme.md') {
+        files.push(path.relative(repoRoot, full).replace(/\\/g, '/'));
+      }
+    }
+  };
+  walk(dirPath);
+  return files.sort((a, b) => a.localeCompare(b));
 }

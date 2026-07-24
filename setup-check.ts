@@ -52,6 +52,16 @@ const CHECKS: Array<{ label: string; path: string; hint: string }> = [
     path: path.join('docs', 'GUIDE.md'),
     hint: 'restore docs/GUIDE.md from repo',
   },
+  {
+    label: 'test-fixtures bank (file upload/download)',
+    path: path.join('test-fixtures', 'README.md'),
+    hint: 'restore test-fixtures/ from repo (fixture-first uploads)',
+  },
+  {
+    label: 'file content helpers',
+    path: path.join('src', 'support', 'pw', 'files.ts'),
+    hint: 'restore src/support/pw/files.ts from repo',
+  },
 ];
 
 function checkPlaywrightTestVersion(): void {

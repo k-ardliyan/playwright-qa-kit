@@ -202,6 +202,25 @@ function validateCapabilityPowerRules(
   const hasAriaApi =
     /\btoMatchAriaSnapshot\b|\bexpectAriaSnapshot\b|\bexpectAriaMatchesCatalog\b/.test(content);
   const hasVisualApi = /\btoHaveScreenshot\b|\bexpectVisual\b|\bexpectPageVisual\b/.test(content);
+  const hasDownloadApi =
+    /waitForEvent\s*\(\s*['"]download['"]\s*\)/.test(content) ||
+    /\bdownloadAndSave\b/.test(content) ||
+    /\bdownloadFile\b/.test(content);
+  const hasUploadApi =
+    /\bsetInputFiles\b/.test(content) ||
+    /\buploadFixture\b/.test(content) ||
+    /\buploadViaChooser\b/.test(content) ||
+    /\buploadFile\b/.test(content);
+  const hasFileContentApi =
+    /\bassertPdfContains\b/.test(content) ||
+    /\bassertPdfMatches\b/.test(content) ||
+    /\bextractPdfText\b/.test(content) ||
+    /\bassertExcelHeaders\b/.test(content) ||
+    /\breadExcelSummary\b/.test(content) ||
+    /\bassertDownloadedEnvelope\b/.test(content) ||
+    /\bassertFileMagic\b/.test(content) ||
+    /\bdetectMagic\b/.test(content) ||
+    /\bdetectFileKind\b/.test(content);
 
   const mentionsNetwork =
     /@network\b/.test(lower) ||
@@ -223,6 +242,21 @@ function validateCapabilityPowerRules(
     /\(@visual\)/.test(lower) ||
     /tag:\s*\[[^\]]*'@visual'/.test(lower) ||
     /tag:\s*\[[^\]]*"@visual"/.test(lower);
+  const mentionsDownload =
+    /@download\b/.test(lower) ||
+    /\(@download\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@download'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@download"/.test(lower);
+  const mentionsUpload =
+    /@upload\b/.test(lower) ||
+    /\(@upload\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@upload'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@upload"/.test(lower);
+  const mentionsFileContent =
+    /@file-content\b/.test(lower) ||
+    /\(@file-content\)/.test(lower) ||
+    /tag:\s*\[[^\]]*'@file-content'/.test(lower) ||
+    /tag:\s*\[[^\]]*"@file-content"/.test(lower);
 
   if (mentionsNetwork && !hasRouteApi) {
     violations.push({
@@ -257,6 +291,33 @@ function validateCapabilityPowerRules(
       lineNumber: 1,
       ruleName:
         'Capability rule (@visual): must call toHaveScreenshot or expectVisual/expectPageVisual from @/support/pw',
+    });
+  }
+
+  if (mentionsDownload && !hasDownloadApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        "Capability rule (@download): must use waitForEvent('download') or downloadAndSave/downloadFile from @/support/pw or BasePage",
+    });
+  }
+
+  if (mentionsUpload && !hasUploadApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@upload): must use setInputFiles or uploadFixture/uploadViaChooser/uploadFile',
+    });
+  }
+
+  if (mentionsFileContent && !hasFileContentApi) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      ruleName:
+        'Capability rule (@file-content): must use assertPdfContains/assertPdfMatches/extractPdfText/assertExcelHeaders/readExcelSummary/assertDownloadedEnvelope/assertFileMagic from @/support/pw (needles from scenario)',
     });
   }
 

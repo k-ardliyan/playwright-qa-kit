@@ -18,6 +18,10 @@ import { discoverPages } from './discover-pages';
 import { snapshotPage } from './snapshot-page';
 import { archiveReport } from './archive-report';
 import { generatePageObject } from './generate-page-object';
+import { inspectFile } from './inspect-file';
+import { extractPdfTextTool } from './extract-pdf-text';
+import { readExcelSummaryTool } from './read-excel-summary';
+import { listTestFixtures } from './list-test-fixtures';
 import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -306,6 +310,80 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       required: ['featureName', 'pageName'],
     },
     handler: (args) => generatePageObject(args),
+  },
+  {
+    name: 'inspect_file',
+    description:
+      'Inspect a file under test-fixtures/ or test-results/ (kind, size, magic bytes). Envelope only — no domain field schema.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Repo-relative path under test-fixtures/ or test-results/.',
+        },
+      },
+      required: ['filePath'],
+    },
+    handler: (args) => inspectFile(args),
+  },
+  {
+    name: 'extract_pdf_text',
+    description:
+      'Extract plain text from a PDF under test-fixtures/ or test-results/. Returns raw text only — match against scenario expected tokens from the requirement; does not define business fields (no title/code/name schema).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Repo-relative path to a PDF under test-fixtures/ or test-results/.',
+        },
+        maxChars: {
+          type: 'number',
+          description: 'Optional max characters to return (truncates text).',
+        },
+      },
+      required: ['filePath'],
+    },
+    handler: (args) => extractPdfTextTool(args),
+  },
+  {
+    name: 'read_excel_summary',
+    description:
+      'Read xlsx sheet names, header row, and sample rows under test-fixtures/ or test-results/. Structure dump only — expected headers come from the scenario, not a fixed domain schema.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: {
+          type: 'string',
+          description: 'Repo-relative path to an xlsx file under test-fixtures/ or test-results/.',
+        },
+        sheet: {
+          description: 'Optional sheet name or 0-based index.',
+        },
+        maxRows: {
+          type: 'number',
+          description: 'Max data rows to return after the header (default 20).',
+        },
+      },
+      required: ['filePath'],
+    },
+    handler: (args) => readExcelSummaryTool(args),
+  },
+  {
+    name: 'list_test_fixtures',
+    description:
+      'List files under test-fixtures/ for upload Input Data paths (fixture-first; no headed OS file picker).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        subdir: {
+          type: 'string',
+          description: 'Optional relative subdir under test-fixtures/ (e.g. pdf, excel).',
+        },
+      },
+    },
+    handler: (args) => listTestFixtures(args),
   },
 ];
 

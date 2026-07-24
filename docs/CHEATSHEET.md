@@ -78,24 +78,47 @@ generate_page_object (playwright-qa) — featureName, pageName
 
 ## Tipe Skenario
 
-| Tag                     | Artinya                                   |
-| ----------------------- | ----------------------------------------- |
-| `(@success)`            | Happy path — alur normal                  |
-| `(@failure)`            | Negative path — validasi, input salah     |
-| `(@access-restriction)` | Role tidak berhak, akses ditolak          |
-| `(@manual)`             | Tidak bisa diotomasi (CAPTCHA, OTP, dsb.) |
+| Tag                     | Artinya                                                |
+| ----------------------- | ------------------------------------------------------ |
+| `(@success)`            | Happy path — alur normal                               |
+| `(@failure)`            | Negative path — validasi, input salah                  |
+| `(@access-restriction)` | Role tidak berhak, akses ditolak                       |
+| `(@manual)`             | Tidak bisa diotomasi (CAPTCHA, OTP, layout PDF visual) |
+| `(@network)`            | Mock/intercept HTTP                                    |
+| `(@hybrid)`             | Seed API + assert UI                                   |
+| `(@aria)` / `(@visual)` | ARIA snapshot / visual regression                      |
+| `(@download)`           | Download file → `downloadAndSave`                      |
+| `(@upload)`             | Upload fixture-first → `uploadFixture`                 |
+| `(@file-content)`       | PDF teks / Excel header (needle skenario)              |
+
+---
+
+## File fixtures (local-first)
+
+| Path                     | Isi                                                                         |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `test-fixtures/pdf/`     | Sample PDF untuk upload / content assert                                    |
+| `test-fixtures/excel/`   | Sample xlsx                                                                 |
+| `test-fixtures/images/`  | Sample image upload                                                         |
+| `test-fixtures/invalid/` | Negative (empty / spoofed)                                                  |
+| Helpers                  | `@/support/pw` — `uploadFixture`, `downloadAndSave`, `assertPdfContains`, … |
+
+Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`.
+
+Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`** di IDE (Hermes reload MCP).
 
 ---
 
 ## Kalau Gagal — Cek Ini Dulu
 
-| Gejala                       | Pertama Cek                                |
-| ---------------------------- | ------------------------------------------ |
-| `health_check` fail          | `npm run mcp:build` lalu restart IDE       |
-| `validate_requirement` error | Baca hint di output → perbaiki → coba lagi |
-| Test gagal semua satu role   | Cek `.auth/<role>.json` ada atau belum     |
-| Auth file missing            | `npm run auth:setup` / `auth:setup:headed` |
-| Exit `2` (escalate)          | Hubungi Framework Maintainer               |
+| Gejala                       | Pertama Cek                                                |
+| ---------------------------- | ---------------------------------------------------------- |
+| `health_check` fail          | `npm run mcp:build` lalu **restart `playwright-qa`** / IDE |
+| Tool MCP baru tidak muncul   | `npm run mcp:build` → restart `playwright-qa`              |
+| `validate_requirement` error | Baca hint di output → perbaiki → coba lagi                 |
+| Test gagal semua satu role   | Cek `.auth/<role>.json` ada atau belum                     |
+| Auth file missing            | `npm run auth:setup` / `auth:setup:headed`                 |
+| Exit `2` (escalate)          | Hubungi Framework Maintainer                               |
 
 ---
 

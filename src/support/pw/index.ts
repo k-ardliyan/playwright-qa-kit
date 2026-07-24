@@ -3,6 +3,7 @@
  *
  * Import from `@/support/pw`:
  *   import { mockJson, apiSeed, expectAriaSnapshot, expectVisual, freezeTime } from '@/support/pw';
+ *   import { downloadAndSave, uploadFixture, assertPdfContains } from '@/support/pw';
  */
 
 export { mockJson, mockServerError, mockAbort, mockText, unmockAll } from './network-mock';
@@ -23,3 +24,25 @@ export {
   roleStorageStatePath,
   type RoleProjectOptions,
 } from './role-projects';
+
+export {
+  downloadAndSave,
+  uploadFixture,
+  uploadViaChooser,
+  resolveUploadFixturePath,
+  assertDownloadedEnvelope,
+  assertPdfContains,
+  assertPdfMatches,
+  assertExcelHeaders,
+  assertFileMagic,
+  extractPdfText,
+  fixturePath,
+  detectMagic,
+  detectFileKind,
+  readExcelSummary,
+  inspectFileLocal,
+  getFileKind,
+  type FileKind,
+  type ExcelSummary,
+  type InspectFileResult,
+} from './files';

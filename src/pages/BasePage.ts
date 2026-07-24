@@ -1,4 +1,5 @@
 import { type Locator, type Page, expect } from '@playwright/test';
+import { downloadAndSave } from '@/support/pw/files';
 
 /**
  * BasePage — Fondasi tangguh untuk semua Page Object.
@@ -83,19 +84,19 @@ export class BasePage {
 
   // ── ADVANCED INTERACTION: UPLOAD & DOWNLOAD ───────────────────────────────
 
-  /** Menangani download file dan mengembalikan absolute path file yang terunduh. */
+  /**
+   * Menangani download file dan mengembalikan absolute path file yang terunduh.
+   * Prefer `@/support/pw` `downloadAndSave` for new specs (same behavior).
+   */
   async downloadFile(locator: Locator): Promise<string> {
-    const downloadPromise = this.page.waitForEvent('download');
-    await locator.click();
-    const download = await downloadPromise;
-
-    // Simpan di folder sementara di dalam workspace
-    const path = `./test-results/downloads/${download.suggestedFilename()}`;
-    await download.saveAs(path);
-    return path;
+    const result = await downloadAndSave(this.page, () => locator.click());
+    return result.path;
   }
 
-  /** Mengunggah file ke input secara aman. */
+  /**
+   * Mengunggah file ke input secara aman.
+   * Prefer `uploadFixture` from `@/support/pw` for paths under test-fixtures/.
+   */
   async uploadFile(locator: Locator, filePath: string): Promise<void> {
     await locator.setInputFiles(filePath);
   }

@@ -70,6 +70,36 @@ const SEEDS: SeedDef[] = [
     },
     tags: ['auth', 'env', 'power'],
   },
+  {
+    signature: {
+      errorType: 'timeout',
+      errorPattern: 'waiting for event [\'"]download[\'"]|Timeout.*download|Download.*timeout',
+    },
+    fix: {
+      strategy: 'add_state_setup',
+      beforePattern: 'page.click',
+      afterTemplate:
+        "const { path: downloaded } = await downloadAndSave(page, async () => {\n  await page.getByRole('button', { name: /download|unduh|export/i }).click();\n});\n// assert envelope / content with scenario tokens\n",
+      requiredImports: [
+        "import { downloadAndSave, assertDownloadedEnvelope } from '@/support/pw';",
+      ],
+    },
+    tags: ['download', 'file', 'power'],
+  },
+  {
+    signature: {
+      errorType: 'data_state',
+      errorPattern: 'Upload fixture not found|ENOENT.*test-fixtures|setInputFiles',
+    },
+    fix: {
+      strategy: 'replace_locator',
+      beforePattern: 'setInputFiles',
+      afterTemplate:
+        "await uploadFixture(page.locator('input[type=file]'), 'images/sample.png');\n// or path from scenario Input Data under test-fixtures/\n",
+      requiredImports: ["import { uploadFixture } from '@/support/pw';"],
+    },
+    tags: ['upload', 'file', 'power'],
+  },
 ];
 
 /**

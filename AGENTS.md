@@ -63,6 +63,10 @@ List every tool explicitly by server:
   - `archive_report` (call after Reporter produces the final report)
   - `snapshot_page` (capture ARIA + selector catalog to `selector-catalog/<feature>/<page>.{aria.yml,json}`)
   - `discover_pages` (BFS auto-crawl a public site, writes per-page catalog + `page-map.json`)
+  - `list_test_fixtures` (fixture-first upload paths under `test-fixtures/`)
+  - `inspect_file` (envelope: kind/size/magic under `test-fixtures/` or `test-results/`)
+  - `extract_pdf_text` (raw PDF text only — match scenario tokens; no domain field schema)
+  - `read_excel_summary` (headers/sample rows — compare to scenario Expected Result)
 - **playwright-test**
   - `run_tests` (and related test-runner tools from this server)
 - **playwright** (`@playwright/mcp`)

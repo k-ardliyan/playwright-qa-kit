@@ -2,6 +2,7 @@
 
 /**
  * Property: capability tags require matching Playwright power APIs.
+ * Covers @network (baseline) and @download / @upload / @file-content.
  */
 
 import assert from 'node:assert/strict';
@@ -23,11 +24,29 @@ function cleanup(): void {
   }
 }
 
-function base(extra: string): string {
-  return `import { test, expect } from '@/fixtures/base.fixture';
+function violations(): ReturnType<typeof validateSpecFile> {
+  return validateSpecFile(file, 'src/tests/__property_capability__/case.spec.ts');
+}
+
+function assertHasCap(rule: string): void {
+  const v = violations();
+  assert.ok(
+    v.some((x) => x.ruleName.includes(rule)),
+    `expected ${rule}, got: ${JSON.stringify(v)}`,
+  );
+}
+
+function assertNoCap(): void {
+  const v = violations().filter((x) => x.ruleName.includes('Capability rule'));
+  assert.equal(v.length, 0, `unexpected capability violations: ${JSON.stringify(v)}`);
+}
+
+function main(): void {
+  cleanup();
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
 // spec: specs/__property_capability__-test-plan.md
 // seed: src/tests/seed.spec.ts
-${extra}
 test.describe('Capability Case', { tag: ['@network'] }, () => {
   test('case', async ({ page }) => {
     await test.step('step', async () => {
@@ -35,31 +54,13 @@ test.describe('Capability Case', { tag: ['@network'] }, () => {
     });
   });
 });
-`;
-}
+`);
+  assertHasCap('Capability rule (@network)');
 
-function main(): void {
-  cleanup();
-
-  // Missing mock → violation
-  write(base(''));
-  let v = validateSpecFile(file, 'src/tests/__property_capability__/case.spec.ts');
-  assert.ok(
-    v.some((x) => x.ruleName.includes('Capability rule (@network)')),
-    `expected @network capability violation, got: ${JSON.stringify(v)}`,
-  );
-
-  // With mockJson → pass capability rule (may still be ok overall)
-  write(
-    base(`import { mockJson } from '@/support/pw';
-`),
-  );
-  // still need actual usage of mockJson/route for rule
   write(`import { test, expect } from '@/fixtures/base.fixture';
 import { mockJson } from '@/support/pw';
 // spec: specs/__property_capability__-test-plan.md
 // seed: src/tests/seed.spec.ts
-
 test.describe('Capability Case', { tag: ['@network'] }, () => {
   test('case', async ({ page }) => {
     await test.step('step', async () => {
@@ -69,12 +70,90 @@ test.describe('Capability Case', { tag: ['@network'] }, () => {
   });
 });
 `);
-  v = validateSpecFile(file, 'src/tests/__property_capability__/case.spec.ts');
-  assert.equal(
-    v.filter((x) => x.ruleName.includes('Capability rule')).length,
-    0,
-    `unexpected capability violations: ${JSON.stringify(v)}`,
-  );
+  assertNoCap();
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Download', { tag: ['@download'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await expect(page.locator('body')).toBeVisible();
+    });
+  });
+});
+`);
+  assertHasCap('Capability rule (@download)');
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+import { downloadAndSave } from '@/support/pw';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Download', { tag: ['@download'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await downloadAndSave(page, async () => {
+        await page.getByRole('button').click();
+      });
+    });
+  });
+});
+`);
+  assertNoCap();
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Upload', { tag: ['@upload'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await expect(page.locator('body')).toBeVisible();
+    });
+  });
+});
+`);
+  assertHasCap('Capability rule (@upload)');
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+import { uploadFixture } from '@/support/pw';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Upload', { tag: ['@upload'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await uploadFixture(page.locator('input[type=file]'), 'images/sample.png');
+    });
+  });
+});
+`);
+  assertNoCap();
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Content', { tag: ['@file-content'] }, () => {
+  test('case', async ({ page }) => {
+    await test.step('step', async () => {
+      await expect(page.locator('body')).toBeVisible();
+    });
+  });
+});
+`);
+  assertHasCap('Capability rule (@file-content)');
+
+  write(`import { test, expect } from '@/fixtures/base.fixture';
+import { assertPdfContains } from '@/support/pw';
+// spec: specs/__property_capability__-test-plan.md
+// seed: src/tests/seed.spec.ts
+test.describe('Content', { tag: ['@file-content'] }, () => {
+  test('case', async () => {
+    await test.step('step', async () => {
+      await assertPdfContains('test-fixtures/pdf/sample-text.pdf', ['QA-KIT-SAMPLE-PDF']);
+    });
+  });
+});
+`);
+  assertNoCap();
 
   cleanup();
   process.stdout.write('✓ Property: capability tags require power APIs\n');

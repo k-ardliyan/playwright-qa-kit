@@ -80,14 +80,19 @@
 > - `(@success)` — happy path, alur normal berhasil
 > - `(@failure)` — negative path, input salah, validasi gagal
 > - `(@access-restriction)` — role tidak berhak, akses ditolak
-> - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, dsb)
+> - `(@manual)` — tidak bisa diotomasi (CAPTCHA, biometric, layout visual PDF, dsb)
 > - `(@network)` — butuh intercept/mock network (`page.route` / helper `@/support/pw`)
 > - `(@hybrid)` — seed/cleanup via API (`request` fixture) + assert di UI
 > - `(@aria)` — assert struktur ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
 > - `(@visual)` — visual regression (`toHaveScreenshot`)
+> - `(@download)` — download file (`downloadAndSave` / `waitForEvent('download')`)
+> - `(@upload)` — upload fixture-first (`uploadFixture` / `setInputFiles` — **bukan** OS picker manual)
+> - `(@file-content)` — assert isi PDF teks / header Excel; **token/needle milik skenario** (dari Hasil / Input Data), bukan skema domain tetap
 >
-> Capability tags boleh digabung, contoh: `(@failure @network)`, `(@success @hybrid)`.
-> Alternatif di Metadata Tags: `#network #hybrid #aria #visual`.
+> Capability tags boleh digabung, contoh: `(@failure @network)`, `(@success @hybrid)`, `(@success @download @file-content)`.
+> Alternatif di Metadata Tags: `#network #hybrid #aria #visual #download #upload #file-content`.
+>
+> **Konten file scenario-owned:** tulis token yang harus ada di PDF/Excel di **Hasil yang Diharapkan** atau **Input Data**. Generator/helper hanya match token itu — jangan hardcode judul/kode/nama produk di helper.
 >
 > Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 >
@@ -196,9 +201,15 @@
 > - Butuh **OTP / SMS / email** verifikasi (butuh akses ke device / inbox asli)
 > - Butuh **payment gateway** asli dengan kartu test + 3DS
 > - Butuh **biometric** (sidik jari, Face ID)
-> - Butuh **visual review** manusia (layout PDF, warna, tipografi)
+> - Butuh **visual review** manusia untuk **layout** PDF (spasi, alignment, tipografi) — **bukan** isi teks PDF
 >
-> **Lihat panduan lengkap:** [docs/MANUAL-SCENARIOS.md](../docs/MANUAL-SCENARIOS.md)
+> **Bukan manual (otomasi fixture-first):**
+>
+> - **Upload** → `(@upload)` + file di `test-fixtures/` (`setInputFiles` / `uploadFixture`)
+> - **Download** → `(@download)` + `downloadAndSave`
+> - **PDF teks / Excel header** → `(@file-content)` + needles dari requirement
+>
+> **Lihat panduan lengkap:** [docs/MANUAL-SCENARIOS.md](../docs/MANUAL-SCENARIOS.md) · [docs/recipes/file-upload-download.md](../docs/recipes/file-upload-download.md) · [docs/recipes/pdf-excel-content-assert.md](../docs/recipes/pdf-excel-content-assert.md)
 
 ---
 

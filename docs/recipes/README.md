@@ -8,6 +8,9 @@ See [FORK-ONBOARDING.md → Integration into an existing frontend repo](../../FO
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [`playwright.config.nextjs-e2e.recipe.ts`](playwright.config.nextjs-e2e.recipe.ts) | Integrating the kit into a Next.js app under `/e2e` with auth setup project + `webServer` |
 | [`playwright.role-projects.recipe.ts`](playwright.role-projects.recipe.ts)         | Multi-role projects via `buildRoleProjects` + `.auth/<role>.json`                         |
+| [`file-upload-download.md`](file-upload-download.md)                               | Fixture-first `@upload` / `@download` — no OS picker pause                                |
+| [`pdf-excel-content-assert.md`](pdf-excel-content-assert.md)                       | `@file-content` PDF text / Excel headers — scenario-owned needles only                    |
+| [`multi-session-sync.md`](multi-session-sync.md)                                   | Dual `browser.newContext` admin↔user data sync in one test                                |
 
 Related runtime configs (runnable, not recipes):
 

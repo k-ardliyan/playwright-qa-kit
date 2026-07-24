@@ -284,6 +284,15 @@ import {
   expectAriaSnapshot,
   expectAllVisible,
   expectSoftFieldErrors,
+  downloadAndSave,
+  uploadFixture,
+  uploadViaChooser,
+  assertDownloadedEnvelope,
+  assertPdfContains,
+  extractPdfText,
+  assertExcelHeaders,
+  readExcelSummary,
+  assertFileMagic,
 } from '@/support/pw';
 ```
 
@@ -293,10 +302,13 @@ import {
 | `(@hybrid)` or `#hybrid`               | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                 |
 | `(@aria)` or `#aria`                   | Structural a11y / landmark regression                     | If `selector-catalog/<feature>/<page>.aria.yml` exists → `expectAriaMatchesCatalog(page.getByRole('main'), 'selector-catalog/...')`; else `expectAriaSnapshot` with a small inline YAML baseline |
 | `(@visual)` or `#visual`               | Layout/CSS regression                                     | After UI stabilizes: `await expectVisual(locator, { name: '<name>.png' })` or `toHaveScreenshot` (scope to a stable region)                                                                      |
+| `(@download)` or `#download`           | Scenario triggers file download / export                  | `downloadAndSave(page, () => click…)` or `page.waitForEvent('download')` **before** the trigger; then envelope/content asserts as needed                                                         |
+| `(@upload)` or `#upload`               | Scenario uploads file(s)                                  | Fixture-first: `uploadFixture(locator, 'test-fixtures/…')` or `uploadViaChooser(page, open, 'test-fixtures/…')` or `setInputFiles` — **never** `page.pause()` for OS file pick                   |
+| `(@file-content)` or `#file-content`   | Assert PDF/Excel/CSV content or file envelope             | `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary` / `assertDownloadedEnvelope` / `assertFileMagic` — **needles/headers from THIS scenario only**                |
 | Multi-field `(@failure)` validation    | Several fields show errors at once                        | Prefer `expect.soft(...)` or `expectSoftFieldErrors([...])` so one test reports all field failures                                                                                               |
 | Time-sensitive UI                      | Date picker / countdown / "expires at"                    | `freezeTime` / `advanceTime` from `@/support/pw` (`page.clock`)                                                                                                                                  |
 
-**Validator:** `validate_generated_tests` fails if file mentions `@network`/`@hybrid`/`@aria`/`@visual` (tags) without the matching API usage.
+**Validator:** `validate_generated_tests` fails if file mentions `@network`/`@hybrid`/`@aria`/`@visual`/`@download`/`@upload`/`@file-content` (tags) without the matching API usage.
 
 **Visual baselines:** update intentionally with `npx playwright test --update-snapshots path/to/spec.ts`. Do not update snapshots to hide product bugs.
 
@@ -338,6 +350,54 @@ await expect.soft(page.getByText('Password is required')).toBeVisible();
 
 Do **not** invent backend endpoints. Only use hybrid/network patterns when the requirement/plan names the URL or payload, or when the app under test documents them in Data scope / steps.
 
+### Download pattern (`@download`)
+
+```typescript
+const downloaded = await test.step('Download export', async () => {
+  return downloadAndSave(page, async () => {
+    await page.getByRole('button', { name: 'Export' }).click();
+  });
+});
+await assertDownloadedEnvelope(downloaded.path, { kind: 'pdf', minBytes: 100 });
+```
+
+Register `waitForEvent('download')` **before** the click that starts the download (or use `downloadAndSave`, which does this). Prefer `downloadAndSave` / `downloadFile` from `@/support/pw` or BasePage over ad-hoc listeners.
+
+### Upload pattern (`@upload`) — fixture-first
+
+```typescript
+await test.step('Upload fixture', async () => {
+  // Path from plan Input Data — under test-fixtures/
+  await uploadFixture(page.locator('input[type="file"]'), 'test-fixtures/pdf/sample-text.pdf');
+  // Or when UI opens a chooser after click:
+  // await uploadViaChooser(page, () => page.getByRole('button', { name: 'Pilih File' }).click(), 'test-fixtures/…');
+});
+```
+
+**Forbidden:** `page.pause()` or any headed OS file-picker flow for upload. Always use `setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile`.
+
+### File content pattern (`@file-content`) — scenario-owned tokens only
+
+```typescript
+// needles / headers MUST come from THIS scenario's Expected Result / Input Data / Hasil yang Diharapkan.
+// NEVER inject a default list (no built-in judul/kode/nama/invoice schema).
+// NEVER copy demo fixture tokens (QA-KIT-SAMPLE-PDF, ColA) into product tests.
+await test.step('Assert PDF content', async () => {
+  await assertPdfContains(downloaded.path, [
+    /* tokens from THIS scenario only, e.g. values listed in Expected Result */
+  ]);
+});
+// Excel example:
+// await assertExcelHeaders(downloaded.path, [/* headers from THIS scenario only */]);
+```
+
+**Content-assert principle (non-negotiable):**
+
+- Helpers extract or compare only — they do **not** patent domain fields.
+- Map plan Expected Result / Input Data → `needles` / headers arguments.
+- Prefer `assertPdfContains(path, tokensFromThisScenario)` over inventing fields after `extractPdfText`.
+- Envelope-only (magic/size/ext) → `assertDownloadedEnvelope` / `assertFileMagic` without inventing content needles.
+
 ## Output Contract
 
 Return:
@@ -347,7 +407,7 @@ Return:
 - any skipped/unmappable scenarios with reasons,
 - any skeleton files generated with the reason,
 - scenarios deferred to Healer (with last failure message),
-- capability tags applied (`network` / `hybrid` / `aria` / `visual`) per file.
+- capability tags applied (`network` / `hybrid` / `aria` / `visual` / `download` / `upload` / `file-content`) per file.
 
 ## Example Prompts
 
@@ -355,3 +415,5 @@ Return:
 - "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `src/tests/invoice-finance.spec.ts` and `src/tests/invoice-super-admin.spec.ts`."
 - "Generate access-restriction test from SC-03 in `specs/finance-approve-invoice-test-plan.md` for role hrd."
 - "Generate `@network` failure test that mocks `**/api/invoices/**` 500 using `@/support/pw` helpers."
+- "Generate `@download` + `@file-content` export test using `downloadAndSave` and `assertPdfContains` with tokens from the plan Expected Result only."
+- "Generate `@upload` test with `uploadFixture` / `uploadViaChooser` from `test-fixtures/` — never `page.pause()`."

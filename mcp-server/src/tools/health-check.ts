@@ -239,6 +239,40 @@ function checkJsonReporterOutput(): HealthCheckItem {
   };
 }
 
+/** Soft check: file-content deps + fixture bank (local-first file capabilities). */
+function checkFileContentCapability(): HealthCheckItem {
+  const root = getRepoRoot();
+  const missing: string[] = [];
+  try {
+    require.resolve('pdf-parse', { paths: [root, path.join(root, 'mcp-server')] });
+  } catch {
+    missing.push('pdf-parse');
+  }
+  try {
+    require.resolve('exceljs', { paths: [root, path.join(root, 'mcp-server')] });
+  } catch {
+    missing.push('exceljs');
+  }
+  const fixtures = path.join(root, 'test-fixtures');
+  if (!fs.existsSync(fixtures)) {
+    missing.push('test-fixtures/');
+  }
+  if (missing.length > 0) {
+    return {
+      name: 'file_content',
+      status: 'warn',
+      message:
+        `File capability incomplete (missing: ${missing.join(', ')}). ` +
+        'Install pdf-parse/exceljs and ensure test-fixtures/ exists for @download/@upload/@file-content.',
+    };
+  }
+  return {
+    name: 'file_content',
+    status: 'ok',
+    message: 'pdf-parse + exceljs + test-fixtures/ available for file content asserts',
+  };
+}
+
 export function healthCheck(): HealthCheckOutput {
   const checks = [
     checkNodeVersion(),
@@ -250,6 +284,7 @@ export function healthCheck(): HealthCheckOutput {
     checkBaseUrl(),
     checkAuthChallengeMode(),
     checkJsonReporterOutput(),
+    checkFileContentCapability(),
   ];
 
   const hasFail = checks.some((c) => c.status === 'fail');

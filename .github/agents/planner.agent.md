@@ -93,12 +93,12 @@ Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requ
 
 ## Scenarios
 
-### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @hybrid | @aria | @visual)
+### SC-01: <scenario title> (@success | @failure | @access-restriction | @manual | @network | @hybrid | @aria | @visual | @download | @upload | @file-content)
 
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
-**Capabilities:** <none | network | hybrid | aria | visual — derived from title tags / requirement Tags>
+**Capabilities:** <none | network | hybrid | aria | visual | download | upload | file-content — derived from title tags / requirement Tags>
 
 | Scenario Name | Steps | Expected Result | Capabilities         |
 | ------------- | ----- | --------------- | -------------------- |
@@ -148,13 +148,16 @@ Always suffix the heading with at least one primary type, and optional capabilit
 - `(@success)` — happy path
 - `(@failure)` — negative path, input error, validation failure
 - `(@access-restriction)` — role not permitted, access denied
-- `(@manual)` — cannot be automated (CAPTCHA, OTP, biometric, visual review)
+- `(@manual)` — cannot be automated (CAPTCHA, OTP, biometric, visual review, PDF **layout** beauty)
 - `(@network)` — needs `page.route` / `@/support/pw` network helpers
 - `(@hybrid)` — API seed/cleanup via `request` + UI assert
 - `(@aria)` — ARIA snapshot (`toMatchAriaSnapshot` / catalog `.aria.yml`)
 - `(@visual)` — screenshot comparison (`toHaveScreenshot` / `expectVisual`)
+- `(@download)` — triggers file download (`waitForEvent('download')` / `downloadAndSave` / `downloadFile`)
+- `(@upload)` — uploads file(s) via fixture (`setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile`)
+- `(@file-content)` — assert PDF/Excel/CSV content or envelope using **scenario-owned** tokens/headers
 
-Combinations are valid: `(@failure @network)`, `(@success @hybrid @aria)`.
+Combinations are valid: `(@failure @network)`, `(@success @hybrid @aria)`, `(@success @download @file-content)`, `(@failure @upload)`.
 
 ### Catalog → @aria recommendation
 
@@ -164,9 +167,27 @@ After `snapshot_page` / `discover_pages`:
 2. Put the catalog path in scenario notes / Expected Result so Generator can call `expectAriaMatchesCatalog`.
 3. If catalog is missing, either call `snapshot_page` first or use a small inline `expectAriaSnapshot` baseline — do not invent a large YAML tree.
 
+### File / PDF / Excel capability tagging
+
+When the requirement mentions download, upload, or PDF/Excel **content** checks, set the matching capability tags:
+
+| Signal in requirement                                           | Tag                        | Plan fields to populate                                                                                                                 |
+| --------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Download / export / unduh file                                  | `(@download)`              | Steps name the trigger control; Expected Result may include filename/ext/size/magic                                                     |
+| Upload / pilih file / lampiran                                  | `(@upload)`                | **Input Data** lists fixture path under `test-fixtures/` (e.g. `fixture: test-fixtures/pdf/sample-text.pdf`)                            |
+| PDF/Excel text, headers, cells, or file magic/envelope          | `(@file-content)`          | **Expected Result** / **Input Data** list **expected tokens or headers copied from Hasil yang Diharapkan** — never invent domain fields |
+| PDF **layout** only (margin, logo placement, typography beauty) | `(@manual)` or `(@visual)` | Do **not** tag `@file-content`; list under Manual Notes                                                                                 |
+
+**Content-assert principle (non-negotiable):**
+
+- Helpers/MCP **extract or compare only** — they do **not** patent domain fields (do not hardcode “judul/kode/nama” or invoice schema).
+- Needles/headers come **only** from scenario Expected Result / Input Data / Hasil yang Diharapkan.
+- Demo fixtures use tokens like `QA-KIT-SAMPLE-PDF` / `ColA` for kit self-test — **never** copy demo tokens into product tests.
+- If Hasil lists textual/structural content → `@file-content`. If only layout beauty → `@manual` / `@visual`.
+
 ### Capabilities column
 
-Populate plan **Capabilities** from title tags and metadata `#network #hybrid #aria #visual` so Generator emits the matching `@/support/pw` imports.
+Populate plan **Capabilities** from title tags and metadata `#network #hybrid #aria #visual #download #upload #file-content` so Generator emits the matching `@/support/pw` imports.
 
 ---
 
@@ -182,6 +203,9 @@ Populate plan **Capabilities** from title tags and metadata `#network #hybrid #a
 8. When `Data scope` mentions API seed/endpoints, mark scenarios `(@hybrid)` and list the endpoint in Steps.
 9. When failure depends on HTTP status / offline, mark `(@network)` and name the URL glob.
 10. When `selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
+11. When requirement mentions download/export, mark `(@download)`. When it mentions upload/pilih file, mark `(@upload)` and put the `test-fixtures/` path in Input Data.
+12. When Hasil/Expected Result includes PDF text, Excel headers/cells, or file magic/envelope checks, mark `(@file-content)` and copy those **scenario tokens** into Expected Result / Input Data — do not invent fields.
+13. PDF **layout-only** stays `(@manual)` or `(@visual)`; do not over-manual textual PDF/Excel content checks.
 
 ---
 
@@ -212,3 +236,4 @@ If there are no manual scenarios, write: `No manual scenarios.`
 - "Plan test scenarios from `requirements/sample-login-empty-fields.md` and save to `specs/sample-login-empty-fields-test-plan.md`."
 - "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
 - "Plan capability scenarios from `requirements/sample-network-hybrid.md` including @network @hybrid @aria."
+- "Plan file scenarios with @download @upload @file-content; copy expected PDF/Excel tokens from Hasil into Input Data / Expected Result."

@@ -187,6 +187,10 @@ Pattern storage behavior:
 9. **Missing seed / empty list / 404 test data** (`data_state`): prefer hybrid `apiSeed` + cleanup via `request` fixture when the requirement documents an API.
 10. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: authStatePath('<role>') })` (or `.auth/{APP_ENV}/<role>.json`); re-run setup project — do not skip auth checks.
 11. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
+12. **Download timeout / no Download event**: ensure `page.waitForEvent('download')` (or `downloadAndSave` / `downloadFile`) is registered **before** the click that triggers the download.
+13. **ENOENT fixture / missing upload file**: fix path to a committed file under `test-fixtures/`; use `uploadFixture` / `uploadViaChooser` / `setInputFiles` — never introduce `page.pause()` for OS file pick.
+14. **Empty PDF text** (extract returns blank): likely encrypted or scanned PDF — classify as app/requirement limitation; prefer envelope-only (`assertDownloadedEnvelope` / `assertFileMagic`) or `cannotFix` / `@manual` if content was required. Do not invent OCR.
+15. **Content assert fail** (`assertPdfContains` / `assertExcelHeaders` missing needles): re-read **scenario** Expected Result / Input Data / Hasil yang Diharapkan for the correct tokens; optionally call MCP `extract_pdf_text` / `read_excel_summary` for actual text; fix needles only if the plan was mis-transcribed — **do not** replace with canned fields (judul/kode/nama/invoice schema or demo tokens like `QA-KIT-SAMPLE-PDF` / `ColA`).
 
 ## Guardrails (Mandatory)
 
@@ -226,6 +230,19 @@ Pattern storage behavior:
 - `cannotFix` entries must include a concrete reason.
 - `healerStats` is optional and reports pattern database usage for observability.
 
+## File / PDF / Excel failure patterns
+
+| Symptom                                                            | Likely cause                                                                             | Fix                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Timeout waiting for download / no Download event                   | Listener registered after click, or missing entirely                                     | Add `waitForEvent('download')` **before** trigger, or switch to `downloadAndSave` / `downloadFile` from `@/support/pw` / BasePage                                                                                                           |
+| `ENOENT` / cannot find fixture path                                | Wrong relative path, missing bank file, or product test using demo-only path incorrectly | Point to committed `test-fixtures/...` path from plan Input Data; list fixtures via MCP `list_test_fixtures` if available                                                                                                                   |
+| Upload never attaches / OS dialog                                  | Generated headed pause or human picker                                                   | Replace with `setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile` — **never** `page.pause()` for file choose                                                                                                               |
+| PDF assert fails; extract text empty                               | Encrypted or scanned PDF (no text layer)                                                 | Prefer envelope-only asserts; if scenario required text content, return `cannotFix` / suggest `@manual` — do not invent OCR or domain fields                                                                                                |
+| `assertPdfContains` / Excel headers fail with partial text present | Needles/headers not from scenario, or mis-transcribed                                    | Re-read plan Expected Result / requirement Hasil; call `extract_pdf_text` / `read_excel_summary` for actual dump; align needles to **scenario tokens only** — never swap in a canned field set or demo tokens (`QA-KIT-SAMPLE-PDF`, `ColA`) |
+
+**Content-assert principle (non-negotiable):** helpers/MCP extract or compare only. Expected needles come from the scenario. Heal maps scenario → assert args; it does not patent business schemas.
+
 ## Example Prompt
 
 - "Heal failures from `get_test_failures`, validate, and re-run tests for the failing spec files."
+- "Heal download/upload/file-content failures: fix missing download wait, fixture ENOENT, and scenario-token content asserts — no canned needles."

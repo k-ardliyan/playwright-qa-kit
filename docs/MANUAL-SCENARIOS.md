@@ -33,16 +33,16 @@ Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 
 Tandai `(@manual)` kalau skenario membutuhkan salah satu dari ini:
 
-| Situasi                | Contoh                           | Kenapa Manual                              |
-| ---------------------- | -------------------------------- | ------------------------------------------ |
-| CAPTCHA / reCAPTCHA    | Login form pakai reCAPTCHA       | Tidak bisa diotomasi tanpa bypass (ilegal) |
-| OTP / SMS verification | Login dengan SMS OTP             | Butuh akses ke HP asli                     |
-| Email verification     | Konfirmasi signup via email link | Butuh inbox asli                           |
-| Payment gateway        | Charge kartu kredit              | Butuh kartu test spesifik + 3DS callback   |
-| Biometric              | Login sidik jari / Face ID       | Tidak bisa disimulasi di CI                |
-| Visual review          | Cek layout invoice PDF           | Butuh verifikasi mata manusia              |
-| Hardware interaction   | Scan barcode, print struk        | Tidak ada di environment CI                |
-| Real-world timing      | Tunggu 24 jam untuk expiry test  | Tidak feasible di CI                       |
+| Situasi                | Contoh                              | Kenapa Manual                              |
+| ---------------------- | ----------------------------------- | ------------------------------------------ |
+| CAPTCHA / reCAPTCHA    | Login form pakai reCAPTCHA          | Tidak bisa diotomasi tanpa bypass (ilegal) |
+| OTP / SMS verification | Login dengan SMS OTP                | Butuh akses ke HP asli                     |
+| Email verification     | Konfirmasi signup via email link    | Butuh inbox asli                           |
+| Payment gateway        | Charge kartu kredit                 | Butuh kartu test spesifik + 3DS callback   |
+| Biometric              | Login sidik jari / Face ID          | Tidak bisa disimulasi di CI                |
+| PDF **layout** visual  | Cek spasi, alignment, tipografi PDF | Butuh verifikasi mata manusia              |
+| Hardware interaction   | Scan barcode, print struk           | Tidak ada di environment CI                |
+| Real-world timing      | Tunggu 24 jam untuk expiry test     | Tidak feasible di CI                       |
 
 ---
 
@@ -52,8 +52,25 @@ Jangan pakai `(@manual)` hanya karena "ribet" — biasanya bisa diotomasi dengan
 
 - Login biasa → tinggal cari selector + isi form
 - Klik tombol + lihat alert → `page.on('dialog')` bisa handle
-- Upload file → `setInputFiles()` bisa handle
+- **Upload file** → **bukan manual**. Pakai fixture-first: `setInputFiles()` / `uploadFixture()` / `uploadViaChooser()` dari `@/support/pw` dengan path di `test-fixtures/`. Tag skenario `(@upload)`. **Jangan** pause headed untuk OS file picker.
+- **Download file** → `downloadAndSave()` + envelope assert (`assertDownloadedEnvelope`). Tag `(@download)`.
+- **PDF teks / Excel struktur** → **bisa diotomasi** dengan `@file-content`: `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary`. Token/needle **milik skenario** (dari Hasil yang Diharapkan) — bukan skema domain tetap.
 - Drag-and-drop → `page.dragAndDrop()` bisa handle
+
+### File / PDF / Excel — manual vs automatable
+
+| Kebutuhan                                           | Tag               | Manual?          | Cara otomasi                                                    |
+| --------------------------------------------------- | ----------------- | ---------------- | --------------------------------------------------------------- |
+| Upload lampiran / import                            | `(@upload)`       | **Tidak**        | Fixture di `test-fixtures/` + `uploadFixture` / `setInputFiles` |
+| Download export                                     | `(@download)`     | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`                  |
+| Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)` | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`                  |
+| Header/kolom Excel dari requirement                 | `(@file-content)` | **Tidak**        | `assertExcelHeaders(path, headersFromScenario)`                 |
+| Layout visual PDF (spasi, alignment, warna)         | `(@manual)`       | **Ya**           | Review mata manusia; bukan `assertPdfContains`                  |
+| OS file-picker pause (headed)                       | —                 | **Anti-pattern** | Selalu fixture-first; tidak ada pause pipeline                  |
+
+**Prinsip:** fixture-first + local-first. MCP tools (`inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`) untuk **inspect-time** saja; test yang di-commit tetap assert lewat helper `@/support/pw`.
+
+Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md).
 
 Kalau ragu, tanya maintainer framework dulu sebelum tandai `(@manual)`.
 

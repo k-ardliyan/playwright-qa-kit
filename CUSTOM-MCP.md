@@ -268,7 +268,7 @@ Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT
 
 ## Tool: `list_artifacts`
 
-Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, and generated tests under `PLAYWRIGHT_TEST_ROOT` (default `src/tests/`).
+Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated tests under `PLAYWRIGHT_TEST_ROOT` (default `src/tests/`), and fixture files under `test-fixtures/` (excluding README).
 
 ### Input
 
@@ -276,11 +276,24 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, and generate
 {}
 ```
 
+### Output (shape)
+
+```json
+{
+  "status": "success",
+  "requirements": ["requirements/auth/sample-login-empty-fields.md"],
+  "specs": ["specs/..."],
+  "tests": ["src/tests/..."],
+  "fixtures": ["test-fixtures/pdf/sample-text.pdf"],
+  "message": "Found N requirement(s), …, M fixture file(s)."
+}
+```
+
 ---
 
 ## Tool: `validate_generated_tests`
 
-Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, and traceability headers (exempt: seed, demo, example adapter).
+Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo, example adapter), and capability tags (`@network` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
 
 Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `src/tests`).
 
@@ -554,6 +567,109 @@ A URL is rejected (and recorded in `skipped[]`) when any of the following holds:
 
 - No authentication, no login wall traversal. Login redirects are detected (URL ends with `/login` or contains `/auth`) and skipped.
 - Checkpoint file `.discover-state.json` is removed on successful completion.
+
+---
+
+## Tool: `list_test_fixtures`
+
+List committed files under `test-fixtures/` for fixture-first upload paths (no headed OS file picker).
+
+### Input
+
+```json
+{ "subdir": "pdf" }
+```
+
+`subdir` optional relative path under `test-fixtures/`.
+
+### Output
+
+```json
+{
+  "status": "success",
+  "fixtures": ["test-fixtures/pdf/sample-text.pdf"],
+  "count": 1
+}
+```
+
+---
+
+## Tool: `inspect_file`
+
+Envelope metadata for a file under `test-fixtures/` or `test-results/` (kind, size, magic). **No domain field schema.**
+
+### Input
+
+```json
+{ "filePath": "test-fixtures/pdf/sample-text.pdf" }
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "filePath": "test-fixtures/pdf/sample-text.pdf",
+  "filename": "sample-text.pdf",
+  "size": 600,
+  "kind": "pdf",
+  "magic": "pdf",
+  "suggestedKind": "pdf"
+}
+```
+
+---
+
+## Tool: `extract_pdf_text`
+
+Extract **plain text** from a PDF under `test-fixtures/` or `test-results/`.
+
+Returns raw text only. Agents and tests must match **scenario expected tokens** from the requirement — this tool does **not** define business fields (no title/code/name schema).
+
+### Input
+
+```json
+{ "filePath": "test-results/downloads/export.pdf", "maxChars": 50000 }
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "filePath": "test-results/downloads/export.pdf",
+  "kind": "pdf",
+  "size": 14200,
+  "text": "...",
+  "truncated": false,
+  "message": "Plain text dump only. Match against scenario expected tokens..."
+}
+```
+
+---
+
+## Tool: `read_excel_summary`
+
+Structure dump for xlsx under `test-fixtures/` or `test-results/`: sheet names, header row, sample rows. Expected headers come from the **scenario**, not a fixed domain schema.
+
+### Input
+
+```json
+{ "filePath": "test-fixtures/excel/sample-headers.xlsx", "maxRows": 20 }
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "filePath": "test-fixtures/excel/sample-headers.xlsx",
+  "sheetNames": ["Sheet1"],
+  "headers": ["ColA", "ColB", "ColC"],
+  "sampleRows": [["a1", "b1", "c1"]],
+  "message": "Structure dump only..."
+}
+```
 
 ---
 

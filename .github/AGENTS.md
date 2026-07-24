@@ -67,9 +67,9 @@ Coordinates the full pipeline:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`, `snapshot_page`, `discover_pages`
+- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`, `snapshot_page`, `discover_pages`, `list_test_fixtures`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `archive_report`, `generate_page_object`
 - `playwright-test`: `run_tests`
-- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`, `browser_file_upload`; see root [`AGENTS.md`](../AGENTS.md)
 
 ### Example Prompt
 
@@ -106,7 +106,7 @@ Golden sample: [`specs/sample-login-empty-fields-test-plan.md`](../specs/sample-
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`, `discover_pages`, `snapshot_page`
+- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`, `list_test_fixtures`, `discover_pages`, `snapshot_page`
 - `playwright-test`: `run_tests` (seed bootstrap: `src/tests/seed.spec.ts`)
 - `playwright`: `browser_navigate`, `browser_snapshot`
 
@@ -138,9 +138,9 @@ Planner table with columns:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_generated_tests`, `snapshot_page` (catalog reuse)
+- `playwright-qa`: `validate_generated_tests`, `snapshot_page` (catalog reuse), `list_test_fixtures`, `generate_page_object`
 - `playwright-test`: `run_tests` (live verification loop, iterate until pass)
-- `playwright`: `browser_navigate`, `browser_snapshot`
+- `playwright`: `browser_navigate`, `browser_snapshot`, `browser_file_upload`
 
 Generated files must include `// spec:` and `// seed:` traceability headers (see generator agent).
 
@@ -197,7 +197,7 @@ Diagnoses and repairs failing tests using structured failure payloads.
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `get_test_failures`, `validate_generated_tests`
+- `playwright-qa`: `get_test_failures`, `validate_generated_tests`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`
 - `playwright-test`: `run_tests`
 - `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
 

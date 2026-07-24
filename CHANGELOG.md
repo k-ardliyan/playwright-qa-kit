@@ -6,6 +6,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Safe dependency bumps (non-major, compatibility-preserving)**
+  - Root: `@dotenvx/dotenvx` 2.14 → **2.17.2**, `prettier` 3.9.5 → **3.9.6**, `typescript-eslint` 8.64 → **8.65.0**
+  - mcp-server: `@dotenvx/dotenvx` **2.17.2**; override `hono` 4.12.25 → **4.12.31** (security headers/jsx fixes via MCP SDK transitive)
+  - Verified: typecheck, mcp:build, validate, validate:agents, network-assert unit/demo
+  - **Not bumped (major / risk):** TypeScript 7, lint-staged 17, `@types/node` 26; Playwright 1.61 remains current latest; exceljs uuid advisory (fix would force exceljs 3.x break); `@hono/node-server` moderate (force would downgrade MCP SDK)
+
 ### Added
 
 - **Network live assert capability** (`@network-assert`)

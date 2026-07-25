@@ -225,7 +225,7 @@ npx playwright install --with-deps chromium
 
 **Gejala:** `start reports/custom-dashboard.html` error "file not found".
 
-**Root cause:** Folder `reports/` baru dibuat setelah test pertama dijalankan.
+**Root cause:** Folder `reports/` baru dibuat setelah test pertama / reporter dijalankan.
 
 **Fix:**
 
@@ -233,9 +233,15 @@ npx playwright install --with-deps chromium
 # Jalankan test dulu (meskipun demo)
 npm run test:demo
 
-# Sekarang reports/ ada isinya
+# Atau regenerate preview shell tanpa full e2e
+npx tsx scripts/preview-dashboard.ts
+
+# Buka dashboard (Ctrl+F5 setelah regenerate)
 start reports/custom-dashboard.html
+# preview: reports/preview/local.html
 ```
+
+Anatomy / cara baca: [REPORT-GUIDE.md](REPORT-GUIDE.md).
 
 ---
 

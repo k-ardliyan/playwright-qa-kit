@@ -10,6 +10,9 @@ export type AffectedLayer = 'FE' | 'BE' | 'DB' | 'API';
 
 export type ReportMode = 'general' | 'role-aware';
 
+/** Suggested or annotated root cause class for QA exit decisions. */
+export type FailureSource = 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
+
 export interface CollectedAttachment {
   name: string;
   contentType?: string;
@@ -50,6 +53,8 @@ export interface CollectedTestData {
   expectedResult: string;
   actualResult: string;
   affectedLayer: AffectedLayer[];
+  /** Present on unhealthy tests; optional on passed/skipped. */
+  failureSource?: FailureSource;
 }
 
 /**
@@ -70,6 +75,7 @@ export interface CollectedTestCase {
   affectedLayer: AffectedLayer[];
   attachmentCount: number;
   hasTrace: boolean;
+  failureSource?: FailureSource;
 }
 
 /**
@@ -78,6 +84,16 @@ export interface CollectedTestCase {
 export interface RoleGroup {
   role: string;
   tests: CollectedTestData[];
+}
+
+/** Safe run context — never embed secrets. */
+export interface RunMeta {
+  appEnv: string;
+  runId?: string;
+  requirementPath?: string;
+  ci: boolean;
+  totalDurationMs: number;
+  generatedAt: string;
 }
 
 export interface TestSummary {
@@ -91,4 +107,5 @@ export interface TestSummary {
   reportMode: ReportMode;
   rolesInScope: string[];
   testCases: CollectedTestCase[];
+  runMeta: RunMeta;
 }

@@ -21,8 +21,10 @@ import type {
   CollectedTestData,
   Priority,
   ReportMode,
+  RunMeta,
   TestSummary,
 } from './custom-dashboard/types';
+import { resolveFailureSource } from './custom-dashboard/failure-source';
 import { toReportRelativePath } from './custom-dashboard/shared';
 import { logger } from '@/utils/logger';
 
@@ -30,31 +32,110 @@ const REPORT_DIR = path.resolve(process.cwd(), 'reports');
 const DASHBOARD_PATH = path.join(REPORT_DIR, 'custom-dashboard.html');
 const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
 const HTML_REPORT_DIR = path.join(REPORT_DIR, 'html');
-const SCREENSHOTS_DIR = path.join(REPORT_DIR, 'screenshots');
+const ATTACHMENTS_DIR = path.join(REPORT_DIR, 'attachments');
 
-/** Copy screenshots to reports/screenshots/ and rewrite relativePath to screenshots/<filename>. */
-function copyScreenshotsToReportDir(tests: CollectedTestData[]): void {
-  try {
-    if (!fs.existsSync(SCREENSHOTS_DIR)) {
-      fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+const KIND_SUBDIR: Record<'screenshot' | 'video' | 'trace', string> = {
+  screenshot: 'screenshots',
+  video: 'videos',
+  trace: 'traces',
+};
+
+function safeFilePrefix(test: CollectedTestData): string {
+  return (test.testId || test.title).replace(/[^a-zA-Z0-9-]/g, '_').slice(0, 40) || 'test';
+}
+
+/**
+ * Copy screenshot / video / trace into reports/attachments/* and rewrite relativePath
+ * so standalone custom-dashboard.html can open evidence next to the report.
+ */
+function resolveAttachmentSourcePath(relativeOrAbs: string): string | null {
+  const normalized = relativeOrAbs.replace(/\\/g, '/');
+  const candidates: string[] = [];
+
+  if (path.isAbsolute(relativeOrAbs)) {
+    candidates.push(relativeOrAbs);
+  } else {
+    candidates.push(path.resolve(REPORT_DIR, normalized));
+    candidates.push(path.resolve(process.cwd(), normalized));
+    // Common Playwright output sitting beside reports/
+    candidates.push(path.resolve(process.cwd(), 'test-results', path.basename(normalized)));
+    // Already-materialized path re-run safety
+    if (normalized.startsWith('attachments/')) {
+      candidates.push(path.resolve(REPORT_DIR, normalized));
     }
+  }
+
+  for (const candidate of candidates) {
+    try {
+      if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch {
+      // ignore stat errors
+    }
+  }
+  return null;
+}
+
+function materializeAttachments(tests: CollectedTestData[]): void {
+  try {
+    for (const sub of Object.values(KIND_SUBDIR)) {
+      const dir = path.join(ATTACHMENTS_DIR, sub);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    }
+
     for (const test of tests) {
+      const prefix = safeFilePrefix(test);
       for (const attachment of test.attachments) {
-        if (attachment.kind !== 'screenshot') continue;
-        const absPath = path.resolve(REPORT_DIR, attachment.relativePath.replace(/\//g, path.sep));
-        if (!fs.existsSync(absPath)) continue;
-        const destName = path.basename(absPath);
-        // Add test prefix to avoid name collisions across tests
-        const safePrefix = (test.testId || test.title).replace(/[^a-zA-Z0-9-]/g, '_').slice(0, 40);
-        const uniqueDest = path.join(SCREENSHOTS_DIR, `${safePrefix}__${destName}`);
-        fs.copyFileSync(absPath, uniqueDest);
-        // Rewrite relativePath to point inside reports/screenshots/ (same folder as dashboard)
-        attachment.relativePath = `screenshots/${safePrefix}__${destName}`;
+        if (
+          attachment.kind !== 'screenshot' &&
+          attachment.kind !== 'video' &&
+          attachment.kind !== 'trace'
+        ) {
+          continue;
+        }
+        if (!attachment.relativePath) continue;
+
+        // Skip if already under reports/attachments
+        if (attachment.relativePath.replace(/\\/g, '/').startsWith('attachments/')) {
+          const already = path.resolve(REPORT_DIR, attachment.relativePath);
+          if (fs.existsSync(already)) continue;
+        }
+
+        const absPath = resolveAttachmentSourcePath(attachment.relativePath);
+        if (!absPath) continue;
+
+        const destName = `${prefix}__${path.basename(absPath)}`;
+        const sub = KIND_SUBDIR[attachment.kind];
+        const uniqueDest = path.join(ATTACHMENTS_DIR, sub, destName);
+        try {
+          fs.copyFileSync(absPath, uniqueDest);
+          attachment.relativePath = `attachments/${sub}/${destName}`.replace(/\\/g, '/');
+        } catch (copyErr) {
+          logger.warn('Failed to copy attachment', {
+            kind: attachment.kind,
+            from: absPath,
+            err: String(copyErr),
+          });
+        }
       }
     }
   } catch (err) {
-    logger.warn('Failed to copy screenshots to reports/screenshots/', { err: String(err) });
+    logger.warn('Failed to materialize attachments into reports/attachments/', {
+      err: String(err),
+    });
   }
+}
+
+function buildRunMeta(tests: CollectedTestData[]): RunMeta {
+  return {
+    appEnv: process.env.APP_ENV?.trim() || 'unknown',
+    runId: process.env.PLAYWRIGHT_RUN_ID || process.env.GITHUB_RUN_ID || undefined,
+    requirementPath: process.env.REQUIREMENT_PATH || undefined,
+    ci: process.env.CI === 'true',
+    totalDurationMs: tests.reduce((sum, t) => sum + (t.duration || 0), 0),
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +161,27 @@ function safeParseJson<T>(raw: string, fallback: T): T {
  */
 function deriveTestId(title: string): string {
   return title.match(/^(TC-[A-Z0-9-]+)/)?.[1] ?? '';
+}
+
+function parseAffectedLayer(raw: string): AffectedLayer[] {
+  const fromJson = safeParseJson<AffectedLayer[]>(raw, []);
+  if (fromJson.length > 0) return fromJson;
+  if (!raw) return [];
+  if (raw.includes(',')) {
+    return raw
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter((s): s is AffectedLayer => ['FE', 'BE', 'DB', 'API'].includes(s));
+  }
+  const one = raw.trim().toUpperCase();
+  if (['FE', 'BE', 'DB', 'API'].includes(one)) return [one as AffectedLayer];
+  return [];
+}
+
+function normalizePriority(raw: string): Priority {
+  const p = (raw || 'medium').toLowerCase();
+  if (p === 'high' || p === 'medium' || p === 'low') return p;
+  return 'medium';
 }
 
 // ---------------------------------------------------------------------------
@@ -270,21 +372,26 @@ export default class CustomReporter implements Reporter {
     const fullTitle = test.titlePath().join(' > ');
     const attachments = collectAttachments(result);
 
-    // ----- Table View metadata from test.info().annotations -----
     const testId = getAnnotation(test, 'testId') || deriveTestId(test.title);
     const scenarioId = getAnnotation(test, 'scenarioId');
     const role = getAnnotation(test, 'role');
-    const priority = (getAnnotation(test, 'priority') as Priority) || 'medium';
+    const priority = normalizePriority(getAnnotation(test, 'priority') || 'medium');
     const inputData = safeParseJson<Record<string, string>>(getAnnotation(test, 'inputData'), {});
     const expectedResult = getAnnotation(test, 'expectedResult');
-    const affectedLayer = safeParseJson<AffectedLayer[]>(getAnnotation(test, 'affectedLayer'), []);
+    const affectedLayer = parseAffectedLayer(getAnnotation(test, 'affectedLayer'));
 
-    // actualResult: explicit annotation when passed; error message when failed
     const actualResultAnnotation = getAnnotation(test, 'actualResult');
     const actualResult =
       result.status === 'passed'
         ? actualResultAnnotation || 'Sesuai dengan expected result'
         : actualResultAnnotation || result.error?.message || result.errors?.[0]?.message || '-';
+
+    const failureSource = resolveFailureSource({
+      status: result.status,
+      errorMessage,
+      title: test.title,
+      annotation: getAnnotation(test, 'failureSource'),
+    });
 
     this.collectedTests.push({
       title: test.title,
@@ -297,7 +404,6 @@ export default class CustomReporter implements Reporter {
       steps: collectSteps(result.steps ?? []),
       attachments,
       retry: result.retry,
-      // Table View fields
       testId,
       scenarioId,
       role,
@@ -306,6 +412,7 @@ export default class CustomReporter implements Reporter {
       expectedResult,
       actualResult,
       affectedLayer,
+      failureSource,
     });
   }
 
@@ -315,10 +422,8 @@ export default class CustomReporter implements Reporter {
     try {
       ensureReportDirectory();
 
-      // Copy screenshots to reports/screenshots/ so dashboard can render them inline
-      copyScreenshotsToReportDir(this.collectedTests);
+      materializeAttachments(this.collectedTests);
 
-      // Determine report mode from collected data
       const reportMode: ReportMode = this.collectedTests.some((t) => t.role && t.role.length > 0)
         ? 'role-aware'
         : 'general';
@@ -327,7 +432,6 @@ export default class CustomReporter implements Reporter {
         ...new Set(this.collectedTests.map((t) => t.role).filter((r): r is string => !!r)),
       ];
 
-      // Build testCases[] for MCP tool consumption
       const testCases: CollectedTestCase[] = this.collectedTests.map((t) => ({
         testId: t.testId,
         scenarioId: t.scenarioId,
@@ -342,7 +446,10 @@ export default class CustomReporter implements Reporter {
         affectedLayer: t.affectedLayer,
         attachmentCount: t.attachments.length,
         hasTrace: t.attachments.some((a) => a.kind === 'trace'),
+        failureSource: t.failureSource,
       }));
+
+      const runMeta = buildRunMeta(this.collectedTests);
 
       const summary: TestSummary = {
         total: this.totalTests,
@@ -350,10 +457,11 @@ export default class CustomReporter implements Reporter {
         failed: this.failedTests,
         skipped: this.skippedTests,
         passRate: this.totalTests > 0 ? Math.round((this.passedTests / this.totalTests) * 100) : 0,
-        timestamp: new Date().toISOString(),
+        timestamp: runMeta.generatedAt,
         reportMode,
         rolesInScope,
         testCases,
+        runMeta,
       };
 
       const html = isCiMode

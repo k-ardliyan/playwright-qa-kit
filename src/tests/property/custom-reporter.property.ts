@@ -41,6 +41,14 @@ interface ReporterRunOutput {
     reportMode?: string;
     rolesInScope?: string[];
     testCases?: unknown[];
+    runMeta?: {
+      appEnv: string;
+      ci: boolean;
+      totalDurationMs: number;
+      generatedAt: string;
+      runId?: string;
+      requirementPath?: string;
+    };
   };
 }
 
@@ -388,18 +396,21 @@ async function property5ReporterOutputCompleteness(): Promise<void> {
         assert.equal(output.summary.passRate, expectedPassRate);
         assert.ok(!Number.isNaN(Date.parse(output.summary.timestamp)));
 
-        assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
-        assert.match(output.html, /id="resultDonut"/);
+        assert.doesNotMatch(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
+        assert.doesNotMatch(output.html, /id="resultDonut"/);
+        assert.match(output.html, /artifacts-card|artifacts-bucket|artifacts-link|deep-links/);
         assert.match(output.html, /Detailed test records/);
-        assert.match(output.html, /Run healthy|Run degraded|Run failed/);
+        assert.match(output.html, /Run Healthy|Run Degraded|Run Failed/);
+        assert.doesNotMatch(output.html, /Scan guide|Priority legend|Status distribution/);
         if (total > 0) {
-          const cardMatches = output.html.match(/class="test-card"/g) ?? [];
+          const cardMatches = output.html.match(/class="test-card[\s"]/g) ?? [];
           assert.equal(cardMatches.length, total);
         }
         if (failedCount > 0) {
           assert.match(output.html, /Synthetic failure/);
           assert.match(output.html, /step failed/);
-          assert.match(output.html, /Unhealthy tests/);
+          // Hero / alert language for unhealthy runs (not the old Scan Guide label)
+          assert.match(output.html, /unhealthy test|Incident queue|Run Failed/i);
         }
         assert.match(output.html, new RegExp(`${expectedPassRate}%`));
       },
@@ -427,14 +438,22 @@ async function property6ReporterTraceLinkGeneration(): Promise<void> {
 
         const output = await runReporter(cases, 'false');
 
-        const traceMatches = output.html.match(/View trace/g) ?? [];
-        assert.equal(traceMatches.length, traceNames.length);
+        // Trace appears in summary row + meta grid (2× "View trace" per card when present).
+        const viewTraceMatches = output.html.match(/>View trace</g) ?? [];
+        assert.equal(viewTraceMatches.length, traceNames.length * 2);
 
         for (const name of traceNames) {
           const relative = toReportRelativePath(
             path.join(process.cwd(), 'test-results', `${name}.zip`),
           );
-          assert.equal(output.html.includes(relative), true);
+          // After materialize, path may live under reports/attachments/…
+          assert.equal(
+            output.html.includes(relative) ||
+              output.html.includes(`${name}.zip`) ||
+              /attachments\/traces\//.test(output.html),
+            true,
+            `expected trace path for ${name}`,
+          );
         }
       },
     ),
@@ -463,10 +482,11 @@ async function property7ReporterCiModeSelection(): Promise<void> {
         );
 
         assert.match(output.html, /Playwright Custom Dashboard \(Local\)/);
-        assert.match(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
+        assert.doesNotMatch(output.html, /cdn\.jsdelivr\.net\/npm\/chart\.js/);
         assert.doesNotMatch(output.html, /Playwright Custom Dashboard \(CI Detailed\)/);
-        assert.match(output.html, /Local mode/);
-        assert.match(output.html, /class="test-card"/);
+        assert.match(output.html, /LOCAL MODE/);
+        assert.match(output.html, /class="test-card[\s"]/);
+        assert.match(output.html, /artifacts-card|artifacts-bucket|artifacts-link|deep-links/);
       },
     ),
     { numRuns: 12 },
@@ -514,6 +534,76 @@ async function property8ReporterAttachmentRendering(): Promise<void> {
   console.log('✓ Property 8 passed: reporter attachment rendering');
 }
 
+async function property13RunMetaAndDashboardShell(): Promise<void> {
+  const previousAppEnv = process.env.APP_ENV;
+  process.env.APP_ENV = 'local';
+
+  try {
+    const output = await runReporter(
+      [
+        { status: 'passed', duration: 100 },
+        { status: 'failed', duration: 220, failedStep: true },
+      ],
+      'false',
+    );
+
+    assert.ok(output.summary.runMeta, 'runMeta must exist on summary');
+    assert.equal(typeof output.summary.runMeta!.appEnv, 'string');
+    assert.equal(typeof output.summary.runMeta!.ci, 'boolean');
+    assert.equal(typeof output.summary.runMeta!.totalDurationMs, 'number');
+    assert.ok(output.summary.runMeta!.generatedAt);
+
+    assert.match(output.html, /id="dash-search"/);
+    assert.match(output.html, /APP_ENV/);
+    assert.match(output.html, /command-bar/);
+    assert.doesNotMatch(output.html, /max-width:\s*1360px/);
+    assert.match(output.html, /data-density="dense"/);
+    assert.match(output.html, /artifacts-card|artifacts-bucket|artifacts-link|deep-links/);
+    assert.doesNotMatch(output.html, /resultDonut|Status distribution/);
+  } finally {
+    if (previousAppEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = previousAppEnv;
+  }
+
+  console.log('✓ Property 13 passed: runMeta + full-width dashboard shell');
+}
+
+async function property14FailureSourceAnnotationAndHeuristic(): Promise<void> {
+  // Annotation wins
+  {
+    const reporter = new CustomReporter();
+    reporter.onBegin({} as unknown as FullConfig, { allTests: () => [{}] } as unknown as Suite);
+    reporter.onTestEnd(
+      makeSyntheticTest(0, [{ type: 'failureSource', description: 'app' }]),
+      makeSyntheticResult(0, { status: 'failed', duration: 50, failedStep: true }),
+    );
+    await reporter.onEnd({} as unknown as FullResult);
+    const summary = JSON.parse(
+      fs.readFileSync(SUMMARY_PATH, 'utf8'),
+    ) as ReporterRunOutput['summary'];
+    const tc = summary.testCases![0] as { failureSource?: string };
+    assert.equal(tc.failureSource, 'app', 'annotation must win for failureSource');
+  }
+
+  // Heuristic for locator-like errors
+  {
+    const reporter = new CustomReporter();
+    reporter.onBegin({} as unknown as FullConfig, { allTests: () => [{}] } as unknown as Suite);
+    const result = makeSyntheticResult(0, { status: 'failed', duration: 50, failedStep: true });
+    (result.errors as Array<{ message: string }>)[0].message =
+      'TimeoutError: locator.click: Timeout 10000ms exceeded';
+    reporter.onTestEnd(makeSyntheticTest(0), result);
+    await reporter.onEnd({} as unknown as FullResult);
+    const summary = JSON.parse(
+      fs.readFileSync(SUMMARY_PATH, 'utf8'),
+    ) as ReporterRunOutput['summary'];
+    const tc = summary.testCases![0] as { failureSource?: string };
+    assert.equal(tc.failureSource, 'test', 'locator timeout should suggest test');
+  }
+
+  console.log('✓ Property 14 passed: failureSource annotation + heuristic');
+}
+
 async function main(): Promise<void> {
   try {
     await property5ReporterOutputCompleteness();
@@ -524,6 +614,8 @@ async function main(): Promise<void> {
     await property10ReportModeDetection();
     await property11ActualResultFallback();
     await property12TestIdDeriveFromTitle();
+    await property13RunMetaAndDashboardShell();
+    await property14FailureSourceAnnotationAndHeuristic();
   } finally {
     cleanReportArtifacts();
   }

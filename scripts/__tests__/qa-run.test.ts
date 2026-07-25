@@ -5,7 +5,7 @@
  * tanpa spawn process. CLI end-to-end di-skip di test (butuh TTY).
  */
 
-import { describe, it, expect } from '@playwright/test';
+import { describe, test as it, expect } from '@playwright/test';
 
 // qa-run.ts tidak export functions-nya — pakai spawn-based smoke test minimal.
 // Untuk unit-testable pieces, kita parse output dari --help saja.
@@ -31,9 +31,11 @@ describe('qa:run CLI', () => {
     }
 
     expect(out).toContain('Usage:');
-    expect(out).toContain('--skip-tests');
+    expect(out).toContain('--skip-prompt');
     expect(out).toContain('--dry-run');
     expect(out).toContain('--no-confirm');
+    expect(out).toContain('--open-dashboard');
+    expect(out).toContain('--no-open-dashboard');
   });
 
   it('no args exits with usage error', () => {

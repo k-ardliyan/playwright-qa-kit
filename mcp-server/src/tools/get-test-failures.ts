@@ -17,6 +17,7 @@ interface SummaryTestCase {
   priority?: 'high' | 'medium' | 'low';
   expectedResult?: string;
   actualResult?: string;
+  failureSource?: 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
 }
 
 interface TestSummaryFile {
@@ -68,6 +69,8 @@ export interface TestFailure {
   expectedResult?: string;
   /** Actual result from annotation or error message */
   actualResult?: string;
+  /** Root-cause class from custom reporter (annotation or heuristic) */
+  failureSource?: 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
 }
 
 export interface GetTestFailuresOutput {
@@ -262,6 +265,7 @@ function traverseSuites(
         if (annotation.priority) failure.priority = annotation.priority;
         if (annotation.expectedResult) failure.expectedResult = annotation.expectedResult;
         if (annotation.actualResult) failure.actualResult = annotation.actualResult;
+        if (annotation.failureSource) failure.failureSource = annotation.failureSource;
       }
     }
   }
@@ -306,6 +310,31 @@ function parsePlaywrightResult(
         }
         if (typeof row.screenshotPath === 'string') {
           mapped.screenshotPath = row.screenshotPath;
+        }
+        if (typeof row.testId === 'string') {
+          mapped.testId = row.testId;
+        }
+        if (typeof row.role === 'string') {
+          mapped.role = row.role;
+        }
+        if (row.priority === 'high' || row.priority === 'medium' || row.priority === 'low') {
+          mapped.priority = row.priority;
+        }
+        if (typeof row.expectedResult === 'string') {
+          mapped.expectedResult = row.expectedResult;
+        }
+        if (typeof row.actualResult === 'string') {
+          mapped.actualResult = row.actualResult;
+        }
+        if (
+          row.failureSource === 'app' ||
+          row.failureSource === 'test' ||
+          row.failureSource === 'requirement' ||
+          row.failureSource === 'env' ||
+          row.failureSource === 'ai_generation' ||
+          row.failureSource === 'unknown'
+        ) {
+          mapped.failureSource = row.failureSource;
         }
 
         return mapped;

@@ -85,8 +85,9 @@ npm run qa:run -- requirements/login.md
 # 2) Paste prompt ke Hermes Agent
 # Pipeline: snapshot catalog → Plan → Generate → Execute → Heal → Report
 
-# 3) Dashboard terbuka otomatis (reports/custom-dashboard.html)
-#    pakai --no-open-dashboard untuk skip
+# 3) Dashboard ditulis ke reports/custom-dashboard.html
+#    lalu dibuka otomatis oleh qa-run --open-dashboard (skip via --no-open-dashboard)
+#    Preview tanpa e2e: npx tsx scripts/preview-dashboard.ts → reports/preview/{local,ci}.html
 ```
 
 - **REAL setup awal:** `requirements/login.md`
@@ -216,13 +217,13 @@ Setelah pipeline selesai:
 
 ## Artefak: Siapa yang Membuat Apa
 
-| Artefak                         | Dibuat oleh  | QA perlu apa                |
-| ------------------------------- | ------------ | --------------------------- |
-| `requirements/*.md`             | QA           | Tulis dan review            |
-| `specs/*-test-plan.md`          | AI Planner   | Review scenario             |
-| `src/tests/*.spec.ts`           | AI Generator | Jalankan, review bila perlu |
-| `reports/custom-dashboard.html` | Reporter     | Baca status test            |
-| `reports/test-summary.json`     | Reporter     | Dipakai tooling / agent     |
+| Artefak                         | Dibuat oleh  | QA perlu apa                                  |
+| ------------------------------- | ------------ | --------------------------------------------- |
+| `requirements/*.md`             | QA           | Tulis dan review                              |
+| `specs/*-test-plan.md`          | AI Planner   | Review scenario                               |
+| `src/tests/*.spec.ts`           | AI Generator | Jalankan, review bila perlu                   |
+| `reports/custom-dashboard.html` | Reporter     | Triage Table/Accordion, SOURCE, Evidence card |
+| `reports/test-summary.json`     | Reporter     | Dipakai tooling / agent                       |
 
 ---
 

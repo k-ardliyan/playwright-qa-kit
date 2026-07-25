@@ -16,6 +16,8 @@ export interface TestMetadata {
   affectedLayer?: Array<'FE' | 'BE' | 'DB' | 'API'>;
   inputData?: Record<string, string>;
   expectedResult?: string;
+  /** Optional QA failure source for dashboard decision badges. */
+  failureSource?: 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
 }
 
 /**
@@ -58,6 +60,9 @@ export function setTestMetadata(metadata: TestMetadata): void {
   }
   if (metadata.expectedResult) {
     info.annotations.push({ type: 'expectedResult', description: metadata.expectedResult });
+  }
+  if (metadata.failureSource) {
+    info.annotations.push({ type: 'failureSource', description: metadata.failureSource });
   }
 }
 

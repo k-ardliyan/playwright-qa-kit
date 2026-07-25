@@ -6,6 +6,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Custom dashboard v2 → v3 triage board (Monitor/Operate)**
+  - Full-width layout (no 1360px); sticky global command bar; **view toolbars sibling of `.report-layout`**
+  - Table: multi-line Test Step / Input Data; full wrap (no ellipsis clamp); **SOURCE** Cause/Do/blurb + tooltip; Notes stack (time/ss/video/trace/badges)
+  - Filter columns + pin sticky header / pin Test ID; export CTAs in incident alert; export follows **visible rows and columns**
+  - Accordion: all cards **collapsed by default** (including failed); Filter steps; **Copy failure packet** only
+  - **Evidence & reports** single collapsible card (default closed): per-kind file inventory + Related deep links
+  - Fixed **dense** density (no Comfortable/Dense picker)
+  - Preview: `scripts/preview-dashboard.ts` writes `reports/test-summary.json`; preview deep-links prefix `../`
+  - Modules: `failure-source.ts` (blurb + tooltip), `filter-attrs.ts`, `export-helpers` dynamic columns; docs `REPORT-GUIDE.md` v0.3
+  - MCP: `get_test_summary` exposes `runMeta` + `testCases[].failureSource`; `get_test_failures` enriches `failureSource`
+  - Quality: `npm run test:unit` wired into `quality:check-rules`
+
+### Removed
+
+- **Jira integration** — `JIRA_CONSTANTS`, Create JIRA button, placeholder domain warn, `configuration.property` Jira checks
+- **Dashboard poster panels** — Chart.js donut / Status distribution, Scan guide legend, Ops summary Mode/Unhealthy (duplikat hero)
+
 ### Changed
 
 - **Safe dependency bumps (non-major, compatibility-preserving)**

@@ -12,8 +12,7 @@ Setiap test run menghasilkan **3 lapisan report**:
 Playwright Test Run
 │
 ├── reports/html/index.html              ← Playwright built-in HTML report
-├── reports/custom-dashboard.html        ← Custom dashboard (LOCAL mode)
-├── reports/custom-dashboard-ci.html     ← Custom dashboard (CI mode)
+├── reports/custom-dashboard.html        ← Custom dashboard (local + CI; mode via CI=true)
 ├── reports/test-summary.json            ← Structured JSON summary
 └── reports/pipeline-report-<runId>.md   ← Pipeline markdown report (saat run via orchestrator)
 ```
@@ -24,13 +23,18 @@ Playwright Test Run
 - **Isi:** Test result per file, test step, screenshot, video, trace viewer
 - **Kapan digunakan:** Debugging test individual, lihat trace interaktif
 
-### 2. **Custom Dashboard** (`reports/custom-dashboard.html` / `custom-dashboard-ci.html`)
+### 2. **Custom Dashboard** (`reports/custom-dashboard.html`)
 
-- **Sumber:** `CustomReporter` (`src/support/custom-reporter.ts`)
-- **Isi:** **2 view mode**
-  - **Accordion View** (default) — test cases grouped by feature/scenario dengan collapsible accordion
-  - **Table View** (baru) — test cases dalam format tabel 9 kolom yang bisa di-export ke CSV/TSV/Confluence
-- **Kapan digunakan:** QA review harian, test summary visual, export ke external tool
+- **Sumber:** `CustomReporter` (`src/support/custom-reporter.ts`) + modules `src/support/custom-dashboard/*`
+- **File output:** selalu `reports/custom-dashboard.html` (bukan path terpisah untuk CI). Mode **local** vs **ci** dipilih di builder (`buildLocalHtml` / `buildCiHtml`) berdasarkan `CI=true`.
+- **Isi:** **2 view mode** (toggle di section head)
+  - **Table View** (**default**) — triage table + Filter columns + export
+  - **Accordion View** — grouped failure-first, **semua card collapse** (termasuk failed)
+- **Layout:** full-width (tanpa max-width 1360px); sticky command bar; toolbars **sejajar** `.report-layout` (bukan di dalam panel)
+- **Density:** fixed **dense** (tidak ada picker Comfortable/Dense)
+- **Evidence & reports:** satu card collapsible (default **tertutup**) — inventory file + deep links
+- **Tidak ada:** integrasi Jira / Create JIRA, donut Chart.js, Scan guide, Ops summary duplikat hero
+- **Kapan digunakan:** QA review harian, triage `failureSource`, export Confluence/CSV/TSV
 
 ### 3. **Test Summary JSON** (`reports/test-summary.json`)
 
@@ -48,34 +52,61 @@ Playwright Test Run
 
 ## Custom Dashboard — Anatomy & Fitur
 
+### Hierarchy (atas → bawah)
+
+1. **Hero** — verdict (`Run Failed` / `Healthy` / `Degraded`), meta `APP_ENV` / duration / unhealthy count, stat bar Total/Passed/Failed/Skipped/Pass rate
+2. **Command bar (global)** — search, status, priority, optional role, has-evidence
+3. **Incident alert** — queue active/clear + **export CTAs**
+   - **Copy for Confluence** — rich HTML table (Atlassian palette) via clipboard `text/html`; plain fallback = Confluence wiki markup (`||header||` / `|cell|`)
+   - **Copy Data (TSV)** — tab-separated for Sheets/Excel; multi-line cells flattened with `|`
+   - **Download CSV** — RFC4180 + BOM UTF-8; multi-line preserved inside quotes
+   - All three respect **filtered rows** + **Filter columns** visibility
+4. **Section head** — “Detailed test records” + Table ⇄ Accordion toggle
+5. **View toolbars** (sibling of `.report-layout`, show/hide per view)
+   - Table: sort + **Filter columns** (visibility + pin sticky header / pin Test ID)
+   - Accordion: sort only
+6. **Main table / accordion content**
+7. **Evidence & reports** (`artifacts-card`, default **collapsed**) — inventory + related links
+
 ### View Modes
 
-Dashboard memiliki **2 mode view** yang bisa di-toggle melalui button di header:
+#### **Table View** (Default)
 
-#### **Accordion View** (Default)
+| Aspek              | Perilaku sekarang                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Kolom              | Test ID, Description, Test Step, Input Data, Expected, Actual, Status, Priority, **SOURCE**, Notes                |
+| Steps / Input      | Multi-line blocks (`1. step…`, `key: value` per baris) — **bukan** join inline `·`, **tanpa** ellipsis truncate   |
+| SOURCE (gagal)     | Stack **Cause** (badge) → **Do** (decision: FILE BUG / FIX TEST / …) → **blurb** singkat; hover = tooltip lengkap |
+| SOURCE (pass/skip) | `-` saja                                                                                                          |
+| Notes              | Stack kiri: **time → screenshot → video → trace → layer badge**                                                   |
+| Sticky             | Header optional; **sticky left hanya Test ID** (pin lewat Filter columns)                                         |
+| Export             | Di alert, **bukan** di table toolbar; menghormati **row filter + kolom visible**                                  |
+| Density            | Fixed dense — **tidak ada** picker                                                                                |
 
-- Test cases grouped by feature/scenario
-- Setiap group bisa expand/collapse
-- Cocok untuk: review visual cepat, drill-down per feature
+#### **Accordion View**
 
-#### **Table View** (Baru — v0.1.0-alpha.2)
+- Grouped Unhealthy → Passed → Skipped
+- **Semua card collapse by default** (termasuk failed) — expand manual
+- Chip body: Errors / Test Steps (Filter steps) / Attachments
+- Unhealthy: **Copy failure packet** saja (**tanpa** Create JIRA)
+- Trace link di summary + meta grid
 
-- **9 kolom:**
+#### **Evidence & reports** (bawah)
 
-| Kolom               | Deskripsi                                                   | Sumber Data                                                              |
-| ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Test ID**         | Unique identifier per test (e.g., `TC-LOGIN-01`)            | Dari annotation `@testId` di generated test, atau derived dari file path |
-| **Description**     | Test title dari `test('...')`                               | Playwright `TestCase.title`                                              |
-| **Test Step**       | List langkah eksekusi (1., 2., 3., ...)                     | Dari `test.step()` yang di-capture di `TestResult.steps`                 |
-| **Input Data**      | Data input yang digunakan (username, password, form values) | Dari annotation `@inputData` atau fixture context                        |
-| **Expected Result** | Hasil yang diharapkan (expected behavior)                   | Dari annotation `@expectedResult` atau requirement scenario              |
-| **Actual Result**   | Hasil aktual eksekusi (PASS / error message + stack trace)  | Dari `TestResult.status` + `error.message`                               |
-| **Status**          | Badge warna: ✅ **PASSED** / ❌ **FAILED** / ⏭️ **SKIPPED** | Dari `TestResult.status`                                                 |
-| **Priority**        | Badge: 🔴 **HIGH** / 🟡 **MEDIUM** / 🟢 **LOW**             | Dari annotation `@priority` atau global requirement metadata             |
-| **Notes**           | Screenshot, video, trace link, affected layer badges        | Dari `TestResult.attachments` + `@affectedLayer` annotation              |
+- Default **collapse**; summary menampilkan readiness: `N retried · N trace · N ss · N video`
+- Expand → 4 bucket (Retries / Traces / Screenshots / Videos) dengan **daftar file** (max 4 + “+N more”)
+- Related links: Playwright HTML, `test-summary.json`, folder attachments (preview auto-prefix `../`)
 
-- **Export:** Button di kanan atas tabel untuk export ke **CSV**, **TSV**, atau **Confluence Wiki Markup**
-- **Responsive:** Table scroll horizontal untuk viewport kecil (issue #1 akan diperbaiki di release berikutnya)
+#### **Run meta & role health**
+
+- Hero: `APP_ENV`, optional Run ID, generated time, total duration, unhealthy
+- `test-summary.json` → `runMeta: { appEnv, runId?, requirementPath?, ci, totalDurationMs, generatedAt }`
+- Role-aware: strip pass rate per role di bawah command bar
+
+#### **Attachments**
+
+- Reporter menyalin screenshot/video/trace ke `reports/attachments/{screenshots,videos,traces}/` bila file sumber ada, lalu rewrite path relatif ke dashboard.
+- Preview: `npx tsx scripts/preview-dashboard.ts` juga menulis `reports/test-summary.json` agar deep link tidak 404.
 
 ---
 
@@ -89,13 +120,21 @@ interface TestSummary {
   passed: number;
   failed: number;
   skipped: number;
-  passRate: number; // 0.0 - 1.0
+  passRate: number; // 0–100 (rounded percent)
   timestamp: string; // ISO 8601
 
   // === Table View extensions ===
   reportMode?: 'general' | 'role-aware';
   rolesInScope?: string[]; // ['finance', 'super-admin', 'hrd']
   testCases?: CollectedTestCase[]; // Detail per test case
+  runMeta?: {
+    appEnv: string;
+    runId?: string;
+    requirementPath?: string;
+    ci: boolean;
+    totalDurationMs: number;
+    generatedAt: string;
+  };
 }
 ```
 
@@ -105,34 +144,19 @@ interface TestSummary {
 interface CollectedTestCase {
   testId: string; // 'TC-LOGIN-01' atau derived ID
   title: string; // Test title dari test('...')
-  status: 'passed' | 'failed' | 'skipped';
+  status: 'passed' | 'failed' | 'skipped' | string;
   duration: number; // ms
-  filePath: string; // Relative path dari repo root
-  project: string; // 'chromium' | 'firefox' | 'webkit'
-
-  // === Metadata dari annotation ===
-  role?: string; // 'finance' | 'super-admin' | 'hrd'
-  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
-  affectedLayer?: Array<'ui' | 'api' | 'db' | 'integration'>;
-  inputData?: Record<string, any>;
+  scenarioId?: string;
+  role?: string;
+  priority?: 'high' | 'medium' | 'low';
+  inputData?: Record<string, string>;
   expectedResult?: string;
-  actualResult?: string; // Error message jika FAILED, 'Test passed' jika PASSED
-
-  // === Test steps ===
-  steps?: Array<{ name: string; duration: number; error?: string }>;
-
-  // === Attachments ===
-  attachments?: Array<{
-    name: string;
-    contentType: string; // 'image/png' | 'video/webm' | 'application/zip'
-    path: string; // Relative path dari repo root
-  }>;
-
-  // === Error detail (jika FAILED) ===
-  errorMessage?: string;
-  stackTrace?: string;
-  tracePath?: string; // Path ke trace.zip
-  screenshotPath?: string; // Path ke screenshot.png
+  actualResult?: string;
+  affectedLayer?: Array<'FE' | 'BE' | 'DB' | 'API'>;
+  attachmentCount?: number;
+  hasTrace?: boolean;
+  /** Unhealthy only (annotation wins over heuristic) */
+  failureSource?: 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
 }
 ```
 
@@ -154,7 +178,7 @@ interface CollectedTestCase {
    - Cek **Priority** — HIGH priority di-triage duluan
    - Klik screenshot/video/trace di kolom **Notes** untuk investigasi
 
-### Scenario 2: Export Report ke External Tool (Jira, Confluence, Excel)
+### Scenario 2: Export Report ke External Tool (Confluence, Excel)
 
 1. Buka `reports/custom-dashboard.html`
 2. Toggle ke **Table View**
@@ -199,22 +223,23 @@ Jika `reportMode: 'role-aware'` di `test-summary.json`:
 
 ### Issue #1: Table View tidak responsive di mobile/small viewport
 
-**Gejala:** Tabel 9 kolom terlalu lebar, sebagian kolom terpotong di layar kecil  
-**Workaround:** Scroll horizontal (ada scrollbar di bawah tabel)  
-**Fix planned:** Responsive breakpoint + collapsible columns di v0.2.0
+**Status:** Mitigated — **jangan hide** kolom PRIORITY/SOURCE/NOTES lewat media query; pakai **horizontal scroll**. Sticky kiri hanya Test ID.
 
 ### Issue #2: Screenshot/video tidak muncul di kolom Notes
 
-**Gejala:** Link ke `test-results/**/*.png` atau `*.webm` tidak resolve  
-**Root cause:** Attachment path relatif dari HTML report yang standalone  
-**Workaround:** Buka Playwright HTML report (`reports/html/index.html`) untuk lihat screenshot/video  
-**Fix planned:** Copy attachments ke `reports/attachments/` dan update path di v0.2.0
+**Status:** Mitigated — reporter materializes screenshot/video/trace to `reports/attachments/*` when source files exist. Missing files show muted “Missing” chips instead of broken empty `src`.
 
-### Issue #3: Actual Result error text tidak rapi (stack trace panjang)
+### Issue #3: Actual Result / steps terpotong (`…`)
 
-**Gejala:** Stack trace multi-line tidak ter-format dengan baik, sulit dibaca  
-**Workaround:** Copy text ke editor atau lihat full trace di Playwright HTML report  
-**Fix planned:** Collapsible accordion untuk long error text + `white-space: pre-wrap` di v0.2.0
+**Status:** Mitigated — body text **full wrap**, no `-webkit-line-clamp` / no cell-expand ellipsis. Steps & input multi-line blocks.
+
+### Issue #4: Filter steps di Accordion “tidak jalan”
+
+**Status:** Mitigated — hide via `.tree-item--filtered-out` (`display:none !important`) karena `display:flex` mengalahkan attribute `hidden`. Filter steps hanya di Accordion (bukan Table).
+
+### Issue #5: Deep links 404 dari preview
+
+**Status:** Mitigated — client prefix `../` bila path mengandung `/preview/`; preview script menulis `reports/test-summary.json`.
 
 ---
 
@@ -308,7 +333,7 @@ Saat test dijalankan via **Orchestrator pipeline** (Plan → Generate → Execut
 
 **Decision:** 🐛 FILE BUG  
 **Reason:** Error message mismatch — app returning generic "Login failed" instead of specific "Invalid credentials"  
-**Action:** Create defect ticket JIRA-1234, keep test as regression guard
+**Action:** Create defect ticket, keep test as regression guard
 ```
 
 ---
@@ -345,28 +370,51 @@ Atau via Orchestrator:
 
 ### Q: Bagaimana cara custom kolom Table View?
 
-**A:** Edit `src/support/custom-dashboard/export-helpers.ts` → function `COLUMN_DEFINITIONS`. Tambah/hapus kolom sesuai kebutuhan. Rebuild report dengan run test ulang.
+**A:**
+
+- Runtime (tanpa code): **Filter columns** di table-toolbar — show/hide + pin sticky header / pin Test ID (persist localStorage)
+- Source code:
+  - Header/export: `src/support/custom-dashboard/export-helpers.ts`
+  - HTML row: `src/support/custom-dashboard/build-table-view.ts`
+  - Filter attrs: `src/support/custom-dashboard/filter-attrs.ts`
+  - SOURCE decision: `src/support/custom-dashboard/failure-source.ts`
+
+Rebuild: run test ulang atau `npx tsx scripts/preview-dashboard.ts` (lalu **Ctrl+F5**).
+
+### Q: Kenapa tidak ada Create JIRA / density picker / donut chart?
+
+**A:** Sengaja dihapus/disederhanakan:
+
+- **Jira** — tidak dipakai; triage lewat SOURCE + defect ticket manual / export
+- **Density** — fixed dense saja
+- **Donut / Scan guide / Ops duplikat** — diganti **Evidence & reports** card (file list + deep links); health counts sudah di hero
+
+### Q: Filter steps di mana?
+
+**A:** Hanya di **Accordion** → expand card → chip **Test Steps** → input “Filter steps”. Table view tidak punya step filter.
 
 ---
 
-## Changelog
+## Changelog (dashboard)
 
-### v0.1.0-alpha.2 (Current)
+### v0.3.0 (Current — Monitor/Operate triage board)
 
-- ✅ Table View dengan 9 kolom
-- ✅ Export CSV/TSV/Confluence
-- ✅ Role-aware grouping
-- ✅ Annotation extraction (testId, priority, role, affectedLayer, inputData, expectedResult)
-- ✅ Actual result capture (error message + stack trace)
-- ⚠️ Known issues: responsive table, attachment path, long error text formatting
+- ✅ Full-width shell; command bar global; toolbars sibling of `.report-layout`
+- ✅ Fixed dense; no Comfortable/Dense picker; no Jira integration
+- ✅ Table: multi-line steps/input; full wrap; SOURCE Cause/Do/blurb; Notes stack
+- ✅ Export di incident alert; rows **dan** columns follow live Filter columns
+- ✅ Accordion: all cards collapsed by default; Filter steps; Copy failure packet only
+- ✅ Evidence & reports collapsible card (file inventory + related links); no Chart.js donut
+- ✅ Preview writes `reports/test-summary.json`; deep-link `../` from preview
 
-### v0.2.0 (Planned)
+### v0.2.0
 
-- 🔧 Fix responsive table layout
-- 🔧 Copy attachments ke `reports/attachments/` dan update path
-- 🔧 Collapsible long error text
-- 🆕 Filter/search per kolom di Table View
-- 🆕 Sort by Priority/Status/Duration
+- ✅ Full-width; sticky command bar; `runMeta`; `failureSource`; attachments materialize
+- ✅ Table/Accordion dual view; role health strip
+
+### v0.1.0-alpha.2
+
+- ✅ Table + Accordion toggle; export CSV/TSV/Confluence; role-aware grouping
 - 🆕 Dark mode toggle
 
 ---

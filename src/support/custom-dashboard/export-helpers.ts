@@ -14,6 +14,7 @@ type ExportRow = {
   actualResult: string;
   status: string;
   priority: string;
+  source: string;
   notes: string;
 };
 
@@ -26,6 +27,7 @@ const GENERAL_HEADERS = [
   'ACTUAL RESULT',
   'STATUS',
   'PRIORITY',
+  'SOURCE',
   'NOTES',
 ];
 
@@ -38,6 +40,7 @@ const ROLE_HEADERS = [
   'ACTUAL RESULT',
   'STATUS',
   'PRIORITY',
+  'SOURCE',
   'NOTES',
 ];
 
@@ -62,6 +65,7 @@ function formatSteps(steps: Array<{ title: string }>): string {
 
 function formatNotes(test: CollectedTestData): string {
   const parts: string[] = [];
+  if (test.scenarioId) parts.push(test.scenarioId);
   parts.push(formatDuration(test.duration));
   if (test.affectedLayer && test.affectedLayer.length > 0) {
     parts.push(test.affectedLayer.map((l) => `[${l}]`).join(''));
@@ -83,8 +87,25 @@ function buildRow(test: CollectedTestData): ExportRow {
     actualResult: test.actualResult || '-',
     status: (test.status || '').toUpperCase(),
     priority: (test.priority || '').toUpperCase(),
+    source: (test.failureSource || '').toUpperCase() || '-',
     notes: formatNotes(test),
   };
+}
+
+function exportRowValues(role: string | null, row: ExportRow): string[] {
+  const base = [
+    row.testId,
+    row.description,
+    row.steps,
+    row.inputData,
+    row.expectedResult,
+    row.actualResult,
+    row.status,
+    row.priority,
+    row.source,
+    row.notes,
+  ];
+  return role == null ? base : [role, ...base];
 }
 
 // ---------------------------------------------------------------------------
@@ -99,46 +120,18 @@ export function toTsv(tests: CollectedTestData[], mode: ReportMode): string {
   const lines: string[] = [];
 
   if (mode === 'role-aware') {
-    // Single table with ROLE column (not multiple tables)
     lines.push(rowToTsvLine(['ROLE', ...ROLE_HEADERS]));
     const roles = [...new Set(tests.map((t) => t.role).filter(Boolean))];
     for (const role of roles) {
       const roleTests = tests.filter((t) => t.role === role);
       roleTests.forEach((test) => {
-        const r = buildRow(test);
-        lines.push(
-          rowToTsvLine([
-            role.toUpperCase(),
-            r.testId,
-            r.description,
-            r.steps,
-            r.inputData,
-            r.expectedResult,
-            r.actualResult,
-            r.status,
-            r.priority,
-            r.notes,
-          ]),
-        );
+        lines.push(rowToTsvLine(exportRowValues(role.toUpperCase(), buildRow(test))));
       });
     }
   } else {
     lines.push(rowToTsvLine(GENERAL_HEADERS));
     tests.forEach((test) => {
-      const r = buildRow(test);
-      lines.push(
-        rowToTsvLine([
-          r.testId,
-          r.description,
-          r.steps,
-          r.inputData,
-          r.expectedResult,
-          r.actualResult,
-          r.status,
-          r.priority,
-          r.notes,
-        ]),
-      );
+      lines.push(rowToTsvLine(exportRowValues(null, buildRow(test))));
     });
   }
 
@@ -162,46 +155,18 @@ export function toCsv(tests: CollectedTestData[], mode: ReportMode): string {
   const lines: string[] = [];
 
   if (mode === 'role-aware') {
-    // Single table with ROLE column (not multiple tables)
     lines.push(rowToCsvLine(['ROLE', ...ROLE_HEADERS]));
     const roles = [...new Set(tests.map((t) => t.role).filter(Boolean))];
     for (const role of roles) {
       const roleTests = tests.filter((t) => t.role === role);
       roleTests.forEach((test) => {
-        const r = buildRow(test);
-        lines.push(
-          rowToCsvLine([
-            role.toUpperCase(),
-            r.testId,
-            r.description,
-            r.steps,
-            r.inputData,
-            r.expectedResult,
-            r.actualResult,
-            r.status,
-            r.priority,
-            r.notes,
-          ]),
-        );
+        lines.push(rowToCsvLine(exportRowValues(role.toUpperCase(), buildRow(test))));
       });
     }
   } else {
     lines.push(rowToCsvLine(GENERAL_HEADERS));
     tests.forEach((test) => {
-      const r = buildRow(test);
-      lines.push(
-        rowToCsvLine([
-          r.testId,
-          r.description,
-          r.steps,
-          r.inputData,
-          r.expectedResult,
-          r.actualResult,
-          r.status,
-          r.priority,
-          r.notes,
-        ]),
-      );
+      lines.push(rowToCsvLine(exportRowValues(null, buildRow(test))));
     });
   }
 
@@ -209,12 +174,22 @@ export function toCsv(tests: CollectedTestData[], mode: ReportMode): string {
 }
 
 // ---------------------------------------------------------------------------
-// Confluence Wiki Markup — paste directly into Confluence page editor
+// Confluence Wiki Markup — plain-text fallback (legacy editor / ClipboardItem fail)
+// Docs: ||header|| + |cell| rows. Newlines inside cells break table → flatten.
 // ---------------------------------------------------------------------------
+
+/** Flatten cell text for wiki tables (no raw newlines / unescaped pipes). */
+function confluenceWikiCellText(value: string): string {
+  return String(value ?? '')
+    .replace(/\r\n|\n|\r/g, ' · ')
+    .replace(/\s+/g, ' ')
+    .replace(/\|/g, '\\|')
+    .trim();
+}
 
 function confluenceCell(value: string, isHeader = false): string {
   const delimiter = isHeader ? '||' : '|';
-  const safe = value.replace(/\|/g, '\\|').replace(/\n/g, ' · ');
+  const safe = confluenceWikiCellText(value);
   return `${delimiter} ${safe} `;
 }
 
@@ -225,9 +200,11 @@ function rowToConfluenceLine(values: string[], isHeader = false): string {
 
 export function toConfluenceMarkup(tests: CollectedTestData[], mode: ReportMode): string {
   const lines: string[] = [];
+  // Title line helps QA identify the paste source in a page
+  lines.push(`h3. QA Report export (${mode === 'role-aware' ? 'role-aware' : 'general'})`);
+  lines.push('');
 
   if (mode === 'role-aware') {
-    // Single table with ROLE column — Confluence wiki markup doesn't support colspan
     lines.push(rowToConfluenceLine(['ROLE', ...ROLE_HEADERS], true));
     const roles = [...new Set(tests.map((t) => t.role).filter(Boolean))];
     for (const role of roles) {
@@ -235,18 +212,12 @@ export function toConfluenceMarkup(tests: CollectedTestData[], mode: ReportMode)
       roleTests.forEach((test) => {
         const r = buildRow(test);
         lines.push(
-          rowToConfluenceLine([
-            role.toUpperCase(),
-            r.testId,
-            r.description,
-            r.steps,
-            r.inputData,
-            r.expectedResult,
-            r.actualResult,
-            r.status,
-            r.priority,
-            r.notes,
-          ]),
+          rowToConfluenceLine(
+            exportRowValues(role.toUpperCase(), {
+              ...r,
+              status: confluenceStatus(r.status),
+            }),
+          ),
         );
       });
     }
@@ -255,17 +226,12 @@ export function toConfluenceMarkup(tests: CollectedTestData[], mode: ReportMode)
     tests.forEach((test) => {
       const r = buildRow(test);
       lines.push(
-        rowToConfluenceLine([
-          r.testId,
-          r.description,
-          r.steps,
-          r.inputData,
-          r.expectedResult,
-          r.actualResult,
-          r.status,
-          r.priority,
-          r.notes,
-        ]),
+        rowToConfluenceLine(
+          exportRowValues(null, {
+            ...r,
+            status: confluenceStatus(r.status),
+          }),
+        ),
       );
     });
   }
@@ -274,25 +240,34 @@ export function toConfluenceMarkup(tests: CollectedTestData[], mode: ReportMode)
 }
 
 // ---------------------------------------------------------------------------
-// Confluence HTML — styled table for rich paste into Confluence editor
+// Confluence HTML — rich clipboard paste (Confluence Cloud / Server modern editor)
+// Prefer simple table + inline styles (Atlassian N20/N40 palette). Complex CSS
+// and external classes are stripped on paste.
 // ---------------------------------------------------------------------------
 
-function htmlCell(value: string, rowStyle?: string): string {
-  const safe = escapeHtml(value).replace(/\n/g, '<br>');
-  const style = rowStyle
-    ? `padding:6px 10px;border:1px solid #ccc;vertical-align:top;font-size:13px;${rowStyle}`
-    : 'padding:6px 10px;border:1px solid #ccc;vertical-align:top;font-size:13px;';
-  return `<td style="${style}">${safe}</td>`;
-}
-
-function htmlHeaderCell(value: string): string {
-  return `<th style="padding:6px 10px;border:1px solid #ccc;background:#f1f5f9;text-align:left;font-size:12px;font-weight:600;">${escapeHtml(value)}</th>`;
-}
+const CONF = {
+  border: '#dfe1e6',
+  headerBg: '#f4f5f7',
+  headerFg: '#172b4d',
+  text: '#172b4d',
+  muted: '#6b778c',
+  failedBg: '#ffebe6',
+  failedFg: '#bf2600',
+  passedBg: '#e3fcef',
+  passedFg: '#006644',
+  skippedBg: '#fffae6',
+  skippedFg: '#974f0c',
+  accentBg: '#f3e4d4',
+  accentFg: '#a87648',
+  font: '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif',
+  mono: 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace',
+} as const;
 
 function getRowBg(status: string): string {
   const s = (status || '').toLowerCase();
-  if (s === 'failed' || s === 'timedout' || s === 'interrupted') return 'background:#fef2f2;';
-  if (s === 'skipped') return 'background:#fffbeb;';
+  if (s === 'failed' || s === 'timedout' || s === 'interrupted')
+    return `background:${CONF.failedBg};`;
+  if (s === 'skipped') return `background:${CONF.skippedBg};`;
   return '';
 }
 
@@ -310,11 +285,102 @@ function confluenceStatus(status: string): string {
   return `${icon} ${(status || 'UNKNOWN').toUpperCase()}`;
 }
 
+function confluenceStatusHtml(status: string): string {
+  const s = (status || '').toLowerCase();
+  const label = confluenceStatus(status);
+  let bg: string = CONF.headerBg;
+  let fg: string = CONF.muted;
+  if (s === 'failed' || s === 'timedout' || s === 'interrupted') {
+    bg = CONF.failedBg;
+    fg = CONF.failedFg;
+  } else if (s === 'passed') {
+    bg = CONF.passedBg;
+    fg = CONF.passedFg;
+  } else if (s === 'skipped') {
+    bg = CONF.skippedBg;
+    fg = CONF.skippedFg;
+  }
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${bg};color:${fg};font-weight:700;font-size:11px;white-space:nowrap;">${escapeHtml(label)}</span>`;
+}
+
+function confluencePriorityHtml(priority: string): string {
+  const p = (priority || 'medium').toLowerCase();
+  let bg: string = CONF.headerBg;
+  let fg: string = CONF.muted;
+  if (p === 'high') {
+    bg = CONF.failedBg;
+    fg = CONF.failedFg;
+  } else if (p === 'medium') {
+    bg = CONF.skippedBg;
+    fg = CONF.skippedFg;
+  } else if (p === 'low') {
+    bg = CONF.passedBg;
+    fg = CONF.passedFg;
+  }
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${bg};color:${fg};font-weight:700;font-size:11px;">${escapeHtml((priority || 'MEDIUM').toUpperCase())}</span>`;
+}
+
+function confluenceSourceHtml(source: string): string {
+  const s = (source || '-').toUpperCase();
+  if (!s || s === '-') return `<span style="color:${CONF.muted};">-</span>`;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:3px;background:${CONF.accentBg};color:${CONF.accentFg};font-weight:700;font-size:11px;">${escapeHtml(s)}</span>`;
+}
+
+function confluenceMultilineHtml(value: string): string {
+  const safe = escapeHtml(value || '-').replace(/\r\n|\n|\r/g, '<br>');
+  return safe;
+}
+
+function htmlCell(innerHtml: string, rowStyle?: string, extra = ''): string {
+  const style = [
+    'padding:6px 10px',
+    `border:1px solid ${CONF.border}`,
+    'vertical-align:top',
+    'font-size:12px',
+    `color:${CONF.text}`,
+    'line-height:1.4',
+    rowStyle || '',
+    extra,
+  ]
+    .filter(Boolean)
+    .join(';');
+  return `<td style="${style}">${innerHtml}</td>`;
+}
+
+function htmlHeaderCell(value: string): string {
+  return `<th style="padding:7px 10px;border:1px solid ${CONF.border};background:${CONF.headerBg};color:${CONF.headerFg};text-align:left;font-size:11px;font-weight:700;letter-spacing:0.03em;white-space:nowrap;">${escapeHtml(value)}</th>`;
+}
+
+function confluenceRowCells(r: ExportRow, bg: string): string {
+  return [
+    htmlCell(
+      `<code style="font-family:${CONF.mono};font-size:11px;font-weight:700;color:${CONF.accentFg};">${escapeHtml(r.testId)}</code>`,
+      bg,
+    ),
+    htmlCell(confluenceMultilineHtml(r.description), bg),
+    htmlCell(confluenceMultilineHtml(r.steps), bg, 'min-width:140px'),
+    htmlCell(confluenceMultilineHtml(r.inputData), bg, 'min-width:120px'),
+    htmlCell(confluenceMultilineHtml(r.expectedResult), bg),
+    htmlCell(confluenceMultilineHtml(r.actualResult), bg),
+    htmlCell(confluenceStatusHtml(r.status), bg, 'text-align:center;white-space:nowrap'),
+    htmlCell(confluencePriorityHtml(r.priority), bg, 'text-align:center;white-space:nowrap'),
+    htmlCell(confluenceSourceHtml(r.source), bg, 'text-align:center;white-space:nowrap'),
+    htmlCell(
+      confluenceMultilineHtml(r.notes),
+      bg,
+      `color:${CONF.muted};font-size:11px;white-space:nowrap`,
+    ),
+  ].join('');
+}
+
 export function toConfluenceHtml(tests: CollectedTestData[], mode: ReportMode): string {
   const headers = mode === 'role-aware' ? ['ROLE', ...ROLE_HEADERS] : GENERAL_HEADERS;
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
 
-  let html =
-    '<table border="1" style="border-collapse:collapse;font-family:sans-serif;font-size:13px;width:100%;">';
+  let html = '';
+  html += `<div style="font-family:${CONF.font};color:${CONF.text};">`;
+  html += `<p style="margin:0 0 8px;font-size:12px;color:${CONF.muted};"><strong style="color:${CONF.headerFg};">QA Report</strong> · ${escapeHtml(stamp)} · ${tests.length} row${tests.length === 1 ? '' : 's'} · paste into Confluence editor</p>`;
+  html += `<table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid ${CONF.border};font-family:${CONF.font};font-size:12px;width:100%;table-layout:auto;">`;
   html += '<thead><tr>' + headers.map(htmlHeaderCell).join('') + '</tr></thead>';
   html += '<tbody>';
 
@@ -326,19 +392,10 @@ export function toConfluenceHtml(tests: CollectedTestData[], mode: ReportMode): 
         const r = buildRow(test);
         const bg = getRowBg(r.status);
         html += '<tr>';
-        // Add ROLE cell with rowspan only on first row of each role group
         if (idx === 0) {
-          html += `<td rowspan="${roleTests.length}" style="padding:6px 10px;border:1px solid #ccc;font-weight:600;vertical-align:middle;text-align:center;font-size:13px;${bg}">${escapeHtml(role.toUpperCase())}</td>`;
+          html += `<td rowspan="${roleTests.length}" style="padding:6px 10px;border:1px solid ${CONF.border};font-weight:700;vertical-align:middle;text-align:center;font-size:12px;letter-spacing:0.04em;color:${CONF.headerFg};">${escapeHtml(role.toUpperCase())}</td>`;
         }
-        html += htmlCell(r.testId, bg);
-        html += htmlCell(r.description, bg);
-        html += htmlCell(r.steps, bg);
-        html += htmlCell(r.inputData, bg);
-        html += htmlCell(r.expectedResult, bg);
-        html += htmlCell(r.actualResult, bg);
-        html += htmlCell(confluenceStatus(r.status), bg);
-        html += htmlCell(r.priority, bg);
-        html += htmlCell(r.notes, bg);
+        html += confluenceRowCells(r, bg);
         html += '</tr>';
       });
     }
@@ -347,20 +404,12 @@ export function toConfluenceHtml(tests: CollectedTestData[], mode: ReportMode): 
       const r = buildRow(test);
       const bg = getRowBg(r.status);
       html += '<tr>';
-      html += htmlCell(r.testId, bg);
-      html += htmlCell(r.description, bg);
-      html += htmlCell(r.steps, bg);
-      html += htmlCell(r.inputData, bg);
-      html += htmlCell(r.expectedResult, bg);
-      html += htmlCell(r.actualResult, bg);
-      html += htmlCell(confluenceStatus(r.status), bg);
-      html += htmlCell(r.priority, bg);
-      html += htmlCell(r.notes, bg);
+      html += confluenceRowCells(r, bg);
       html += '</tr>';
     });
   }
 
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   return html;
 }
 
@@ -370,7 +419,7 @@ export function toConfluenceHtml(tests: CollectedTestData[], mode: ReportMode): 
 
 /**
  * Returns an inline <script> block that wires up the three export buttons.
- * Must be called AFTER the table view HTML has been injected into the DOM.
+ * When payload is provided, export prefers currently visible filtered rows.
  */
 export function buildExportScript(
   tsvContent: string,
@@ -378,15 +427,26 @@ export function buildExportScript(
   confluenceContent: string,
   confluenceHtml: string,
   featureName: string,
+  payload?: unknown[],
+  mode: ReportMode = 'general',
 ): string {
   const safeTsv = JSON.stringify(tsvContent);
   const safeCsv = JSON.stringify(csvContent);
   const safeConfluence = JSON.stringify(confluenceContent);
   const safeConfluenceHtml = JSON.stringify(confluenceHtml);
   const safeFilename = JSON.stringify(`qa-report-${featureName}.csv`);
+  const safePayload = JSON.stringify(payload ?? []);
+  const safeMode = JSON.stringify(mode);
 
   return `
 (function () {
+  var FULL_TSV = ${safeTsv};
+  var FULL_CSV = ${safeCsv};
+  var FULL_CONF = ${safeConfluence};
+  var FULL_CONF_HTML = ${safeConfluenceHtml};
+  var PAYLOAD = ${safePayload};
+  var MODE = ${safeMode};
+
   function showFeedback(btnId, msg) {
     var btn = document.getElementById(btnId);
     if (!btn) return;
@@ -438,20 +498,378 @@ export function buildExportScript(
     URL.revokeObjectURL(url);
   }
 
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest ? e.target.closest('[id]') : e.target;
-    if (!btn || !btn.id) return;
-    if (btn.id === 'btn-copy-confluence') {
-      copyRichText(${safeConfluence}, ${safeConfluenceHtml}, 'btn-copy-confluence');
-    } else if (btn.id === 'btn-copy-tsv') {
-      copyPlainText(${safeTsv}, 'btn-copy-tsv');
-    } else if (btn.id === 'btn-download-csv') {
-      var csvWithBom = '\\uFEFF' + ${safeCsv};
-      downloadFile(csvWithBom, ${safeFilename}, 'text/csv;charset=utf-8;');
-    }
-  });
-})();
-  `.trim();
+  function visibleKeys() {
+        var keys = [];
+        var seen = {};
+        // Prefer table rows in the active table panel so accordion cards don't double-count
+        var scope = document.querySelector('#view-table.view-panel--active') || document;
+        scope.querySelectorAll('tr[data-row-key], .test-card[data-row-key]').forEach(function (el) {
+          if (el.hidden) return;
+          if (el.style && el.style.display === 'none') return;
+          var k = el.getAttribute('data-row-key');
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          keys.push(k);
+        });
+        return keys;
+      }
+
+      function filteredPayload() {
+        if (!PAYLOAD || !PAYLOAD.length) return null;
+        var keys = visibleKeys();
+        // If nothing visible after filter, export empty table (headers only) — not full dump
+        if (!keys.length) return [];
+        var set = {};
+        keys.forEach(function (k) { set[k] = true; });
+        var rows = PAYLOAD.filter(function (row) { return set[row.key]; });
+        // Fallback: if keys came from accordion cards with different key space, match by testId
+        if (!rows.length) {
+          var ids = {};
+          keys.forEach(function (k) {
+            var el = document.querySelector('[data-row-key=' + JSON.stringify(k) + ']');
+            if (el) {
+              var id = el.getAttribute('data-test-id');
+              if (id) ids[id] = true;
+            }
+          });
+          rows = PAYLOAD.filter(function (row) { return ids[row.testId]; });
+        }
+        return rows;
+      }
+
+      function csvQuote(v) {
+        var q = String.fromCharCode(34);
+        return q + String(v == null ? '' : v).split(q).join(q + q) + q;
+      }
+
+      function formatSteps(steps) {
+        if (!steps || !steps.length) return '-';
+        return steps.map(function (s, i) { return (i + 1) + '. ' + s; }).join('\\n');
+      }
+
+      function formatInput(input) {
+        if (!input || typeof input !== 'object') return '-';
+        var entries = Object.keys(input);
+        if (!entries.length) return '-';
+        return entries.map(function (k) { return k + ': ' + input[k]; }).join('\\n');
+      }
+
+      function formatNotesClient(r) {
+        var parts = [];
+        if (r.scenarioId) parts.push(r.scenarioId);
+        parts.push(((r.duration || 0) / 1000).toFixed(2) + 's');
+        if (r.affectedLayer && r.affectedLayer.length) {
+          parts.push(r.affectedLayer.map(function (l) { return '[' + l + ']'; }).join(''));
+        }
+        return parts.length ? parts.join(' · ') : '-';
+      }
+
+      function statusLabel(status) {
+        var s = String(status || '').toLowerCase();
+        var icon = s === 'passed' ? '✓' : s === 'failed' || s === 'interrupted' ? '✗' : s === 'timedout' ? '⏱' : s === 'skipped' ? '⊘' : '?';
+        return icon + ' ' + String(status || 'UNKNOWN').toUpperCase();
+      }
+
+      function wikiCell(value) {
+        var s = String(value == null ? '' : value);
+        var crlf = String.fromCharCode(13, 10);
+        var lf = String.fromCharCode(10);
+        var cr = String.fromCharCode(13);
+        s = s.split(crlf).join(' · ').split(lf).join(' · ').split(cr).join(' · ');
+        s = s.replace(new RegExp('[' + String.fromCharCode(9, 10, 11, 12, 13, 32) + ']+', 'g'), ' ');
+        s = s.split('|').join(String.fromCharCode(92) + '|');
+        return s.trim();
+      }
+
+      function confEsc(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function confMultiline(value) {
+        var s = confEsc(value);
+        var crlf = String.fromCharCode(13, 10);
+        var lf = String.fromCharCode(10);
+        var cr = String.fromCharCode(13);
+        return s.split(crlf).join('<br>').split(lf).join('<br>').split(cr).join('<br>');
+      }
+
+      function confPill(label, bg, fg) {
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:3px;background:' + bg + ';color:' + fg + ';font-weight:700;font-size:11px;white-space:nowrap;">' + confEsc(label) + '</span>';
+      }
+
+      function confStatusHtml(status) {
+        var s = String(status || '').toLowerCase();
+        var label = statusLabel(status);
+        if (s === 'failed' || s === 'timedout' || s === 'interrupted') return confPill(label, '#ffebe6', '#bf2600');
+        if (s === 'passed') return confPill(label, '#e3fcef', '#006644');
+        if (s === 'skipped') return confPill(label, '#fffae6', '#974f0c');
+        return confPill(label, '#f4f5f7', '#6b778c');
+      }
+
+      function confPriorityHtml(priority) {
+        var p = String(priority || 'medium').toLowerCase();
+        var label = String(priority || 'MEDIUM').toUpperCase();
+        if (p === 'high') return confPill(label, '#ffebe6', '#bf2600');
+        if (p === 'medium') return confPill(label, '#fffae6', '#974f0c');
+        if (p === 'low') return confPill(label, '#e3fcef', '#006644');
+        return confPill(label, '#f4f5f7', '#6b778c');
+      }
+
+      function confSourceHtml(source) {
+        var s = String(source || '-').toUpperCase() || '-';
+        if (!s || s === '-') return '<span style="color:#6b778c;">-</span>';
+        return confPill(s, '#f3e4d4', '#a87648');
+      }
+
+      /**
+       * Visible column keys from Filter columns picker (live DOM),
+       * falling back to localStorage dashboard-columns-v1.
+       * Locked: testId + status always included.
+       */
+      function visibleColumnKeys() {
+        var LOCKED = { testId: true, status: true };
+        var ORDER = MODE === 'role-aware'
+          ? ['role','testId','description','steps','input','expected','actual','status','priority','source','notes']
+          : ['testId','description','steps','input','expected','actual','status','priority','source','notes'];
+        var state = null;
+
+        // 1) Prefer live checkboxes in column picker
+        var toggles = document.querySelectorAll('[data-col-toggle]');
+        if (toggles && toggles.length) {
+          state = {};
+          toggles.forEach(function (input) {
+            var key = input.getAttribute('data-col-toggle');
+            if (!key) return;
+            state[key] = !!input.checked;
+          });
+        }
+
+        // 2) Fallback: localStorage
+        if (!state) {
+          try {
+            var raw = localStorage.getItem('dashboard-columns-v1');
+            if (raw) state = JSON.parse(raw);
+          } catch (e) {}
+        }
+
+        // 3) Fallback: table header cells with data-col-hidden
+        if (!state) {
+          state = {};
+          var ths = document.querySelectorAll('.qa-report-table thead th[data-col]');
+          if (ths && ths.length) {
+            ths.forEach(function (th) {
+              var key = th.getAttribute('data-col');
+              if (!key) return;
+              state[key] = th.getAttribute('data-col-hidden') !== '1';
+            });
+          }
+        }
+
+        // Default: all visible
+        if (!state) {
+          return ORDER.slice();
+        }
+
+        return ORDER.filter(function (key) {
+          if (LOCKED[key]) return true;
+          if (key === 'role') return true; // role-aware mode column always kept when present
+          return state[key] !== false;
+        });
+      }
+
+      function columnHeader(key) {
+        var map = {
+          role: 'ROLE',
+          testId: 'TEST ID',
+          description: 'DESCRIPTION',
+          steps: 'TEST STEP',
+          input: 'INPUT DATA',
+          expected: 'EXPECTED RESULT',
+          actual: 'ACTUAL RESULT',
+          status: 'STATUS',
+          priority: 'PRIORITY',
+          source: 'SOURCE',
+          notes: 'NOTES'
+        };
+        return map[key] || key.toUpperCase();
+      }
+
+      function cellValue(r, key) {
+        if (key === 'role') return r.role || '';
+        if (key === 'testId') return r.testId;
+        if (key === 'description') return r.title;
+        if (key === 'steps') return formatSteps(r.steps);
+        if (key === 'input') return formatInput(r.inputData);
+        if (key === 'expected') return r.expectedResult;
+        if (key === 'actual') return r.actualResult;
+        if (key === 'status') return statusLabel(r.status);
+        if (key === 'priority') return String(r.priority || '').toUpperCase();
+        if (key === 'source') return (r.failureSource || '').toUpperCase() || '-';
+        if (key === 'notes') return formatNotesClient(r);
+        return '';
+      }
+
+      function cellHtmlValue(r, key) {
+        if (key === 'role') return confEsc((r.role || '').toUpperCase());
+        if (key === 'testId') return '<code style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:#a87648;">' + confEsc(r.testId || '-') + '</code>';
+        if (key === 'description') return confMultiline(r.title || '-');
+        if (key === 'steps') return confMultiline(formatSteps(r.steps));
+        if (key === 'input') return confMultiline(formatInput(r.inputData));
+        if (key === 'expected') return confMultiline(r.expectedResult || '-');
+        if (key === 'actual') return confMultiline(r.actualResult || '-');
+        if (key === 'status') return confStatusHtml(r.status);
+        if (key === 'priority') return confPriorityHtml(r.priority);
+        if (key === 'source') return confSourceHtml(r.failureSource);
+        if (key === 'notes') return confEsc(formatNotesClient(r));
+        return confEsc(cellValue(r, key));
+      }
+
+      function buildCsv(rows) {
+        var cols = visibleColumnKeys();
+        var headers = cols.map(columnHeader);
+        var lines = [headers.map(csvQuote).join(',')];
+        rows.forEach(function (r) {
+          lines.push(cols.map(function (k) { return csvQuote(cellValue(r, k)); }).join(','));
+        });
+        return lines.join('\\n');
+      }
+
+      function buildTsv(rows) {
+        var cols = visibleColumnKeys();
+        var headers = cols.map(columnHeader);
+        var lines = [headers.join('\\t')];
+        rows.forEach(function (r) {
+          lines.push(cols.map(function (k) {
+            return String(cellValue(r, k) == null ? '' : cellValue(r, k)).replace(/\\t/g, ' ').replace(/\\n/g, ' | ');
+          }).join('\\t'));
+        });
+        return lines.join('\\n');
+      }
+
+      function buildConfluenceWiki(rows) {
+              var cols = visibleColumnKeys();
+              var headers = cols.map(columnHeader);
+              var lines = [];
+              lines.push('h3. QA Report export');
+              lines.push('');
+              lines.push('|| ' + headers.map(wikiCell).join(' || ') + ' ||');
+              // Wiki markup has no rowspan — show ROLE only on first row of a consecutive role group.
+              var prevRole = null;
+              rows.forEach(function (r) {
+                var roleKey = String(r.role || '').toUpperCase() || '';
+                lines.push('| ' + cols.map(function (k) {
+                  if (k === 'role') {
+                    if (roleKey && roleKey === prevRole) return '';
+                    prevRole = roleKey;
+                    return wikiCell(roleKey || cellValue(r, k));
+                  }
+                  return wikiCell(cellValue(r, k));
+                }).join(' | ') + ' |');
+              });
+              return lines.join('\\n');
+            }
+
+            function buildConfluenceHtml(rows) {
+        var cols = visibleColumnKeys();
+        var headers = cols.map(columnHeader);
+        var stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        var hasRoleCol = cols.indexOf('role') !== -1;
+        var html = '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#172b4d;">';
+        html += '<p style="margin:0 0 8px;font-size:12px;color:#6b778c;"><strong style="color:#172b4d;">QA Report</strong> · ' + confEsc(stamp) + ' · ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ' · paste into Confluence editor</p>';
+        html += '<table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #dfe1e6;font-size:12px;width:100%;">';
+        html += '<thead><tr>';
+        headers.forEach(function (h) {
+          html += '<th style="padding:7px 10px;border:1px solid #dfe1e6;background:#f4f5f7;color:#172b4d;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;">' + confEsc(h) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+
+        // Group consecutive same-role rows so ROLE column can rowspan (Confluence-friendly).
+        var groups = [];
+        if (hasRoleCol) {
+          var cur = null;
+          rows.forEach(function (r) {
+            var roleKey = String(r.role || '').toUpperCase() || '-';
+            if (!cur || cur.roleKey !== roleKey) {
+              cur = { roleKey: roleKey, rows: [] };
+              groups.push(cur);
+            }
+            cur.rows.push(r);
+          });
+        } else {
+          groups = [{ roleKey: '', rows: rows.slice() }];
+        }
+
+        groups.forEach(function (g) {
+          g.rows.forEach(function (r, idx) {
+            var st = String(r.status || '').toLowerCase();
+            var bg = (st === 'failed' || st === 'timedout' || st === 'interrupted')
+              ? 'background:#ffebe6;'
+              : (st === 'skipped' ? 'background:#fffae6;' : '');
+            html += '<tr>';
+            cols.forEach(function (k) {
+              if (k === 'role') {
+                // Only first row of the role group emits the ROLE cell with rowspan.
+                if (idx !== 0) return;
+                var span = g.rows.length;
+                // Bold role label, no background fill — matches Atlassian default
+                var roleStyle = 'border:1px solid #dfe1e6;padding:6px 10px;vertical-align:middle;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.04em;color:#172b4d;';
+                html += '<td' + (span > 1 ? ' rowspan="' + span + '"' : '') + ' style="' + roleStyle + '">' + confEsc(g.roleKey) + '</td>';
+                return;
+              }
+              var center = (k === 'status' || k === 'priority' || k === 'source') ? 'text-align:center;' : '';
+              html += '<td style="border:1px solid #dfe1e6;padding:6px 10px;vertical-align:top;font-size:12px;line-height:1.4;' + bg + center + '">' + cellHtmlValue(r, k) + '</td>';
+            });
+            html += '</tr>';
+          });
+        });
+
+        html += '</tbody></table></div>';
+        return html;
+      }
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('[id]') : e.target;
+        if (!btn || !btn.id) return;
+        if (['btn-copy-confluence','btn-copy-tsv','btn-download-csv'].indexOf(btn.id) === -1) return;
+
+        // Always rebuild from currently visible rows + currently visible columns
+        // so Filter columns show/hide is reflected live in every export path.
+        var filtered = filteredPayload();
+        var rows = (filtered && filtered.length >= 0) ? filtered : (PAYLOAD || []);
+        // When no payload available, fall back to full static snapshot
+        if (!PAYLOAD || !PAYLOAD.length) {
+          if (btn.id === 'btn-copy-confluence') {
+            copyRichText(FULL_CONF, FULL_CONF_HTML, 'btn-copy-confluence');
+          } else if (btn.id === 'btn-copy-tsv') {
+            copyPlainText(FULL_TSV, 'btn-copy-tsv');
+          } else if (btn.id === 'btn-download-csv') {
+            downloadFile('\\uFEFF' + FULL_CSV, ${safeFilename}, 'text/csv;charset=utf-8;');
+            showFeedback('btn-download-csv', '\\u2713 Downloaded');
+          }
+          return;
+        }
+
+        var tsv = buildTsv(rows);
+        var csv = '\\uFEFF' + buildCsv(rows);
+        var confWiki = buildConfluenceWiki(rows);
+        var confHtml = buildConfluenceHtml(rows);
+
+        if (btn.id === 'btn-copy-confluence') {
+          // text/html = rich table for Confluence Cloud; text/plain = wiki markup fallback
+          copyRichText(confWiki, confHtml, 'btn-copy-confluence');
+        } else if (btn.id === 'btn-copy-tsv') {
+          copyPlainText(tsv, 'btn-copy-tsv');
+        } else if (btn.id === 'btn-download-csv') {
+          downloadFile(csv, ${safeFilename}, 'text/csv;charset=utf-8;');
+          showFeedback('btn-download-csv', '\\u2713 Downloaded');
+        }
+      });
+    })();
+      `.trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -460,16 +878,16 @@ export function buildExportScript(
 
 export function renderStatusBadge(status: string): string {
   const map: Record<string, { cls: string; icon: string; label: string }> = {
-    passed: { cls: 'status-pill--passed', icon: '✓', label: 'PASSED' },
-    failed: { cls: 'status-pill--failed', icon: '✗', label: 'FAILED' },
-    timedOut: { cls: 'status-pill--failed', icon: '⏱', label: 'TIMED OUT' },
-    interrupted: { cls: 'status-pill--failed', icon: '✗', label: 'INTERRUPTED' },
-    skipped: { cls: 'status-pill--skipped', icon: '⊘', label: 'SKIPPED' },
+    passed: { cls: 'status-pill--passed', icon: '✓', label: 'Passed' },
+    failed: { cls: 'status-pill--failed', icon: '✗', label: 'Failed' },
+    timedOut: { cls: 'status-pill--failed', icon: '⏱', label: 'Timed out' },
+    interrupted: { cls: 'status-pill--failed', icon: '✗', label: 'Interrupted' },
+    skipped: { cls: 'status-pill--skipped', icon: '⊘', label: 'Skipped' },
   };
   const entry = map[status] ?? {
     cls: 'status-pill--skipped',
     icon: '?',
-    label: (status || 'UNKNOWN').toUpperCase(),
+    label: status || 'Unknown',
   };
   return `<span class="status-pill status-pill--full ${entry.cls}"><span class="status-pill__icon">${entry.icon}</span> ${entry.label}</span>`;
 }
@@ -496,8 +914,12 @@ export function renderInputDataCell(inputData: Record<string, string>): string {
   if (!inputData || typeof inputData !== 'object') return '<span class="muted">-</span>';
   const entries = Object.entries(inputData);
   if (entries.length === 0) return '<span class="muted">-</span>';
-  return `<div class="input-kv">${entries
-    .map(([k, v]) => `<div><span class="key">${escapeHtml(k)}:</span> ${escapeHtml(v)}</div>`)
+  // Multi-line key/value rows — no inline " · " join, no truncation
+  return `<div class="input-flat">${entries
+    .map(
+      ([k, v]) =>
+        `<div class="input-flat__pair"><span class="key">${escapeHtml(k)}:</span> <span class="val">${escapeHtml(v)}</span></div>`,
+    )
     .join('')}</div>`;
 }
 
@@ -506,54 +928,85 @@ export function renderStepsCell(steps: Array<{ title: string }>): string {
     (s) => !s.title.startsWith('Before') && !s.title.startsWith('After'),
   );
   if (visible.length === 0) return '<span class="muted">-</span>';
-  return `<ol class="steps-list">${visible
-    .map((s) => `<li>${escapeHtml(s.title)}</li>`)
-    .join('')}</ol>`;
+  // Multi-line steps (one per row) — full text, no ellipsis, no list markers
+  return `<div class="steps-flat">${visible
+    .map(
+      (s, i) =>
+        `<div class="steps-flat__item"><span class="steps-flat__n">${i + 1}.</span> ${escapeHtml(s.title)}</div>`,
+    )
+    .join('')}</div>`;
 }
 
 export function renderActualResultCell(test: CollectedTestData): string {
   const isUnhealthy = ['failed', 'timedOut', 'interrupted'].includes(test.status);
   const cls = isUnhealthy ? 'actual-result--failed' : 'actual-result--passed';
-  return `<div class="${cls}">${escapeHtml(test.actualResult || '-')}</div>`;
+  const full = test.actualResult || '-';
+  // Full text always — no "…" truncation / collapsible cut
+  const html = escapeHtml(full).replace(/\r\n|\n|\r/g, '<br>');
+  return `<div class="${cls}">${html}</div>`;
+}
+
+/** Multi-line plain text cell (description / expected) — full content, newlines → <br> */
+export function renderMultilineTextCell(text: string, className: string): string {
+  const full = text || '-';
+  const html = escapeHtml(full).replace(/\r\n|\n|\r/g, '<br>');
+  return `<div class="${className}">${html}</div>`;
 }
 
 export function renderNotesCell(test: CollectedTestData): string {
-  const parts: string[] = [];
+  const rows: string[] = [];
 
-  // Row 1: Duration
-  parts.push(
-    `<div class="notes-row notes-row--time"><span class="duration">${formatDuration(test.duration)}</span></div>`,
+  // 0) Scenario ID (only when present) — surfaces traceability in the table
+  if (test.scenarioId) {
+    rows.push(
+      `<div class="notes-row notes-row--scenario"><code class="notes-scenario" title="Scenario ID">${escapeHtml(test.scenarioId)}</code></div>`,
+    );
+  }
+
+  // 1) Time
+  rows.push(
+    `<div class="notes-row notes-row--time"><span class="duration" title="Duration">${formatDuration(test.duration)}</span></div>`,
   );
 
-  // Row 2: Screenshot thumbnails (clickable — open new tab)
-  const screenshots = test.attachments.filter((a) => a.kind === 'screenshot');
+  // 2) Screenshot(s)
+  const screenshots = test.attachments.filter((a) => a.kind === 'screenshot' && a.relativePath);
   if (screenshots.length > 0) {
-    const thumbnails = screenshots
-      .slice(0, 2)
-      .map(
-        (ss) =>
-          `<a href="${escapeHtml(ss.relativePath)}" target="_blank" rel="noopener noreferrer" class="evidence-thumb"><img src="${escapeHtml(ss.relativePath)}" alt="screenshot" loading="lazy"></a>`,
-      )
-      .join('');
-    parts.push(`<div class="notes-row notes-row--evidence">${thumbnails}</div>`);
+    const ss = screenshots[0];
+    const more =
+      screenshots.length > 1
+        ? `<span class="evidence-more" title="${screenshots.length - 1} more screenshots">+${screenshots.length - 1}</span>`
+        : '';
+    rows.push(
+      `<div class="notes-row notes-row--screenshot"><a href="${escapeHtml(ss.relativePath)}" target="_blank" rel="noopener noreferrer" class="evidence-thumb" title="Screenshot"><img src="${escapeHtml(ss.relativePath)}" alt="screenshot" loading="lazy" onerror="this.closest('a')?.classList.add('evidence-missing')"></a>${more}</div>`,
+    );
   }
 
-  // Row 3: Video (HTML5 <video> tag — click opens new tab via overlay link)
-  const videos = test.attachments.filter((a) => a.kind === 'video');
+  // 3) Video
+  const videos = test.attachments.filter((a) => a.kind === 'video' && a.relativePath);
   if (videos.length > 0) {
     const v = videos[0];
-    parts.push(
-      `<div class="notes-row notes-row--evidence"><a class="evidence-video" href="${escapeHtml(v.relativePath)}" target="_blank" rel="noopener noreferrer"><video preload="metadata" muted><source src="${escapeHtml(v.relativePath)}" /></video><span class="evidence-video__overlay">↗</span></a></div>`,
+    rows.push(
+      `<div class="notes-row notes-row--video"><a class="evidence-link" href="${escapeHtml(v.relativePath)}" target="_blank" rel="noopener noreferrer" title="Video">video</a></div>`,
     );
   }
 
-  // Row 4: Trace link
-  const trace = test.attachments.find((a) => a.kind === 'trace');
+  // 4) Trace
+  const trace = test.attachments.find((a) => a.kind === 'trace' && a.relativePath);
   if (trace) {
-    parts.push(
-      `<div class="notes-row notes-row--evidence"><a class="evidence-link" href="${escapeHtml(trace.relativePath)}" target="_blank" rel="noopener noreferrer">trace</a></div>`,
+    rows.push(
+      `<div class="notes-row notes-row--trace"><a class="evidence-link" href="${escapeHtml(trace.relativePath)}" target="_blank" rel="noopener noreferrer" title="Trace">trace</a></div>`,
     );
   }
 
-  return `<div class="notes-cell">${parts.join('')}</div>`;
+  // 5) Layer badges (FE/BE/…)
+  if (test.affectedLayer?.length) {
+    const badges = test.affectedLayer
+      .map(
+        (l) => `<span class="layer-badge layer-badge--${l.toLowerCase()}">${escapeHtml(l)}</span>`,
+      )
+      .join('');
+    rows.push(`<div class="notes-row notes-row--badges">${badges}</div>`);
+  }
+
+  return `<div class="notes-cell">${rows.join('')}</div>`;
 }

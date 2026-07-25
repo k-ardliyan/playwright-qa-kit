@@ -18,6 +18,21 @@ export interface TestSummary {
   rolesInScope?: string[];
   /** Full per-test case data for Reporter Agent and pipeline report */
   testCases?: CollectedTestCase[];
+  /** Safe run context from custom reporter (no secrets) */
+  runMeta?: RunMeta;
+}
+
+/** Suggested / annotated root cause class for QA exit decisions. */
+export type FailureSource = 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
+
+/** Safe run context — never embed secrets. */
+export interface RunMeta {
+  appEnv: string;
+  runId?: string;
+  requirementPath?: string;
+  ci: boolean;
+  totalDurationMs: number;
+  generatedAt: string;
 }
 
 /** Flat per-test-case record written to test-summary.json by custom reporter */
@@ -35,6 +50,8 @@ export interface CollectedTestCase {
   affectedLayer: Array<'FE' | 'BE' | 'DB' | 'API'>;
   attachmentCount: number;
   hasTrace: boolean;
+  /** Present on unhealthy tests when custom reporter ran */
+  failureSource?: FailureSource;
 }
 
 export interface RoleSummary {
@@ -61,6 +78,8 @@ export interface GetTestSummaryOutput {
   reportMode?: 'general' | 'role-aware';
   /** Roles in scope from custom reporter */
   rolesInScope?: string[];
+  /** Safe run context from custom reporter when present */
+  runMeta?: RunMeta;
   message: string;
 }
 
@@ -214,6 +233,9 @@ export function getTestSummary(): GetTestSummaryOutput {
     }
     if (Array.isArray(summary.testCases) && summary.testCases.length > 0) {
       result.testCases = summary.testCases;
+    }
+    if (summary.runMeta && typeof summary.runMeta === 'object') {
+      result.runMeta = summary.runMeta;
     }
 
     return result;

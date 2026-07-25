@@ -1,6 +1,6 @@
 # Playwright QA Kit
 
-![Version](https://img.shields.io/badge/version-0.1.0--alpha.2-blue) ![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?logo=node.js&logoColor=white) ![Playwright](https://img.shields.io/badge/playwright-1.61+-45ba63?logo=playwright&logoColor=white) ![TypeScript](https://img.shields.io/badge/typescript-6.x-3178c6?logo=typescript&logoColor=white)
+![Version](https://img.shields.io/badge/version-0.1.0--alpha.2-blue) ![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?logo=node.js&logoColor=white) ![Playwright](https://img.shields.io/badge/playwright-1.62+-45ba63?logo=playwright&logoColor=white) ![TypeScript](https://img.shields.io/badge/typescript-6.x-3178c6?logo=typescript&logoColor=white)
 
 > **⚠️ Prasyarat:** Node.js **>= 20.19.0** (cek: `node --version`), Git, dan **Hermes Agent**. Cek dulu sebelum lanjut ke wizard — lihat [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) untuk panduan lengkap.
 

@@ -12,6 +12,8 @@ import { describe, test as it, expect } from '@playwright/test';
 
 import { execSync } from 'node:child_process';
 import * as path from 'node:path';
+import * as exitCodes from '../exit-codes';
+import * as formatError from '../format-error';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const qaRunCli = path.join(repoRoot, 'scripts', 'qa-run.ts');
@@ -76,38 +78,34 @@ describe('qa:run CLI', () => {
 });
 
 describe('exit-codes module', () => {
-  it('exports 4 standard codes', async () => {
-    const ec = await import('../exit-codes');
-    expect(ec.EXIT.OK).toBe(0);
-    expect(ec.EXIT.FIXABLE).toBe(1);
-    expect(ec.EXIT.ESCALATE).toBe(2);
-    expect(ec.EXIT.USAGE).toBe(3);
+  it('exports 4 standard codes', () => {
+    expect(exitCodes.EXIT.OK).toBe(0);
+    expect(exitCodes.EXIT.FIXABLE).toBe(1);
+    expect(exitCodes.EXIT.ESCALATE).toBe(2);
+    expect(exitCodes.EXIT.USAGE).toBe(3);
   });
 
-  it('exitCodeFromName resolves strings', async () => {
-    const ec = await import('../exit-codes');
-    expect(ec.exitCodeFromName('OK')).toBe(ec.EXIT.OK);
-    expect(ec.exitCodeFromName('FIXABLE')).toBe(ec.EXIT.FIXABLE);
-    expect(ec.exitCodeFromName('0')).toBe(ec.EXIT.OK);
-    expect(ec.exitCodeFromName('UNKNOWN')).toBeUndefined();
+  it('exitCodeFromName resolves strings', () => {
+    expect(exitCodes.exitCodeFromName('OK')).toBe(exitCodes.EXIT.OK);
+    expect(exitCodes.exitCodeFromName('FIXABLE')).toBe(exitCodes.EXIT.FIXABLE);
+    expect(exitCodes.exitCodeFromName('0')).toBe(exitCodes.EXIT.OK);
+    expect(exitCodes.exitCodeFromName('UNKNOWN')).toBeUndefined();
   });
 });
 
 describe('format-error module', () => {
-  it('FriendlyErrorInstance carries exitCode', async () => {
-    const fe = await import('../format-error');
-    const inst = fe.friendly({
+  it('FriendlyErrorInstance carries exitCode', () => {
+    const inst = formatError.friendly({
       title: 'test',
       detail: 'detail',
-      exitCode: fe.EXIT?.FIXABLE ?? 1,
+      exitCode: exitCodes.EXIT.FIXABLE,
     });
     expect(inst.exitCode).toBe(1);
     expect(inst.friendly.title).toBe('test');
   });
 
-  it('formatErrorString produces multiline output', async () => {
-    const fe = await import('../format-error');
-    const out = fe.formatErrorString({
+  it('formatErrorString produces multiline output', () => {
+    const out = formatError.formatErrorString({
       title: 'X',
       detail: 'Y',
       hint: 'Z',

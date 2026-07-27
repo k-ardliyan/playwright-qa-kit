@@ -13,12 +13,12 @@ import { test, expect } from '@playwright/test';
 // We test the observable contract, not the internal symbols, so we replicate
 // the same logic. If the source changes, these will catch the drift.
 
-/** requirements/auth/login.md → auth/login */
+/** requirements/auth/login.md → auth/login (handles both / and \ separators) */
 function requirementStem(reqRel: string): string {
   return reqRel
+    .replace(/\\/g, '/') // normalise backslash first
     .replace(/^requirements\//, '')
-    .replace(/\.md$/i, '')
-    .replace(/\\/g, '/');
+    .replace(/\.md$/i, '');
 }
 
 function expectedPlanPath(stem: string): string {

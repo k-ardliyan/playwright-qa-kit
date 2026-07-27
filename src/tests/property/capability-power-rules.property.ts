@@ -7,10 +7,14 @@
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { validateSpecFile } from '../../../mcp-server/src/tools/validate-generated-tests';
 
-const dir = path.resolve(process.cwd(), 'src/tests/__property_capability__');
+// Use a temp dir OUTSIDE the repo so validateSpecFile receives a relativePath
+// that does NOT contain '__property_' and is therefore NOT exempt — which is
+// intentional: we WANT capability violations to fire so assertHasCap can verify them.
+const dir = path.join(os.tmpdir(), `pw-cap-prop-${process.pid}`, 'src/tests/generated');
 const file = path.join(dir, 'case.spec.ts');
 
 function write(content: string): void {
@@ -25,7 +29,9 @@ function cleanup(): void {
 }
 
 function violations(): ReturnType<typeof validateSpecFile> {
-  return validateSpecFile(file, 'src/tests/__property_capability__/case.spec.ts');
+  // Use a non-exempt relativePath so capability rules actually fire.
+  // Paths containing '__property_' are exempt from all rules by design.
+  return validateSpecFile(file, 'src/tests/generated/case.spec.ts');
 }
 
 function assertHasCap(rule: string): void {

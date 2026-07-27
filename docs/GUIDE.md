@@ -41,11 +41,11 @@ npm run setup:check         # verify setup setelah selesai
 
 ## Konfigurasi MCP di IDE
 
-| Server            | Fungsi                                                                                                          |
-| ----------------- | --------------------------------------------------------------------------------------------------------------- |
-| `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`)                                                          |
-| `playwright-test` | Menjalankan tes (`run_tests`)                                                                                   |
-| `playwright-qa`   | Requirement, validasi, kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
+| Server            | Fungsi                                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`)                                                                                                    |
+| `playwright-test` | Menjalankan tes (`run_tests`)                                                                                                                             |
+| `playwright-qa`   | Requirement, validasi, coverage map (`list_requirement_status`), kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
 
 **Hermes:** `.mcp.json` di root project dibaca langsung oleh Hermes. Tidak perlu generate config tambahan. `generate-mcp-config.ts` sudah support multi-platform tapi tidak di-surface ke QA di alur default.
 
@@ -167,6 +167,7 @@ Warning baru yang mungkin muncul setelah upgrade:
 | `role_scope_recommended`       | Auth authenticated tapi tidak ada Role scope — pertimbangkan isi         |
 | `access_expectation_missing`   | Role scope diisi tapi Access expectation belum ada                       |
 | `failure_scenario_recommended` | Ada kata gagal/error di requirement tapi tidak ada `(@failure)` scenario |
+| `layer_recommended`            | Skenario tanpa `Layer terdampak` — isi FE/BE/DB/API untuk triage SOURCE  |
 
 ---
 
@@ -353,17 +354,18 @@ Buat POM scaffold dari halaman https://staging.app/login:
 
 ## Troubleshooting `validate_requirement`
 
-| Rule                           | Severity | Perbaikan                                                               |
-| ------------------------------ | -------- | ----------------------------------------------------------------------- |
-| `title_required`               | error    | Tambah baris `# REQ-01: Judul Fitur`                                    |
-| `content_required`             | error    | Tambah bullet di `## Kriteria Penerimaan` atau skenario `###`           |
-| `scenario_structure`           | error    | Setiap `###` wajib punya `**Langkah:**` dan `**Hasil:**`                |
-| `observable_result`            | warn     | Hasil harus menyebut URL, teks, atau visibility                         |
-| `precondition_recommended`     | warn     | Tambah `**Prekondisi:**` untuk skenario auth-sensitive                  |
-| `manual_reason`                | warn     | Skenario `(@manual)` perlu alasan jelas di Hasil                        |
-| `role_scope_recommended`       | warn     | Auth authenticated + fitur multi-role → tambah `Role scope` di Metadata |
-| `access_expectation_missing`   | warn     | `Role scope` sudah diisi tapi `Access expectation` belum ada            |
-| `failure_scenario_recommended` | warn     | Ada kata gagal/error tapi tidak ada skenario `(@failure)`               |
+| Rule                           | Severity | Perbaikan                                                                           |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------- |
+| `title_required`               | error    | Tambah baris `# REQ-01: Judul Fitur`                                                |
+| `content_required`             | error    | Tambah bullet di `## Kriteria Penerimaan` atau skenario `###`                       |
+| `scenario_structure`           | error    | Setiap `###` wajib punya `**Langkah:**` dan `**Hasil:**`                            |
+| `observable_result`            | warn     | Hasil harus menyebut URL, teks, atau visibility                                     |
+| `precondition_recommended`     | warn     | Tambah `**Prekondisi:**` untuk skenario auth-sensitive                              |
+| `manual_reason`                | warn     | Skenario `(@manual)` perlu alasan jelas di Hasil                                    |
+| `role_scope_recommended`       | warn     | Auth authenticated + fitur multi-role → tambah `Role scope` di Metadata             |
+| `access_expectation_missing`   | warn     | `Role scope` sudah diisi tapi `Access expectation` belum ada                        |
+| `failure_scenario_recommended` | warn     | Ada kata gagal/error tapi tidak ada skenario `(@failure)`                           |
+| `layer_recommended`            | warn     | Skenario tanpa `**Layer terdampak:**` (FE/BE/DB/API) — SOURCE dashboard kurang info |
 
 Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 
@@ -379,6 +381,7 @@ Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 | `playwright_test` | warn/fail | Upgrade `@playwright/test` >= 1.56               |
 | `environment`     | fail/warn | Buat `environments/{APP_ENV}.env` dari template  |
 | `base_url`        | warn      | Set `BASE_URL` di file env                       |
+| `auth_storage`    | warn      | `.auth/{APP_ENV}/` kosong — `npm run auth:setup` |
 | `json_results`    | warn      | Normal sebelum tes pertama — jalankan `npm test` |
 
 ---

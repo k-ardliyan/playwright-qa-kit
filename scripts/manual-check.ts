@@ -52,6 +52,31 @@ interface CliArgs {
   jsonOutput: boolean;
 }
 
+// ─── File collector ───────────────────────────────────────────────────────────
+
+/**
+ * Recursively collect all .md files under a directory, excluding files whose
+ * basename starts with '_' (templates) or is README.md (any depth).
+ */
+function collectRequirementFiles(dir: string): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectRequirementFiles(fullPath));
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith('.md') &&
+      !entry.name.startsWith('_') &&
+      entry.name.toLowerCase() !== 'readme.md'
+    ) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 function parseArgs(argv: string[]): CliArgs {
@@ -212,10 +237,7 @@ async function main(): Promise<void> {
       });
     }
 
-    const reqFiles = fs
-      .readdirSync(requirementsDir)
-      .filter((f) => f.endsWith('.md') && !f.startsWith('_'))
-      .map((f) => path.join(requirementsDir, f));
+    const reqFiles = collectRequirementFiles(requirementsDir);
 
     const results: RequirementManual[] = [];
     for (const file of reqFiles) {

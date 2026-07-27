@@ -308,6 +308,44 @@ function checkNetworkAssertCapability(): HealthCheckItem {
   };
 }
 
+function checkAuthStorageState(): HealthCheckItem {
+  const root = getRepoRoot();
+  let appEnv = 'local';
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require(path.join(root, 'src/utils/app-env')) as {
+      resolveAppEnv: (o: { repoRoot: string }) => { appEnv: string };
+    };
+    appEnv = mod.resolveAppEnv({ repoRoot: root }).appEnv;
+  } catch {
+    // keep default
+  }
+
+  const authDir = path.join(root, '.auth', appEnv);
+  if (!fs.existsSync(authDir)) {
+    return {
+      name: 'auth_storage',
+      status: 'warn',
+      message: `.auth/${appEnv}/ not found — run: npm run auth:setup (required for authenticated tests)`,
+    };
+  }
+
+  const stateFiles = fs.readdirSync(authDir).filter((f) => f.endsWith('.json'));
+  if (stateFiles.length === 0) {
+    return {
+      name: 'auth_storage',
+      status: 'warn',
+      message: `.auth/${appEnv}/ is empty — run: npm run auth:setup to generate storage state files`,
+    };
+  }
+
+  return {
+    name: 'auth_storage',
+    status: 'ok',
+    message: `.auth/${appEnv}/ has ${stateFiles.length} storage state file(s): ${stateFiles.join(', ')}`,
+  };
+}
+
 export function healthCheck(): HealthCheckOutput {
   const checks = [
     checkNodeVersion(),
@@ -318,6 +356,7 @@ export function healthCheck(): HealthCheckOutput {
     checkPlaywrightConfig(),
     checkBaseUrl(),
     checkAuthChallengeMode(),
+    checkAuthStorageState(),
     checkJsonReporterOutput(),
     checkFileContentCapability(),
     checkNetworkAssertCapability(),

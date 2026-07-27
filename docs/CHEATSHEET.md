@@ -43,17 +43,18 @@ cp requirements/_TEMPLATE.md requirements/fitur-saya.md
 
 ## Command Paling Sering
 
-| Command                             | Kapan                                                 |
-| ----------------------------------- | ----------------------------------------------------- |
-| `npm run qa:run -- X`               | Preflight + cetak prompt Hermes + auto-buka dashboard |
-| `npm run validate:requirement -- X` | Cek requirement saja                                  |
-| `npm run env:edit`                  | Ganti password / role / browser / OTP-CAPTCHA         |
-| `npm run auth:setup`                | Refresh session (workers=1)                           |
-| `npm run auth:setup:headed`         | Session + OTP/CAPTCHA di browser                      |
-| `npm run manual:check`              | List semua skenario `(@manual)`                       |
-| `npm test`                          | Jalankan semua test                                   |
-| `npm run test:smoke`                | Cuma smoke test                                       |
-| `npm run health:check`              | Cek MCP + env                                         |
+| Command                             | Kapan                                                         |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `npm run qa:run -- X`               | Preflight + cetak prompt Hermes (dinamis per req) + dashboard |
+| `npm run validate:requirement -- X` | Cek requirement saja                                          |
+| `npm run env:edit`                  | Ganti password / role / browser / OTP-CAPTCHA                 |
+| `npm run auth:setup`                | Refresh session (workers=1)                                   |
+| `npm run auth:setup:headed`         | Session + OTP/CAPTCHA di browser                              |
+| `npm run manual:check`              | List semua skenario `(@manual)`                               |
+| `list_requirement_status` (MCP)     | Peta: requirement → plan → tests → manual                     |
+| `npm test`                          | Jalankan semua test                                           |
+| `npm run test:smoke`                | Cuma smoke test                                               |
+| `npm run health:check`              | Cek MCP + env                                                 |
 
 ---
 

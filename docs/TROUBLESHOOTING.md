@@ -138,6 +138,8 @@ npm run auth:setup
 npm run auth:setup:headed
 ```
 
+Jika `health_check` / `npm run health:check` melaporkan **`auth_storage` warn** (`.auth/{APP_ENV}/` missing atau kosong), jalankan `npm run auth:setup` untuk environment aktif. Tanpa file storage state, test authenticated akan gagal di auth setup / empty session.
+
 ---
 
 ### Error #5c: Auth stuck di OTP / CAPTCHA

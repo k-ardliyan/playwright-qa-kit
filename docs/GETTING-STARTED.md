@@ -132,7 +132,8 @@ npm run qa:run -- requirements/login.md
 ```
 
 > **ℹ️** `requirements/sample-*.md` = sample format saja. Setup awal = `login.md`.
-> **ℹ️** `qa:run` = preflight + prompt helper — pipeline penuh di Hermes.
+> **ℹ️** `qa:run` = preflight + prompt helper (prompt dinamis per Auth state / Halaman awal) — pipeline penuh di Hermes.
+> **ℹ️** Cek coverage plan/tests: Hermes tool `list_requirement_status` (playwright-qa).
 
 Hermes akan otomatis:
 

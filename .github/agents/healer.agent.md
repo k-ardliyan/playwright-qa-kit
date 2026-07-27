@@ -25,12 +25,13 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 
 ## MCP Dependencies
 
-| MCP Server        | Tool Name                               |
-| ----------------- | --------------------------------------- |
-| `playwright-qa`   | `get_test_failures`                     |
-| `playwright-qa`   | `validate_generated_tests`              |
-| `playwright-test` | `run_tests`                             |
-| `playwright`      | See **Browser Interaction Tools** below |
+| MCP Server        | Tool Name                                            |
+| ----------------- | ---------------------------------------------------- |
+| `playwright-qa`   | `get_test_failures`                                  |
+| `playwright-qa`   | `validate_generated_tests`                           |
+| `playwright-qa`   | `snapshot_page` (refresh catalog after locator heal) |
+| `playwright-test` | `run_tests`                                          |
+| `playwright`      | See **Browser Interaction Tools** below              |
 
 ## Browser Interaction Tools (`playwright` MCP)
 
@@ -171,27 +172,29 @@ Pattern storage behavior:
    c. Run validate_generated_tests + run_tests
    d. storePattern(db, sig, fix, success)  ← Learn from outcome
    e. saveDatabase(updatedDb)        ← Persist after each attempt
+   f. **If rootCause is `locator`**: call `snapshot_page` (playwright-qa) for the affected page URL to refresh the selector catalog
 4. Return fixes + cannotFix
 ```
 
 ## Healing Policy
 
 1. Prioritize root-cause fixes (locator drift, timing, assumptions, state preconditions).
-2. Prefer `getByRole`, `getByLabel`, and `data-testid` over CSS classes.
-3. Keep fixes minimal and consistent with project patterns.
-4. Preserve intent of the original scenario.
-5. If a case is unsafe or ambiguous (CAPTCHA, real email reset), return `cannotFix` — do not bypass security controls.
-6. After patching, call `validate_generated_tests` then re-run `run_tests` for the affected file only.
-7. **Always store the fix outcome** (success or failure) in the pattern database after each attempt.
-8. **Network failures** (`rootCause: network`, Failed to fetch, 5xx): prefer `mockJson` / `mockServerError` / `unmockAll` from `@/support/pw` rather than lengthening timeouts.
-9. **`@network-assert` flake** (timeout waiting for response / wrong body): prefer `waitAndAssertApi` / ensure `waitForApi` (or `waitForResponse`) is registered **before** the UI trigger; tighten `urlIncludes` + `method` + `status`; if Service Worker swallows events use `test.use({ serviceWorkers: 'block' })`; for contract failures re-read scenario Input Data / Hasil keys — partial match only, never invent endpoints or full-body snapshots.
-10. **Missing seed / empty list / 404 test data** (`data_state`): prefer hybrid `apiSeed` + cleanup via `request` fixture when the requirement documents an API.
-11. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: authStatePath('<role>') })` (or `.auth/{APP_ENV}/<role>.json`); re-run setup project — do not skip auth checks.
-12. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
-13. **Download timeout / no Download event**: ensure `page.waitForEvent('download')` (or `downloadAndSave` / `downloadFile`) is registered **before** the click that triggers the download.
-14. **ENOENT fixture / missing upload file**: fix path to a committed file under `test-fixtures/`; use `uploadFixture` / `uploadViaChooser` / `setInputFiles` — never introduce `page.pause()` for OS file pick.
-15. **Empty PDF text** (extract returns blank): likely encrypted or scanned PDF — classify as app/requirement limitation; prefer envelope-only (`assertDownloadedEnvelope` / `assertFileMagic`) or `cannotFix` / `@manual` if content was required. Do not invent OCR.
-16. **Content assert fail** (`assertPdfContains` / `assertExcelHeaders` missing needles): re-read **scenario** Expected Result / Input Data / Hasil yang Diharapkan for the correct tokens; optionally call MCP `extract_pdf_text` / `read_excel_summary` for actual text; fix needles only if the plan was mis-transcribed — **do not** replace with canned fields (judul/kode/nama/invoice schema or demo tokens like `QA-KIT-SAMPLE-PDF` / `ColA`).
+2. **After healing a `locator` failure**: call `snapshot_page` (playwright-qa) for the affected page URL to refresh the selector catalog. Stale catalogs cause the same locator failure to recur on the next Generator run.
+3. Prefer `getByRole`, `getByLabel`, and `data-testid` over CSS classes.
+4. Keep fixes minimal and consistent with project patterns.
+5. Preserve intent of the original scenario.
+6. If a case is unsafe or ambiguous (CAPTCHA, real email reset), return `cannotFix` — do not bypass security controls.
+7. After patching, call `validate_generated_tests` then re-run `run_tests` for the affected file only.
+8. **Always store the fix outcome** (success or failure) in the pattern database after each attempt.
+9. **Network failures** (`rootCause: network`, Failed to fetch, 5xx): prefer `mockJson` / `mockServerError` / `unmockAll` from `@/support/pw` rather than lengthening timeouts.
+10. **`@network-assert` flake** (timeout waiting for response / wrong body): prefer `waitAndAssertApi` / ensure `waitForApi` (or `waitForResponse`) is registered **before** the UI trigger; tighten `urlIncludes` + `method` + `status`; if Service Worker swallows events use `test.use({ serviceWorkers: 'block' })`; for contract failures re-read scenario Input Data / Hasil keys — partial match only, never invent endpoints or full-body snapshots.
+11. **Missing seed / empty list / 404 test data** (`data_state`): prefer hybrid `apiSeed` + cleanup via `request` fixture when the requirement documents an API.
+12. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: authStatePath('<role>') })` (or `.auth/{APP_ENV}/<role>.json`); re-run setup project — do not skip auth checks.
+13. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
+14. **Download timeout / no Download event**: ensure `page.waitForEvent('download')` (or `downloadAndSave` / `downloadFile`) is registered **before** the click that triggers the download.
+15. **ENOENT fixture / missing upload file**: fix path to a committed file under `test-fixtures/`; use `uploadFixture` / `uploadViaChooser` / `setInputFiles` — never introduce `page.pause()` for OS file pick.
+16. **Empty PDF text** (extract returns blank): likely encrypted or scanned PDF — classify as app/requirement limitation; prefer envelope-only (`assertDownloadedEnvelope` / `assertFileMagic`) or `cannotFix` / `@manual` if content was required. Do not invent OCR.
+17. **Content assert fail** (`assertPdfContains` / `assertExcelHeaders` missing needles): re-read **scenario** Expected Result / Input Data / Hasil yang Diharapkan for the correct tokens; optionally call MCP `extract_pdf_text` / `read_excel_summary` for actual text; fix needles only if the plan was mis-transcribed — **do not** replace with canned fields (judul/kode/nama/invoice schema or demo tokens like `QA-KIT-SAMPLE-PDF` / `ColA`).
 
 ## Guardrails (Mandatory)
 

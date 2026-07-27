@@ -38,6 +38,7 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul
 - [ ] Prekondisi diisi untuk skenario auth-sensitive
 - [ ] Jika `Auth state: authenticated` dan fitur berbeda per role → tambah `Role scope` dan `Access expectation`
+- [ ] (Disarankan) setiap skenario isi `- **Layer terdampak:** FE` / `BE` / `DB` / `API` — warning `layer_recommended` jika kosong
 
 ---
 

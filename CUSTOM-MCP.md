@@ -58,7 +58,7 @@ See [Playwright MCP configuration](https://github.com/microsoft/playwright-mcp) 
 
 ## Tool: `health_check`
 
-Verifies Node, Playwright packages, MCP build, environment files, active `PLAYWRIGHT_CONFIG`, and optional config-aware JSON reporter output.
+Verifies Node, Playwright packages, MCP build, environment files, active `PLAYWRIGHT_CONFIG`, `.auth/{APP_ENV}/` storage state, and optional config-aware JSON reporter output.
 
 ### Input
 
@@ -75,6 +75,8 @@ Verifies Node, Playwright packages, MCP build, environment files, active `PLAYWR
   "message": "All required health checks passed."
 }
 ```
+
+Common check names: `node`, `mcp_build`, `playwright_mcp`, `playwright_test`, `environment`, `playwright_config`, `base_url`, `auth_challenge`, **`auth_storage`**, `json_results`, `file_content`, `network_assert`.
 
 ---
 
@@ -233,6 +235,8 @@ Or:
 }
 ```
 
+Notable warn rules: `observable_result`, `precondition_recommended`, `manual_reason`, `role_scope_recommended`, `access_expectation_missing`, `failure_scenario_recommended`, **`layer_recommended`** (missing `**Layer terdampak:**` / `**Affected Layer:**` per scenario).
+
 ---
 
 ## MCP pipeline environment overrides
@@ -288,6 +292,40 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated te
   "message": "Found N requirement(s), …, M fixture file(s)."
 }
 ```
+
+---
+
+## Tool: `list_requirement_status`
+
+Coverage map for QA: each pipeline requirement (nested OK) with plan/test presence, `@manual` count, and last status from `reports/test-summary.json` when available.
+
+### Input
+
+```json
+{}
+```
+
+### Output (shape)
+
+```json
+{
+  "status": "success",
+  "requirements": [
+    {
+      "requirementPath": "requirements/auth/sample-login-empty-fields.md",
+      "planPath": "specs/auth/sample-login-empty-fields-test-plan.md",
+      "hasPlan": true,
+      "testPaths": ["src/tests/auth/sample-login-empty-fields.spec.ts"],
+      "hasTests": true,
+      "manualCount": 1,
+      "lastStatus": "passed"
+    }
+  ],
+  "message": "N requirement(s): P with plan, T with tests."
+}
+```
+
+Use after preflight or when asking “mana yang sudah diplan / punya test?”.
 
 ---
 

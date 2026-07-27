@@ -35,6 +35,7 @@ import {
   printWarn,
   withFriendlyErrors,
 } from './format-error';
+import { buildAgentPrompt } from './qa-run-prompt';
 
 const REPO_MARKER = 'mcp-server';
 const MAX_HOPS = 12;
@@ -310,19 +311,6 @@ function validateRequirementFile(repoRoot: string, relPath: string): ValidationR
   };
 }
 
-function buildAgentPrompt(reqRelPath: string): string {
-  return (
-    `Run full pipeline in automatic mode for ${reqRelPath} (orchestrator: AGENTS.md).\n` +
-    `If this is requirements/login.md (wizard-generated REAL site requirement):\n` +
-    `  BEFORE Plan/Generate, call snapshot_page on the real BASE_URL+login path;\n` +
-    `  use selector-catalog locators (Path A, no POM); live-verify — every website differs.\n` +
-    `Sample files under requirements/sample-*.md are format demos only.\n` +
-    `Resume from last checkpoint if reports/pipeline-state.json exists.\n` +
-    `Pipeline: Plan → Generate → Execute → Heal (max 3 cycles) → Report → archive_report.\n` +
-    `Return summary, unresolvedFailures, catalog path (if any), and dashboard/report path.\n`
-  );
-}
-
 function runSmokeTests(repoRoot: string): { ok: boolean; summary: string } {
   printInfo('Menjalankan smoke test...');
   const result = spawnSync('npm', ['run', 'test:smoke'], {
@@ -437,7 +425,8 @@ async function main(): Promise<void> {
       printStep(3, 3, 'Hermes prompt siap copy-paste');
       process.stdout.write('\n📋 Paste prompt di bawah ke Hermes Agent:\n');
       process.stdout.write('─'.repeat(64) + '\n');
-      process.stdout.write(buildAgentPrompt(relReq));
+      const reqMarkdown = fs.readFileSync(resolvedReq, 'utf-8');
+      process.stdout.write(buildAgentPrompt(relReq, reqMarkdown));
       process.stdout.write('─'.repeat(64) + '\n\n');
       printInfo(
         'Setelah Hermes menjalankan pipeline, hasilnya ada di reports/pipeline-report-*.md dan reports/custom-dashboard.html.',

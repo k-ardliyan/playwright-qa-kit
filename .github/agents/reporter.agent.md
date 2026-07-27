@@ -40,11 +40,12 @@ Additionally you receive pipeline context:
 
 ## MCP Dependencies
 
-| Server          | Tool                | Purpose                                                             |
-| --------------- | ------------------- | ------------------------------------------------------------------- |
-| `playwright-qa` | `get_test_summary`  | Read pass/fail counts and duration from `reports/test-summary.json` |
-| `playwright-qa` | `get_test_failures` | Get Playwright test failures including trace and screenshot paths   |
-| `playwright-qa` | `archive_report`    | Archive the final pipeline report to `reports/archive/<runId>/`     |
+| Server          | Tool                      | Purpose                                                             |
+| --------------- | ------------------------- | ------------------------------------------------------------------- |
+| `playwright-qa` | `get_test_summary`        | Read pass/fail counts and duration from `reports/test-summary.json` |
+| `playwright-qa` | `get_test_failures`       | Get Playwright test failures including trace and screenshot paths   |
+| `playwright-qa` | `list_requirement_status` | Optional coverage map (plan/tests/manual) for the report summary    |
+| `playwright-qa` | `archive_report`          | Archive the final pipeline report to `reports/archive/<runId>/`     |
 
 ## Output Format
 

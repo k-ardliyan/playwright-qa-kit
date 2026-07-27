@@ -245,6 +245,18 @@ export function validateRequirementText(text: string): ValidateRequirementOutput
         scenarioName: block.name,
       });
     }
+
+    // Warning: Layer terdampak (FE/BE/DB/API) kosong — SOURCE column di dashboard jadi blank
+    const LAYER_LABEL = /\*\*(?:Layer\s+terdampak|Affected\s+Layer):\*\*\s*\S+/i;
+    if (!LAYER_LABEL.test(block.body)) {
+      violations.push({
+        ruleName: 'layer_recommended',
+        severity: 'warn',
+        message: `Scenario "${block.name}" is missing **Layer terdampak:** (FE/BE/DB/API). Add it for accurate SOURCE triage in the dashboard.`,
+        scenarioName: block.name,
+        suggestion: 'Add `- **Layer terdampak:** FE` (or BE/DB/API) inside the scenario body.',
+      });
+    }
   }
 
   // Warning: auth=authenticated but no Role scope defined — likely missing role context

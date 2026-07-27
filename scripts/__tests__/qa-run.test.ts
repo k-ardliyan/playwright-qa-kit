@@ -7,21 +7,64 @@
 
 import { describe, test as it, expect } from '@playwright/test';
 
-// qa-run.ts tidak export functions-nya — pakai spawn-based smoke test minimal.
-// Untuk unit-testable pieces, kita parse output dari --help saja.
-
 import { execSync } from 'node:child_process';
 import * as path from 'node:path';
 import * as exitCodes from '../exit-codes';
 import * as formatError from '../format-error';
+import { buildAgentPrompt, parseRequirementPromptHints } from '../qa-run-prompt';
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const qaRunCli = path.join(repoRoot, 'scripts', 'qa-run.ts');
 const tsxBin = path.join(repoRoot, 'node_modules', '.bin', 'tsx');
 
+describe('qa:run prompt builder', () => {
+  it('parseRequirementPromptHints reads auth and start page', () => {
+    const md = `
+# REQ-01: Invoice
+## Metadata
+- **Auth state:** authenticated
+- **Halaman awal:** /finance/invoices
+- **Role scope:** finance, super-admin
+`;
+    expect(parseRequirementPromptHints(md)).toEqual({
+      authState: 'authenticated',
+      startPage: '/finance/invoices',
+      roleScope: 'finance, super-admin',
+    });
+  });
+
+  it('non-login requirement does not force login.md snapshot instructions', () => {
+    const md = `
+# REQ-INV-01: Approve invoice
+## Metadata
+- **Auth state:** authenticated
+- **Halaman awal:** /finance/invoices
+- **Role scope:** finance
+`;
+    const prompt = buildAgentPrompt('requirements/finance/approve-invoice.md', md);
+    expect(prompt).toContain('requirements/finance/approve-invoice.md');
+    expect(prompt).toContain('/finance/invoices');
+    expect(prompt).toContain('authenticated');
+    expect(prompt).not.toMatch(/This is a LOGIN \/ first-auth requirement/);
+    expect(prompt).toContain('requirementPath matches this file');
+  });
+
+  it('login requirement keeps login snapshot guidance', () => {
+    const md = `
+# REQ-AUTH-01: Login form
+## Metadata
+- **Auth state:** unauthenticated
+- **Halaman awal:** /login
+`;
+    const prompt = buildAgentPrompt('requirements/login.md', md);
+    expect(prompt).toContain('LOGIN / first-auth');
+    expect(prompt).toContain('/login');
+    expect(prompt).toContain('snapshot_page');
+  });
+});
+
 describe('qa:run CLI', () => {
   it('--help prints usage with options', () => {
-    // execSync kalau exit != 0 throws — kita tolerate dan parse stdout dari error.
     let out: string;
     try {
       out = execSync(`${tsxBin} ${qaRunCli} --help`, {

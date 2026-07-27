@@ -10,7 +10,7 @@ import {
 } from './shared';
 import type { CollectedTestData } from './types';
 import { buildFilterDataAttrs } from './filter-attrs';
-import { decisionHintFor, decisionHintTooltipFor } from './failure-source';
+import { decisionHintFor, decisionHintTooltipFor, explainFailure } from './failure-source';
 
 const UNHEALTHY_STATUSES = new Set(['failed', 'timedOut', 'interrupted']);
 
@@ -123,12 +123,18 @@ function buildFailurePacket(testData: CollectedTestData): string {
     .slice(0, 3);
   const errorBlock = errorLines.length > 0 ? errorLines.join('\n  ') : '-';
 
+  const source = testData.failureSource || 'unknown';
+  const sourceExplain = explainFailure(testData.errorMessage);
+  const sourceLine = sourceExplain
+    ? `- Source: ${source} (${decisionHintFor(testData.failureSource)}) — ${sourceExplain}`
+    : `- Source: ${source} (${decisionHintFor(testData.failureSource)})`;
+
   return [
     `### ${testData.testId || '-'} — ${testData.title}`,
     ``,
     `- Status: ${testData.status}`,
     `- Scenario: ${testData.scenarioId || '-'}`,
-    `- Source: ${testData.failureSource || 'unknown'} (${decisionHintFor(testData.failureSource)})`,
+    sourceLine,
     `- Retry: ${testData.retry ?? 0}`,
     `- Duration: ${testData.duration}ms`,
     ``,
@@ -180,7 +186,7 @@ export function renderTestDetailCard(testData: CollectedTestData, index: number)
     : '';
   const priorityBadge = renderPriorityBadge(testData.priority);
   const sourceBadge = testData.failureSource
-    ? `<span class="failure-source failure-source--${escapeHtml(testData.failureSource)}" title="${escapeHtml(decisionHintTooltipFor(testData.failureSource))}">${escapeHtml(testData.failureSource.toUpperCase())}</span>`
+    ? `<span class="failure-source failure-source--${escapeHtml(testData.failureSource)}" title="${escapeHtml(decisionHintTooltipFor(testData.failureSource, testData.errorMessage))}">${escapeHtml(testData.failureSource.toUpperCase())}</span>`
     : '';
 
   const pathLabel = testData.filePath ? escapeHtml(testData.filePath) : '';
@@ -244,7 +250,7 @@ export function renderTestDetailCard(testData: CollectedTestData, index: number)
             testData.failureSource
               ? `<div class="meta-grid__item">
             <span class="meta-grid__label">Failure source</span>
-            <span class="meta-grid__value">${sourceBadge} <span class="decision-hint" title="${escapeHtml(decisionHintTooltipFor(testData.failureSource))}">→ ${escapeHtml(decisionHintFor(testData.failureSource))}</span></span>
+            <span class="meta-grid__value">${sourceBadge} <span class="decision-hint" title="${escapeHtml(decisionHintTooltipFor(testData.failureSource, testData.errorMessage))}">→ ${escapeHtml(decisionHintFor(testData.failureSource))}</span></span>
           </div>`
               : ''
           }

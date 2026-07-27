@@ -51,7 +51,7 @@ export interface ParseRequirementScenariosOutput {
 }
 
 const LABEL_KEYWORDS =
-  'Langkah|Steps?|Prekondisi|Precondition|Given|Hasil(?:\\s+yang\\s+Diharapkan)?|Expected(?:\\s+Result)?|Outcome|Input\\s+Data|Layer\\s+terdampak';
+  'Langkah|Steps?|Prekondisi|Precondition|Given|Hasil(?:\\s+yang\\s+Diharapkan)?|Expected(?:\\s+Result)?|Outcome|Input\\s+Data|Layer\\s+terdampak|Affected\\s+Layer';
 
 function buildLabelRegex(keywords: string): RegExp {
   return new RegExp(`^\\*\\*(?:${keywords}):\\*\\*`, 'i');
@@ -63,7 +63,7 @@ const RESULT_LABEL = buildLabelRegex(
 );
 const PRECONDITION_LABEL = buildLabelRegex('Prekondisi|Precondition|Given');
 const INPUT_DATA_LABEL = buildLabelRegex('Input\\s+Data');
-const LAYER_LABEL = buildLabelRegex('Layer\\s+terdampak');
+const LAYER_LABEL = buildLabelRegex('Layer\\s+terdampak|Affected\\s+Layer');
 const BLOCK_TERMINATOR = buildLabelRegex(LABEL_KEYWORDS);
 const HEADING_REGEX = /^#{2,3}\s+/;
 const SCENARIO_HEADING_REGEX = /^###\s+/;
@@ -290,13 +290,13 @@ function parseScenarioPriority(scenarioLines: string[]): ScenarioPriority | null
 }
 
 /**
- * Parse `- **Layer terdampak:** FE | BE | DB | API` from scenario lines.
+ * Parse `- **Layer terdampak:**` or `- **Affected Layer:** FE | BE | DB | API` from scenario lines.
  * Accepts combinations like `FE BE` or `FE | BE` or backtick-wrapped tokens.
  */
 function parseAffectedLayer(scenarioLines: string[]): AffectedLayer[] {
   const validLayers = new Set<string>(['FE', 'BE', 'DB', 'API']);
   for (const line of scenarioLines) {
-    const m = line.match(/^\s*-\s+\*\*Layer\s+terdampak:\*\*\s*(.+)$/i);
+    const m = line.match(/^\s*-\s+\*\*(?:Layer\s+terdampak|Affected\s+Layer):\*\*\s*(.+)$/i);
     if (!m) continue;
     const raw = m[1].replace(/`/g, '');
     const tokens = raw.split(/[\s|,]+/).map((t) => t.trim().toUpperCase());

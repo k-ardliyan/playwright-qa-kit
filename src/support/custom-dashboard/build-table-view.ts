@@ -33,8 +33,8 @@ function renderFailureSourceCell(test: CollectedTestData): string {
   }
   const src = test.failureSource;
   const hint = decisionHintFor(src);
-  const tip = decisionHintTooltipFor(src);
-  const blurb = decisionHintBlurbFor(src);
+  const tip = decisionHintTooltipFor(src, test.errorMessage);
+  const blurb = decisionHintBlurbFor(src, test.errorMessage);
   // Stacked: source badge → decision → short blurb (tooltip = full meaning)
   return `<div class="src-cell" title="${escapeHtml(tip)}">
       <div class="src-cell__row">

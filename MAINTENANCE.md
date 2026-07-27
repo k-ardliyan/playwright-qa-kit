@@ -51,14 +51,19 @@ export enum TAGS {
    - `CUSTOM-MCP.md` (tool name, input schema, output schema, example invocation)
    - `.github/agents/*.agent.md` if an agent uses the new tool
    - `AGENTS.md` MCP tools list if the Orchestrator should call the tool
+   - `src/agents/integration/manifest.ts` `TOOL_INFO` + phase `toolNames` if the tool is part of a pipeline phase
+   - `npm run manifest:generate` after manifest source changes
 
 Checklist:
 
 - [ ] Tool implemented in `mcp-server/src/tools/`
 - [ ] Entry added to `TOOL_REGISTRY` in `registry.ts`
 - [ ] `npm run mcp:typecheck` passes
-- [ ] `CUSTOM-MCP.md` updated
+- [ ] `CUSTOM-MCP.md` updated (tool contract + description)
+- [ ] If the new tool is a health check, update `health_check` description in `CUSTOM-MCP.md`
 - [ ] Agent instructions updated if applicable
+- [ ] `manifest.ts` + `npm run manifest:generate` if phase tools changed
+- [ ] `docs/GUIDE.md` / `docs/CHEATSHEET.md` if QA-facing
 
 ---
 

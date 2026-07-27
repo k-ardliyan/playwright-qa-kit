@@ -74,7 +74,7 @@ const TOOL_INFO: Record<string, ToolDescriptor> = {
     server: 'playwright-qa',
     name: 'health_check',
     description:
-      'Verify Node, Playwright packages, MCP build, environment files, and test result artifacts before running the agent pipeline.',
+      'Verify Node, Playwright packages, MCP build, environment files, `.auth/{APP_ENV}/` storage state, and test result artifacts before running the agent pipeline.',
   },
   validate_requirement: {
     server: 'playwright-qa',
@@ -128,6 +128,12 @@ const TOOL_INFO: Record<string, ToolDescriptor> = {
     name: 'list_artifacts',
     description: 'List requirement, spec, and generated test files under allowed project paths.',
   },
+  list_requirement_status: {
+    server: 'playwright-qa',
+    name: 'list_requirement_status',
+    description:
+      'Coverage map: each pipeline requirement with hasPlan, hasTests, manual scenario count, and last run status from test-summary when available.',
+  },
 };
 
 // ─── Phase Definitions ───────────────────────────────────────────────────────
@@ -153,6 +159,7 @@ const PHASE_DEFINITIONS: Record<
       'validate_requirement',
       'normalize_requirements',
       'parse_requirement_scenarios',
+      'list_requirement_status',
       'discover_pages',
       'snapshot_page',
     ],
@@ -173,13 +180,18 @@ const PHASE_DEFINITIONS: Record<
     description: 'Diagnose and fix test failures using trace and screenshot data',
     agentFile: '.github/agents/healer.agent.md',
     mcpServers: ['playwright-qa', 'playwright-test', 'playwright'],
-    toolNames: ['get_test_failures', 'validate_generated_tests'],
+    toolNames: ['get_test_failures', 'validate_generated_tests', 'snapshot_page'],
   },
   report: {
     description: 'Aggregate test results into a structured pipeline report',
     agentFile: '.github/agents/reporter.agent.md',
     mcpServers: ['playwright-qa'],
-    toolNames: ['get_test_summary', 'get_test_failures', 'list_artifacts'],
+    toolNames: [
+      'get_test_summary',
+      'get_test_failures',
+      'list_artifacts',
+      'list_requirement_status',
+    ],
   },
 };
 

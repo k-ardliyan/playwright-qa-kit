@@ -45,6 +45,8 @@ logs/
 
 # Property test transient artifacts
 src/tests/__property_validator__/
+src/tests/__property_capability__/
+src/tests/__property_*/
 
 # TypeScript
 *.tsbuildinfo

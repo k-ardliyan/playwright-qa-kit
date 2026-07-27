@@ -22,6 +22,7 @@ import { inspectFile } from './inspect-file';
 import { extractPdfTextTool } from './extract-pdf-text';
 import { readExcelSummaryTool } from './read-excel-summary';
 import { listTestFixtures } from './list-test-fixtures';
+import { listRequirementStatus } from './list-requirement-status';
 import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -73,7 +74,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   {
     name: 'health_check',
     description:
-      'Verify Node, Playwright packages, MCP build, environment files, and test result artifacts before running the agent pipeline.',
+      'Verify Node, Playwright packages, MCP build, environment files, `.auth/{APP_ENV}/` storage state, and test result artifacts before running the agent pipeline.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => healthCheck(),
   },
@@ -105,6 +106,13 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description: 'List requirement, spec, and generated test files under allowed project paths.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => listArtifacts(),
+  },
+  {
+    name: 'list_requirement_status',
+    description:
+      'Coverage map: each pipeline requirement with hasPlan, hasTests, manual scenario count, and last run status from test-summary when available.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => listRequirementStatus(),
   },
   {
     name: 'normalize_requirements',

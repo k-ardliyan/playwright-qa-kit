@@ -8,6 +8,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **P0 QA friction fixes (Hermes-friendly)**
+  - `list_requirement_status` MCP tool — coverage map requirement → plan → tests → manual count → lastStatus
+  - Dynamic Hermes prompt for `npm run qa:run` (`scripts/qa-run-prompt.ts`) — login / authenticated / unauthenticated branches; resume only if `pipeline-state.json` matches requirementPath
+  - `explainFailure()` + SOURCE blurb/tooltip in dashboard — short Indonesian explanations for common Playwright/env errors (strict mode, timeout, ECONNREFUSED, auth, etc.)
+  - Unit coverage: `scripts/__tests__/qa-run.test.ts` prompt builder; `failure-source` explainFailure tests
+  - `health_check` **`auth_storage`** warn when `.auth/{APP_ENV}/` missing/empty
+  - `validate_requirement` **`layer_recommended`** warn when scenario missing `Layer terdampak` / `Affected Layer`
+  - Healer: after locator heal → `snapshot_page`; post-heal `storePattern` / `recordPatternOutcome` / `saveDatabase` flow in agent instructions
+  - `manual:check` recursive nested `requirements/**` (skip `_*.md` and `README.md`)
+  - Manifest sync: `list_requirement_status` on plan/report; `snapshot_page` on heal; property EXPECTED tools updated
+
 - **Custom dashboard v2 → v3 triage board (Monitor/Operate)**
   - Full-width layout (no 1360px); sticky global command bar; **view toolbars sibling of `.report-layout`**
   - Table: multi-line Test Step / Input Data; full wrap (no ellipsis clamp); **SOURCE** Cause/Do/blurb + tooltip; Notes stack (time/ss/video/trace/badges)

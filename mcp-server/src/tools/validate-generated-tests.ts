@@ -48,7 +48,7 @@ function normalizeRelativePath(filePath: string): string {
 
 function isTraceabilityExempt(relativePath: string): boolean {
   const normalized = normalizeRelativePath(relativePath);
-  if (normalized.includes('__property_validator__')) {
+  if (normalized.includes('__property_')) {
     return true;
   }
   if (TRACEABILITY_EXEMPT_FILES.includes(normalized)) {

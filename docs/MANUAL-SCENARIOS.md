@@ -116,7 +116,7 @@ Validator akan memberi warning jika `@manual` tidak punya alasan di bagian Hasil
 npm run manual:check
 ```
 
-Output akan menampilkan semua skenario `(@manual)` di seluruh folder `requirements/` beserta alasannya.
+Output menampilkan semua skenario `(@manual)` di **seluruh tree** `requirements/**` (nested domain folders), skip file `_*.md` dan `README.md`, beserta alasannya.
 
 ---
 

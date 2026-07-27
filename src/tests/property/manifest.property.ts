@@ -12,14 +12,16 @@ import type { CapabilityManifest } from '../../agents/integration/manifest';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
- * All 10 tools expected from the MCP tool registry.
- * These must appear somewhere in the generated manifest.
+ * Core registry tools expected in the generated capability manifest phases.
+ * Not every MCP tool must appear in a phase (e.g. file helpers are on-demand);
+ * this list is the planning/reporting surface that Property 5 checks.
  */
 const EXPECTED_REGISTRY_TOOLS: string[] = [
   'health_check',
   'get_test_failures',
   'get_test_summary',
   'list_artifacts',
+  'list_requirement_status',
   'normalize_requirements',
   'parse_requirement_scenarios',
   'validate_generated_tests',
@@ -147,7 +149,7 @@ async function testProperty5(): Promise<void> {
     { numRuns: 100 },
   );
 
-  // Part D: All 10 expected tools exist in the manifest (full coverage check)
+  // Part D: All expected tools exist in the manifest (full coverage check)
   await fc.assert(
     fc.asyncProperty(fc.constantFrom(...EXPECTED_REGISTRY_TOOLS), async (expectedTool) => {
       assert.ok(

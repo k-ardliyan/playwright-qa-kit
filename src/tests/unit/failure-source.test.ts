@@ -3,6 +3,7 @@ import {
   decisionHintFor,
   decisionHintTooltipFor,
   decisionHintBlurbFor,
+  explainFailure,
   normalizeFailureSource,
   resolveFailureSource,
   suggestFailureSource,
@@ -79,5 +80,22 @@ test.describe('failure-source helpers', () => {
     expect(decisionHintBlurbFor('test')).toMatch(/selector|test/i);
     expect(decisionHintBlurbFor('env')).toMatch(/auth|env|seed/i);
     expect(decisionHintBlurbFor(undefined)).toMatch(/investigasi/i);
+  });
+
+  test('explainFailure maps common Playwright errors for QA', () => {
+    expect(explainFailure('strict mode violation: resolved to 3 elements')).toMatch(
+      /lebih dari 1|spesifik/i,
+    );
+    expect(explainFailure('connect ECONNREFUSED 127.0.0.1:3000')).toMatch(/BASE_URL|server/i);
+    expect(
+      explainFailure('TimeoutError: locator.click: Timeout 10000ms exceeded. waiting for locator'),
+    ).toMatch(/selector|timing|muncul/i);
+    expect(explainFailure('random unrelated noise')).toBeUndefined();
+  });
+
+  test('decisionHintBlurbFor prefers explainFailure when errorMessage given', () => {
+    expect(decisionHintBlurbFor('test', 'strict mode violation: resolved to 2 elements')).toMatch(
+      /lebih dari 1|spesifik/i,
+    );
   });
 });

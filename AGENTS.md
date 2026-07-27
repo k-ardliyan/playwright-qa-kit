@@ -60,6 +60,7 @@ List every tool explicitly by server:
   - `get_test_failures`
   - `get_test_summary` (now returns `byRole` and `byFeature` breakdowns when available)
   - `list_artifacts`
+  - `list_requirement_status` (coverage map: plan/tests/manual/lastStatus per requirement)
   - `archive_report` (call after Reporter produces the final report)
   - `snapshot_page` (capture ARIA + selector catalog to `selector-catalog/<feature>/<page>.{aria.yml,json}`)
   - `discover_pages` (BFS auto-crawl a public site, writes per-page catalog + `page-map.json`)

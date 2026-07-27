@@ -185,33 +185,33 @@ Setelah pipeline selesai:
 
 ## Command Utama
 
-| Command                                | Fungsi                                                 |
-| -------------------------------------- | ------------------------------------------------------ |
-| `npm run qa:run -- requirements/X.md`  | Preflight + validasi + cetak prompt Hermes             |
-| `npm run setup:check`                  | Verifikasi setup lokal                                 |
-| `npm run health:check`                 | Pre-flight sebelum pipeline                            |
-| `npm run validate:requirement -- X.md` | Validasi format requirement                            |
-| `npm run manual:check`                 | List scenario `(@manual)` yang harus dijalankan manual |
-| `npm test`                             | Jalankan semua test                                    |
-| `npm run test:smoke`                   | Jalankan smoke test saja                               |
-| `npm run test:headed`                  | Test dengan browser terlihat (debug)                   |
-| `npm run test:quality`                 | Gate lengkap sebelum push / PR                         |
+| Command                                | Fungsi                                                       |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `npm run qa:run -- requirements/X.md`  | Preflight + validasi + cetak prompt Hermes (dinamis per req) |
+| `npm run setup:check`                  | Verifikasi setup lokal                                       |
+| `npm run health:check`                 | Pre-flight sebelum pipeline (termasuk `auth_storage`)        |
+| `npm run validate:requirement -- X.md` | Validasi format requirement                                  |
+| `npm run manual:check`                 | List scenario `(@manual)` (rekursif nested folders)          |
+| `npm test`                             | Jalankan semua test                                          |
+| `npm run test:smoke`                   | Jalankan smoke test saja                                     |
+| `npm run test:headed`                  | Test dengan browser terlihat (debug)                         |
+| `npm run test:quality`                 | Gate lengkap sebelum push / PR                               |
 
 ---
 
 ## Struktur Folder
 
-| Folder / File               | Isi                                       |
-| --------------------------- | ----------------------------------------- |
-| `requirements/`             | Input requirement yang ditulis QA         |
-| `requirements/_TEMPLATE.md` | Template requirement                      |
-| `specs/`                    | Test plan output dari AI Planner          |
-| `src/tests/`                | Spec Playwright output dari AI Generator  |
-| `reports/`                  | Dashboard, summary, dan archive report    |
-| `environments/`             | Konfigurasi environment (URL, kredensial) |
-| `docs/`                     | Dokumentasi operasional lengkap           |
-| `AGENTS.md`                 | Kontrak pipeline agent (source of truth)  |
-| `CUSTOM-MCP.md`             | Referensi tool MCP                        |
+| Folder / File               | Isi                                                  |
+| --------------------------- | ---------------------------------------------------- |
+| `requirements/`             | Input requirement yang ditulis QA                    |
+| `requirements/_TEMPLATE.md` | Template requirement                                 |
+| `specs/`                    | Test plan output dari AI Planner                     |
+| `src/tests/`                | Spec Playwright output dari AI Generator             |
+| `reports/`                  | Dashboard, summary, dan archive report               |
+| `environments/`             | Konfigurasi environment (URL, kredensial)            |
+| `docs/`                     | Dokumentasi operasional lengkap                      |
+| `AGENTS.md`                 | Kontrak pipeline agent (source of truth)             |
+| `CUSTOM-MCP.md`             | Referensi tool MCP (`list_requirement_status`, dll.) |
 
 ---
 

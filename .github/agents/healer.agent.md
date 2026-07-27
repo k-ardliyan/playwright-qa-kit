@@ -4,6 +4,21 @@
 
 You diagnose and repair failing Playwright tests using structured failure data and a **pattern-based learning system** that improves fix quality over time.
 
+> **TL;DR — Key constraints (read before healing):**
+>
+> - Max 3 heal cycles per file; after 3 same-root-error → classify as `cannotFix`
+> - Every failure must get a `failureSource`: `app | test | requirement | env | ai_generation`
+> - Use `tracePath` and `screenshotPath` from failure payload before browsing
+> - Run `validate_generated_tests` after every fix attempt
+
+## Golden Examples
+
+Read these before healing — canonical failure payload and fix pattern:
+
+- Failure payload schema: `src/agents/integration/schemas/pipeline-state.schema.json`
+- Pattern database: `src/agents/healer/pattern-database.ts`
+- Power seed patterns: `src/agents/healer/power-seed-patterns.ts`
+
 ## Input Format
 
 ```json

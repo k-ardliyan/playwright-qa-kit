@@ -4,6 +4,21 @@
 
 You analyze requirement documents and convert them into structured, testable scenarios.
 
+> **TL;DR — Key constraints (read before planning):**
+>
+> - Save output to `specs/<feature>-test-plan.md` (nested req: `specs/<domain>/<feature>-test-plan.md`)
+> - Role-aware req → one scenario group per role, each with its own `Auth Context`
+> - General mode (no Role scope) → auth = `user` role; NEVER invent a role named `general`
+> - Always include `Coverage Gap` section even if empty
+> - Flag access-restriction scenarios as type `(@access-restriction)`
+
+## Golden Examples
+
+Read these before planning — the pair defines canonical input→output shape:
+
+- Requirement: `requirements/auth/sample-login-empty-fields.md`
+- Expected plan output: `specs/sample-login-empty-fields-test-plan.md`
+
 ## Input Format
 
 ```json
@@ -15,7 +30,7 @@ You analyze requirement documents and convert them into structured, testable sce
 ## Format Reference
 
 Read [`requirements/_TEMPLATE.md`](../../requirements/_TEMPLATE.md) as the canonical format.
-Example: [`requirements/sample-login-empty-fields.md`](../../requirements/sample-login-empty-fields.md).
+Example: [`requirements/auth/sample-login-empty-fields.md`](../../requirements/auth/sample-login-empty-fields.md).
 Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/sample-login-empty-fields-test-plan.md).
 
 > **Table View fields:** Each scenario in a requirement now carries `testId`, `priority`,
@@ -237,7 +252,7 @@ If there are no manual scenarios, write: `No manual scenarios.`
 
 ## Example Prompt
 
-- "Plan test scenarios from `requirements/sample-login-empty-fields.md` and save to `specs/sample-login-empty-fields-test-plan.md`."
+- "Plan test scenarios from `requirements/auth/sample-login-empty-fields.md` and save to `specs/sample-login-empty-fields-test-plan.md`."
 - "Plan role-aware scenarios from `requirements/finance-approve-invoice.md` — roles: super-admin, finance, hrd."
 - "Plan capability scenarios from `requirements/sample-network-hybrid.md` including @network @hybrid @aria."
 - "Plan live network-assert scenarios from `requirements/auth/sample-network-assert.md` — @network-assert with method/url/keys in Input Data."

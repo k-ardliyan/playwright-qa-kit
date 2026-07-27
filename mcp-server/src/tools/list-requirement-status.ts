@@ -43,12 +43,12 @@ function listFilesRecursive(dirPath: string, extension: string): string[] {
   return files.sort((a, b) => a.localeCompare(b));
 }
 
-/** requirements/auth/login.md → auth/login */
+/** requirements/auth/login.md → auth/login (handles both / and \ separators) */
 function requirementStem(reqRel: string): string {
   return reqRel
+    .replace(/\\/g, '/') // normalise backslash first
     .replace(/^requirements\//, '')
-    .replace(/\.md$/i, '')
-    .replace(/\\/g, '/');
+    .replace(/\.md$/i, '');
 }
 
 function expectedPlanPath(stem: string): string {

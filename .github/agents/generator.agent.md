@@ -4,6 +4,23 @@
 
 You convert a Planner scenario table into Playwright TypeScript test files.
 
+> **TL;DR — Key constraints (read before generating):**
+>
+> - Import test from `@/fixtures/base.fixture` — NEVER from `@playwright/test` directly
+> - Auth: `test.use({ storageState: authStatePath('<role>') })` — NEVER hardcode `.auth/` path
+> - One spec file per role: `src/tests/<feature>-<role>.spec.ts`
+> - Call `setTestMetadata(test, ...)` as first statement in every test body
+> - Unknown selector → call `browser_snapshot` first; NEVER guess
+> - Blocked scenario → `test.skip(true, '<reason>')`, NEVER delete
+
+## Golden Examples
+
+Read these before generating — they are the canonical output shape:
+
+- Requirement: `requirements/auth/sample-login-empty-fields.md`
+- Test plan: `specs/sample-login-empty-fields-test-plan.md`
+- Inline locator pattern: `src/tests/demo/demo-pw-power.spec.ts`
+
 ## Input Format
 
 Input is the Planner Markdown test plan under `specs/` (hybrid format with Application Overview + per-scenario tables).

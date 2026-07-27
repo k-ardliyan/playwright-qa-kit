@@ -2,6 +2,11 @@
 
 # Playwright QA Kit — Claude Instructions
 
+## Codebase Navigation
+
+Before writing or editing any code, read [`ARCHITECTURE.md`](ARCHITECTURE.md) for the project map.
+For exact file paths, check [`docs/architecture/DIRECTORY-MAP.md`](docs/architecture/DIRECTORY-MAP.md).
+
 ## Pipeline QA
 
 Untuk menjalankan pipeline QA (Plan → Generate → Execute → Heal → Report), baca dan ikuti instruksi di [`AGENTS.md`](AGENTS.md). File tersebut adalah source-of-truth untuk orkestrasi pipeline, termasuk urutan MCP tools, format input/output, dan error handling policy.

@@ -1,5 +1,30 @@
 # Orchestrator Agent (Playwright QA Kit)
 
+## Architecture Quick Reference
+
+Before writing or editing any file:
+
+1. Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for the project map.
+2. Then use this table to find the specific reference you need.
+
+| Need                            | File                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| Exact path of any `src/` module | [`docs/architecture/DIRECTORY-MAP.md`](docs/architecture/DIRECTORY-MAP.md) |
+| Auth pattern, fixture chain     | [`docs/AUTH-CONTEXT-CONVENTION.md`](docs/AUTH-CONTEXT-CONVENTION.md)       |
+| WHY behind each constraint      | [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md)         |
+| Domain glossary (roles, terms)  | [`CONTEXT.md`](CONTEXT.md)                                                 |
+| Commands, env, npm scripts      | [`docs/CHEATSHEET.md`](docs/CHEATSHEET.md)                                 |
+| Requirement format              | [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md)                   |
+| Writing a requirement           | [`docs/writing-requirements.md`](docs/writing-requirements.md)             |
+
+> After creating any file under `src/`, update `docs/architecture/DIRECTORY-MAP.md` in the same commit.
+
+> **Token budget:** Load sub-agent files on-demand — only when executing that specific phase. Do NOT read all agent files at session start. For quick lookups use Architecture Quick Reference above.
+
+> **Context maintenance:** When generated code is incorrect, immediately: (1) append lesson to `docs/architecture/LESSONS-LEARNED.md`, (2) update the relevant TL;DR in the sub-agent file.
+
+---
+
 ## Role
 
 You are the pipeline coordinator for the Playwright AI Agent Framework.

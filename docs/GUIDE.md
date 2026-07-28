@@ -8,7 +8,7 @@ Panduan setup, pipeline, dan troubleshooting tim QA.
 >
 > **▶️ Baru selesai setup wizard?** Setelah pipeline pertama jalan, baca [POST-PIPELINE.md](POST-PIPELINE.md) untuk failureSource + 6 keputusan QA.
 
-Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [AGENTS.md](../AGENTS.md)
+Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [ENVIRONMENT-GUIDE.md](ENVIRONMENT-GUIDE.md) · [SAMPLE-E2E-Pipeline.md](SAMPLE-E2E-Pipeline.md) · [AGENTS.md](../AGENTS.md)
 
 ---
 

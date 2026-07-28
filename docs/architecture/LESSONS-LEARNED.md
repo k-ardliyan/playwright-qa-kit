@@ -5,3 +5,7 @@
 > **Tujuan:** Mencegah repeat mistake di sesi berikutnya.
 
 <!-- APPEND BELOW — jangan edit baris yang sudah ada -->
+
+## 2026-07-28 | requirements/auth/sample-login-empty-fields.md | Missing Layer annotation for SC-04 | Advisory validation rule | Add `- **Layer terdampak:** FE` to all scenarios
+
+## 2026-07-28 | src/tests/sample-login-empty-fields.spec.ts | Playwright "No tests found" | File discovery timing after creation / wrong working directory | Ensure .spec.ts files are written inside the git repo root before running test command

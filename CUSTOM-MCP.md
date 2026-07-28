@@ -392,7 +392,7 @@ Resolves Playwright JSON results in this order:
 
 ## Tool: `get_test_summary`
 
-Reads `reports/test-summary.json` from the custom reporter. Also attempts to build per-role and per-feature breakdowns from test result files when available.
+Reads `reports/test-summary.json` from the custom reporter. Builds per-role and per-module breakdowns (Opsi B nested: module → features) from `testCases` in the summary file when available.
 
 ### Input
 
@@ -417,17 +417,30 @@ Reads `reports/test-summary.json` from the custom reporter. Also attempts to bui
     "finance": { "passing": 3, "failing": 0, "skipped": 0 },
     "super-admin": { "passing": 2, "failing": 1, "skipped": 0 }
   },
-  "byFeature": {
-    "invoice": { "passing": 4, "failing": 1 },
-    "login": { "passing": 1, "failing": 0 }
+  "byModule": {
+    "invoice": {
+      "passing": 4,
+      "failing": 1,
+      "features": {
+        "buat-invoice": { "passing": 2, "failing": 1 },
+        "approve-invoice": { "passing": 2, "failing": 0 }
+      }
+    },
+    "auth": {
+      "passing": 1,
+      "failing": 0,
+      "features": {
+        "login": { "passing": 1, "failing": 0 }
+      }
+    }
   },
   "message": "Summary: 9/10 passed (90% pass rate, ...)"
 }
 ```
 
 - `byRole` — only present when test files follow `*-<role>.spec.ts` naming convention.
-- `byFeature` — only present when test result files are found under `test-results/`.
-- Both fields are best-effort; absent if no role/feature data can be derived.
+- `byModule` — nested structure (Opsi B): each module contains `passing`, `failing`, and `features` (per-feature breakdown). Only present when `testCases` with `module`/`feature` fields are found in `test-summary.json`.
+- Both fields are best-effort; absent if no role/module data can be derived.
 
 ---
 

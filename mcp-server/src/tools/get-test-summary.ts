@@ -65,13 +65,20 @@ export interface FeatureSummary {
   failing: number;
 }
 
+/** Per-module test result breakdown — Opsi B: module contains nested features. */
+export interface ModuleSummary {
+  passing: number;
+  failing: number;
+  features: Record<string, FeatureSummary>;
+}
+
 export interface GetTestSummaryOutput {
   status: 'success' | 'no_results' | 'error';
   summary?: TestSummary;
   /** Per-role breakdown — only present when test files follow *-<role>.spec.ts naming */
   byRole?: Record<string, RoleSummary>;
-  /** Per-feature breakdown — grouped by feature name prefix in spec file names */
-  byFeature?: Record<string, FeatureSummary>;
+  /** Per-module breakdown — derived from module field in test-summary.json or requirement folder */
+  byModule?: Record<string, ModuleSummary>;
   /** Full per-test-case data from custom reporter — only present when reportMode is set */
   testCases?: CollectedTestCase[];
   /** Report mode from custom reporter — 'general' or 'role-aware' */
@@ -103,38 +110,69 @@ function extractRoleFromFilename(filename: string): string | null {
 }
 
 /**
- * Derive feature name from a spec file name like "invoice-finance.spec.ts" → "invoice"
- * or "login-empty-fields.spec.ts" → "login".
- */
-function extractFeatureFromFilename(filename: string): string {
-  const base = path.basename(filename, '.spec.ts');
-  const knownRoles = ['super-admin', 'finance', 'hrd', 'admin', 'user'];
-  let feature = base;
-  for (const role of knownRoles) {
-    if (feature.endsWith(`-${role}`)) {
-      feature = feature.slice(0, feature.length - role.length - 1);
-      break;
-    }
-  }
-  // Take the first segment as the feature name
-  return feature.split('-')[0] ?? feature;
-}
-
-/**
- * Attempt to build byRole and byFeature breakdowns from test result JSON files.
- * Returns empty objects if no result files are found.
+ * Attempt to build byRole and byModule breakdowns from test-summary.json testCases.
+ * byRole: from role field on each test case.
+ * byModule: from module field on each test case (set by custom reporter via annotation).
+ * Falls back to test-results/ directory scan for byRole only if testCases not present.
  */
 function buildBreakdowns(repoRoot: string): {
   byRole: Record<string, RoleSummary>;
-  byFeature: Record<string, FeatureSummary>;
+  byModule: Record<string, ModuleSummary>;
 } {
   const byRole: Record<string, RoleSummary> = {};
-  const byFeature: Record<string, FeatureSummary> = {};
+  const byModule: Record<string, ModuleSummary> = {};
+
+  // Primary: read from test-summary.json testCases (most accurate)
+  const summaryPath = path.join(repoRoot, SUMMARY_PATH);
+  if (fs.existsSync(summaryPath)) {
+    try {
+      const raw = readTextFile(summaryPath);
+      const parsed = safeJsonParse<{
+        testCases?: Array<{
+          role?: string;
+          module?: string;
+          feature?: string;
+          status?: string;
+        }>;
+      }>(raw);
+      if (parsed.ok && Array.isArray(parsed.data.testCases)) {
+        for (const tc of parsed.data.testCases) {
+          const status = tc.status ?? 'unknown';
+          const passing = status === 'passed' ? 1 : 0;
+          const failing = status === 'failed' || status === 'timedOut' ? 1 : 0;
+          const skipped = status === 'skipped' ? 1 : 0;
+
+          // byRole
+          const role = tc.role;
+          if (role) {
+            if (!byRole[role]) byRole[role] = { passing: 0, failing: 0, skipped: 0 };
+            byRole[role].passing += passing;
+            byRole[role].failing += failing;
+            byRole[role].skipped += skipped;
+          }
+
+          // byModule (Opsi B: nested features)
+          const mod = tc.module ?? '-';
+          const feat = tc.feature ?? '-';
+          if (!byModule[mod]) byModule[mod] = { passing: 0, failing: 0, features: {} };
+          byModule[mod].passing += passing;
+          byModule[mod].failing += failing;
+          if (!byModule[mod].features[feat])
+            byModule[mod].features[feat] = { passing: 0, failing: 0 };
+          byModule[mod].features[feat].passing += passing;
+          byModule[mod].features[feat].failing += failing;
+        }
+        return { byRole, byModule };
+      }
+    } catch {
+      // Fall through to legacy scan
+    }
+  }
+
+  // Legacy fallback: scan test-results/ for byRole only (no module data available)
   const resultsDir = path.join(repoRoot, RESULTS_DIR);
+  if (!fs.existsSync(resultsDir)) return { byRole, byModule };
 
-  if (!fs.existsSync(resultsDir)) return { byRole, byFeature };
-
-  // Walk test-results directories looking for results.json files
   try {
     const entries = fs.readdirSync(resultsDir, { withFileTypes: true });
     for (const entry of entries) {
@@ -162,17 +200,12 @@ function buildBreakdowns(repoRoot: string): {
         byRole[role].failing += failing;
         byRole[role].skipped += skipped;
       }
-
-      const feature = extractFeatureFromFilename(file);
-      if (!byFeature[feature]) byFeature[feature] = { passing: 0, failing: 0 };
-      byFeature[feature].passing += passing;
-      byFeature[feature].failing += failing;
     }
   } catch {
     // Non-fatal — breakdowns are best-effort
   }
 
-  return { byRole, byFeature };
+  return { byRole, byModule };
 }
 
 export function getTestSummary(): GetTestSummaryOutput {
@@ -215,7 +248,7 @@ export function getTestSummary(): GetTestSummaryOutput {
     }
 
     const mtime = fs.statSync(absolutePath).mtime.toISOString();
-    const { byRole, byFeature } = buildBreakdowns(repoRoot);
+    const { byRole, byModule } = buildBreakdowns(repoRoot);
 
     const result: GetTestSummaryOutput = {
       status: 'success',
@@ -224,7 +257,7 @@ export function getTestSummary(): GetTestSummaryOutput {
     };
 
     if (Object.keys(byRole).length > 0) result.byRole = byRole;
-    if (Object.keys(byFeature).length > 0) result.byFeature = byFeature;
+    if (Object.keys(byModule).length > 0) result.byModule = byModule;
 
     // Expose table-view extensions from custom reporter if present
     if (summary.reportMode) result.reportMode = summary.reportMode;

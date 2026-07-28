@@ -12,6 +12,8 @@
 - **Prioritas:** medium
 - **Auth state:** unauthenticated
 - **Halaman awal:** /login
+- **Module:** auth
+- **Feature:** login
 - **POM yang dibutuhkan:** loginPage <!-- Path B sample only; setup awal pakai Path A tanpa POM -->
 
 ## Kriteria Penerimaan

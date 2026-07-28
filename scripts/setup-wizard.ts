@@ -573,55 +573,72 @@ async function phase2(state: WizardState): Promise<void> {
     password: string;
     loginIdPref: string;
   } | null> {
-    const c = await prompts([
-      {
-        type: 'password',
-        name: 'password',
-        message: `[${label}] Password:`,
-        validate: (v: string) => v.length > 0 || 'Password wajib diisi',
-      },
+    // Step 1: tanya identifier dulu (satu field yang dipakai untuk login)
+    process.stdout.write(`\n  [${label}] Isi identifier yang dipakai untuk login:\n`);
+    process.stdout.write('  (Email, username, atau nomor telepon — isi salah satu saja)\n\n');
+    const idAns = await prompts([
       {
         type: 'text',
         name: 'email',
-        message: `[${label}] Email (kosongkan jika tidak dipakai):`,
+        message: `[${label}] Email (Enter untuk lewati):`,
       },
       {
         type: 'text',
         name: 'username',
-        message: `[${label}] Username (kosongkan jika tidak dipakai):`,
+        message: `[${label}] Username (Enter untuk lewati):`,
       },
       {
         type: 'text',
         name: 'phone',
-        message: `[${label}] Nomor telepon (kosongkan jika tidak dipakai):`,
-      },
-      {
-        type: 'select',
-        name: 'loginIdPref',
-        message: `[${label}] Yang diisi ke kolom login di form:`,
-        choices: [
-          { title: 'Otomatis (email dulu, lalu username, lalu telepon)', value: 'auto' },
-          { title: 'Selalu email', value: 'email' },
-          { title: 'Selalu username', value: 'username' },
-          { title: 'Selalu nomor telepon', value: 'phone' },
-        ],
-        initial: 0,
+        message: `[${label}] Nomor telepon (Enter untuk lewati):`,
       },
     ]);
-    if (!c.password) return null;
-    const email = String(c.email ?? '').trim();
-    const username = String(c.username ?? '').trim();
-    const phone = String(c.phone ?? '').trim();
+    const email = String(idAns.email ?? '').trim();
+    const username = String(idAns.username ?? '').trim();
+    const phone = String(idAns.phone ?? '').trim();
     if (!email && !username && !phone) {
       printWarn('Isi minimal satu: email, username, atau nomor telepon.');
       return null;
     }
+
+    // Step 2: password
+    const pwAns = await prompts({
+      type: 'password',
+      name: 'password',
+      message: `[${label}] Password:`,
+      validate: (v: string) => v.length > 0 || 'Password wajib diisi',
+    });
+    if (!pwAns.password) return null;
+
+    // Auto-derive loginIdPref: jika hanya satu field yang diisi, pakai itu.
+    // Jika lebih dari satu, tanya pilihan ringkas.
+    let loginIdPref: string;
+    const filledCount = [email, username, phone].filter(Boolean).length;
+    if (filledCount === 1) {
+      loginIdPref = email ? 'email' : username ? 'username' : 'phone';
+      printInfo(`Kolom login akan menggunakan: ${loginIdPref}`);
+    } else {
+      const prefAns = await prompts({
+        type: 'select',
+        name: 'loginIdPref',
+        message: `[${label}] Kolom login yang mau diisi pertama kali:`,
+        choices: [
+          ...(email ? [{ title: `Email (${email})`, value: 'email' }] : []),
+          ...(username ? [{ title: `Username (${username})`, value: 'username' }] : []),
+          ...(phone ? [{ title: `Nomor telepon (${phone})`, value: 'phone' }] : []),
+          { title: 'Otomatis (coba email → username → telepon)', value: 'auto' },
+        ],
+        initial: 0,
+      });
+      loginIdPref = String(prefAns.loginIdPref ?? 'auto');
+    }
+
     return {
-      password: String(c.password),
+      password: String(pwAns.password),
       email,
       username,
       phone,
-      loginIdPref: String(c.loginIdPref ?? 'auto'),
+      loginIdPref,
     };
   }
 
@@ -1066,31 +1083,51 @@ async function phase5(state: WizardState): Promise<void> {
   state.successUrlPath = loginInfo.successUrlPath;
 
   // Optional field hints — membantu Generator live-verify selector form login.
-  // Skip-friendly: Enter menerima default.
-  const hintAnswers = await prompts([
-    {
-      type: 'text',
-      name: 'loginFieldHints',
-      message: 'Teks label kolom login di form (opsional, pisah koma — Enter lewati):',
-      initial: '',
-    },
-    {
-      type: 'text',
-      name: 'passwordFieldHints',
-      message: 'Teks label kolom password (opsional — Enter lewati):',
-      initial: '',
-    },
-    {
-      type: 'text',
-      name: 'submitButtonHints',
-      message: 'Teks tombol masuk/login (opsional, pisah koma — Enter lewati):',
-      initial: '',
-    },
-  ]);
+  // Digabung jadi satu konfirmasi; hanya tanya detail jika user mau.
+  process.stdout.write('\n  Opsional: beri petunjuk teks label form login supaya generator\n');
+  process.stdout.write('  bisa temukan kolom yang tepat (berguna jika form punya label unik).\n');
+  process.stdout.write('  Sebagian besar kasus tidak perlu — cukup Enter untuk lewati.\n\n');
 
-  state.loginFieldHints = parseHintList(hintAnswers.loginFieldHints);
-  state.passwordFieldHints = parseHintList(hintAnswers.passwordFieldHints);
-  state.submitButtonHints = parseHintList(hintAnswers.submitButtonHints);
+  const { wantHints } = await prompts({
+    type: 'confirm',
+    name: 'wantHints',
+    message: 'Isi petunjuk label form login? (Enter = Tidak, lewati saja)',
+    initial: false,
+  });
+
+  let loginFieldHints: string[] = [];
+  let passwordFieldHints: string[] = [];
+  let submitButtonHints: string[] = [];
+
+  if (wantHints) {
+    const hintAnswers = await prompts([
+      {
+        type: 'text',
+        name: 'loginFieldHints',
+        message: 'Teks label kolom login/email/username (pisah koma, kosong = auto):',
+        initial: '',
+      },
+      {
+        type: 'text',
+        name: 'passwordFieldHints',
+        message: 'Teks label kolom password (pisah koma, kosong = auto):',
+        initial: '',
+      },
+      {
+        type: 'text',
+        name: 'submitButtonHints',
+        message: 'Teks tombol login/masuk (pisah koma, kosong = auto):',
+        initial: '',
+      },
+    ]);
+    loginFieldHints = parseHintList(hintAnswers.loginFieldHints);
+    passwordFieldHints = parseHintList(hintAnswers.passwordFieldHints);
+    submitButtonHints = parseHintList(hintAnswers.submitButtonHints);
+  }
+
+  state.loginFieldHints = loginFieldHints;
+  state.passwordFieldHints = passwordFieldHints;
+  state.submitButtonHints = submitButtonHints;
 
   // Langkah tambahan setelah password (OTP / CAPTCHA) — human challenge
   process.stdout.write('\n  Beberapa aplikasi minta OTP atau CAPTCHA setelah password.\n');
@@ -1148,21 +1185,24 @@ async function phase5(state: WizardState): Promise<void> {
     const { advanced } = await prompts({
       type: 'confirm',
       name: 'advanced',
-      message: 'Atur selector kolom OTP manual? (biasanya tidak perlu)',
+      message: 'Atur lokasi kolom OTP secara manual? (biasanya tidak perlu, Enter untuk lewati)',
       initial: false,
     });
     if (advanced) {
+      process.stdout.write('\n  Petunjuk: lihat kode sumber halaman OTP di browser,\n');
+      process.stdout.write('  cari <input> untuk kode OTP dan tombol submit-nya.\n');
+      process.stdout.write('  Contoh: input[name="otp"] atau button[type="submit"]\n\n');
       const selAns = await prompts([
         {
           type: 'text',
           name: 'otpInput',
-          message: 'Selector input OTP (CSS, kosong = auto-detect):',
+          message: 'Penanda kolom kode OTP (contoh: input[name="otp"], kosong = auto):',
           initial: '',
         },
         {
           type: 'text',
           name: 'otpSubmit',
-          message: 'Selector tombol verifikasi OTP (CSS, kosong = auto):',
+          message: 'Penanda tombol verifikasi OTP (contoh: button[type="submit"], kosong = auto):',
           initial: '',
         },
       ]);
@@ -1281,19 +1321,18 @@ async function phase5(state: WizardState): Promise<void> {
     } else {
       printWarn('Login / simpan sesi gagal atau sebagian.');
       printWarn(result.output.split('\n').slice(0, 3).join(' | '));
-      process.stdout.write('\n  Minta bantuan Hermes untuk memperbaiki form login:\n');
-      process.stdout.write(
-        '  ' +
-          JSON.stringify(
-            'Tolong perbaiki src/support/auth.setup.ts untuk login page di ' +
-              (state.baseUrl ?? '') +
-              loginInfo.loginUrl +
-              ' (AUTH_CHALLENGE_MODE=' +
-              challengeMode +
-              ')',
-          ) +
-          '\n\n',
-      );
+      process.stdout.write('\n  ─────────────────────────────────────────────────────────────\n');
+      process.stdout.write('  Minta bantuan Hermes untuk memperbaiki form login.\n');
+      process.stdout.write('  Salin prompt di bawah ini dan paste ke Hermes chat:\n\n');
+      const hermesFix =
+        'Tolong perbaiki src/support/auth.setup.ts — login gagal di ' +
+        (state.baseUrl ?? '') +
+        loginInfo.loginUrl +
+        ' (AUTH_CHALLENGE_MODE=' +
+        challengeMode +
+        '). Buka halaman login dengan snapshot_page dulu.';
+      process.stdout.write('  >>> ' + hermesFix + '\n');
+      process.stdout.write('  ─────────────────────────────────────────────────────────────\n\n');
     }
   } else {
     printInfo(
@@ -1474,13 +1513,14 @@ function phase7(state: WizardState): void {
   process.stdout.write('  ' + hr('=', 64) + '\n\n');
 
   process.stdout.write('  1. Pastikan Hermes Agent membuka folder project ini.\n');
-  process.stdout.write('  2. Cek MCP di Hermes: harus 3 server terhubung.\n');
+  process.stdout.write('     (File → Open Folder atau buka Hermes dari terminal project)\n\n');
+  process.stdout.write('  2. Cek MCP di Hermes: harus ada 3 server Connected.\n');
+  process.stdout.write('     Jika belum: klik Reload di panel MCP, tunggu hijau.\n\n');
   process.stdout.write(
-    '  3. Buka ' + LOGIN_REQ_REL + ' — file requirement website kamu (bukan sample).\n',
+    '  3. Buka ' + LOGIN_REQ_REL + ' — file requirement login website kamu (bukan sample).\n',
   );
-  process.stdout.write(
-    '  4. Salin prompt di bawah, tempel ke Hermes (jalankan pipeline + ambil locator):\n\n',
-  );
+  process.stdout.write('     File ini sudah berisi URL, path login, dan role dari wizard.\n\n');
+  process.stdout.write('  4. Salin prompt di bawah → paste ke kolom chat Hermes → Enter:\n\n');
 
   // Single prompt — site-specific: snapshot catalog then full pipeline.
   const loginUrl = state.loginUrl || '/login';
@@ -1506,8 +1546,12 @@ function phase7(state: WizardState): void {
   }
   process.stdout.write('     ' + hr('-', 60) + '\n\n');
 
-  process.stdout.write('  5. Setelah pipeline selesai, buka dashboard:\n');
-  process.stdout.write('     reports/custom-dashboard.html\n\n');
+  process.stdout.write('     Atau jalankan via terminal:\n');
+  process.stdout.write('     npm run qa:run -- ' + LOGIN_REQ_REL + '\n\n');
+
+  process.stdout.write('  5. Setelah pipeline selesai, buka laporan:\n');
+  process.stdout.write('     npm run qa:run -- --open-dashboard\n');
+  process.stdout.write('     (atau buka manual: reports/custom-dashboard.html)\n\n');
 
   process.stdout.write('  ' + hr('-', 64) + '\n');
   process.stdout.write('  Catatan singkat:\n');
@@ -1556,13 +1600,38 @@ async function main(): Promise<void> {
         message: 'Lanjut dari mana?',
         choices: [
           { title: 'Lanjut dari Phase ' + (lastPhase + 1), value: 'resume' },
-          { title: 'Mulai dari awal', value: 'restart' },
+          { title: 'Ulang fase tertentu saja', value: 'pick' },
+          { title: 'Mulai dari awal (reset semua)', value: 'restart' },
         ],
       });
       if (resume === 'restart') {
         if (fs.existsSync(STATE_FILE)) fs.unlinkSync(STATE_FILE);
         state = null;
         startPhase = 0;
+      } else if (resume === 'pick') {
+        const phaseLabels = [
+          { title: '0 — Pre-flight check', value: 0 },
+          { title: '1 — Project & target (URL)', value: 1 },
+          { title: '2 — Akun & kredensial', value: 2 },
+          { title: '3 — Install dependencies', value: 3 },
+          { title: '4 — Cek Hermes & tools', value: 4 },
+          { title: '5 — Simpan sesi login (auth)', value: 5 },
+          { title: '6 — Cek akhir & enkripsi', value: 6 },
+          { title: '7 — Langkah berikutnya', value: 7 },
+        ].filter((p) => p.value <= lastPhase + 1);
+        const { picked } = await prompts({
+          type: 'select',
+          name: 'picked',
+          message: 'Pilih fase yang mau diulang:',
+          choices: phaseLabels,
+        });
+        if (picked === undefined) {
+          printWarn('Dibatalkan.');
+          process.exit(0);
+        }
+        // Clear completion flag for picked phase and all after it
+        state.completedPhases = state.completedPhases.filter((p) => p < picked);
+        startPhase = picked;
       } else {
         startPhase = lastPhase + 1;
       }

@@ -12,6 +12,10 @@ export interface TestMetadata {
   testId?: string;
   priority?: 'HIGH' | 'MEDIUM' | 'LOW';
   role?: string;
+  /** Module this test belongs to — matches requirement `- **Module:** <name>`. */
+  module?: string;
+  /** Feature within the module — matches requirement `- **Feature:** <name>`. */
+  feature?: string;
   /** Must match AffectedLayer type: 'FE' | 'BE' | 'DB' | 'API' */
   affectedLayer?: Array<'FE' | 'BE' | 'DB' | 'API'>;
   inputData?: Record<string, string>;
@@ -51,6 +55,12 @@ export function setTestMetadata(metadata: TestMetadata): void {
   }
   if (metadata.role) {
     info.annotations.push({ type: 'role', description: metadata.role });
+  }
+  if (metadata.module) {
+    info.annotations.push({ type: 'module', description: metadata.module });
+  }
+  if (metadata.feature) {
+    info.annotations.push({ type: 'feature', description: metadata.feature });
   }
   if (metadata.affectedLayer && metadata.affectedLayer.length > 0) {
     info.annotations.push({ type: 'affectedLayer', description: metadata.affectedLayer.join(',') });

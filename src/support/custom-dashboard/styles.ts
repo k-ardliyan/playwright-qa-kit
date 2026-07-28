@@ -2448,6 +2448,10 @@ export function getDashboardStyles(): string {
     /* Explicit column widths so STATUS / PRIORITY / SOURCE / NOTES always reserved */
     .qa-report-table .tbl-test-id,
     .qa-report-table th[data-col="testId"] { width: 110px; }
+    .qa-report-table .tbl-module,
+    .qa-report-table th[data-col="module"] { width: 90px; }
+    .qa-report-table .tbl-feature,
+    .qa-report-table th[data-col="feature"] { width: 110px; }
     .qa-report-table .tbl-description,
     .qa-report-table th[data-col="description"] { width: 160px; }
     .qa-report-table .tbl-steps,
@@ -3211,6 +3215,42 @@ export function getDashboardStyles(): string {
     html[data-theme="dark"] .layer-badge--be  { background: rgba(168,85,247,0.18); color: #d8b4fe; }
     html[data-theme="dark"] .layer-badge--db  { background: rgba(234,179,8,0.16);  color: #fde047; }
     html[data-theme="dark"] .layer-badge--api { background: rgba(34,197,94,0.16);  color: #86efac; }
+
+    /* Module / Feature chips (table cells) */
+    .module-chip {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      background: var(--accent, #c4956a);
+      color: #fff;
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+    .feature-chip {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      background: var(--surface-muted, #e8e0d6);
+      color: var(--text, #333);
+      border: 1px solid var(--border, #d0c8bc);
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+    html[data-theme='dark'] .module-chip {
+      background: var(--accent, #c4956a);
+      color: #fff;
+    }
+    html[data-theme='dark'] .feature-chip {
+      background: var(--surface-muted);
+      color: var(--text);
+      border-color: var(--border);
+    }
 
     /* Actual result coloring */
     .actual-result--passed { color: var(--passed); font-weight: 500; background: transparent !important; }

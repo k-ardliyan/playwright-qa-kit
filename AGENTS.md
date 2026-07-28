@@ -83,7 +83,7 @@ List every tool explicitly by server:
   - `parse_requirement_scenarios` (now returns `rolesInScope`, `accessExpectations`, `scenarioType` per scenario)
   - `validate_generated_tests`
   - `get_test_failures`
-  - `get_test_summary` (now returns `byRole` and `byFeature` breakdowns when available)
+  - `get_test_summary` (now returns `byRole` and `byModule` breakdowns when available — `byModule` uses Opsi B nested structure with `features` per module)
   - `list_artifacts`
   - `list_requirement_status` (coverage map: plan/tests/manual/lastStatus per requirement)
   - `archive_report` (call after Reporter produces the final report)
@@ -146,6 +146,7 @@ List every tool explicitly by server:
 
 - Pass Planner test plan to Generator.
 - Generator reads `Role` and `Auth Context` columns per scenario.
+- Generator reads `Module` and `Feature` from requirement metadata (via `parse_requirement_scenarios` output fields `module` and `feature`) and injects them into every `setTestMetadata()` call: `module: '<value>'` and `feature: '<value>'`. This ensures the dashboard grouping and export CSV/TSV columns are populated correctly. If module is `'-'`, use the requirement filename stem as fallback.
 - If role-aware: Generator creates one file per role (`src/tests/<feature>-<role>.spec.ts`).
 - Generator uses `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` for role-specific files.
 - For blocked/unclear scenarios: Generator produces skeleton with `test.skip`.
@@ -172,9 +173,9 @@ List every tool explicitly by server:
 
 - Delegate to Reporter agent (`.github/agents/reporter.agent.md`).
 - Pass pipeline context: `runId`, `startedAt`, `requirementPath`, `scenarios`, `rolesInScope`, `healingResults`.
-- Reporter calls `get_test_summary` (reads `byRole` and `byFeature` if available) and `get_test_failures`.
+- Reporter calls `get_test_summary` (reads `byRole` and `byModule` if available) and `get_test_failures`.
 - Reporter produces:
-  - Structured JSON `PipelineReport` with summary metrics, per-scenario coverage, `summaryByRole`, `summaryByFeature`, `failureSource` per unresolved failure, and QA Decision section.
+  - Structured JSON `PipelineReport` with summary metrics, per-scenario coverage, `summaryByRole`, `summaryByModule` (with nested `features` per module), `failureSource` per unresolved failure, and QA Decision section.
   - Markdown report written to `reports/pipeline-report-<runId>.md`.
 - Call `archive_report` with `runId` and `reportPath` after Reporter completes.
 - In `automatic` mode: Reporter runs immediately after Heal without prompting.

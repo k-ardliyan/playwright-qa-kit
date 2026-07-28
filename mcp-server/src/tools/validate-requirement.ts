@@ -30,9 +30,11 @@ const VAGUE_RESULT_PATTERNS = [
   /\bno\s+error\b/i,
 ];
 
-// Regex helpers for new optional metadata fields
+// Regex helpers for metadata fields
 const ROLE_SCOPE_LABEL = /^\s*-\s+\*\*Role\s+scope:\*\*\s*\S+/im;
 const ACCESS_EXPECTATION_LABEL = /^\s*-\s+\*\*Access\s+expectation:\*\*\s*\S+/im;
+const MODULE_LABEL = /^\s*-\s+\*\*Module:\*\*\s*(\S.*\S|\S)\s*$/im;
+const FEATURE_LABEL = /^\s*-\s+\*\*Feature:\*\*\s*(\S.*\S|\S)\s*$/im;
 
 const OBSERVABLE_INDICATORS = [
   /url/i,
@@ -102,6 +104,30 @@ function validateMetadata(text: string): RequirementViolation[] {
       ruleName: 'metadata_auth_state_required',
       severity: 'error',
       message: 'Metadata must include Auth state: unauthenticated or authenticated.',
+    });
+  }
+
+  // Module is required — core of grouping/taxonomy
+  if (!MODULE_LABEL.test(section)) {
+    violations.push({
+      ruleName: 'metadata_module_required',
+      severity: 'error',
+      message:
+        'Metadata must include Module (e.g. - **Module:** invoice). Module is required for test grouping and coverage reports.',
+      suggestion:
+        'Add `- **Module:** <nama-modul>` to ## Metadata. Contoh: `- **Module:** auth`, `- **Module:** invoice`.',
+    });
+  }
+
+  // Feature is optional but recommended
+  if (!FEATURE_LABEL.test(section)) {
+    violations.push({
+      ruleName: 'metadata_feature_recommended',
+      severity: 'warn',
+      message:
+        'Metadata is missing Feature (e.g. - **Feature:** login). Feature helps group tests within a module.',
+      suggestion:
+        'Add `- **Feature:** <nama-fitur>` to ## Metadata. Contoh: `- **Feature:** login`, `- **Feature:** buat-invoice`.',
     });
   }
 

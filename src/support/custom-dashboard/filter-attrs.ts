@@ -14,6 +14,8 @@ export function buildFilterDataAttrs(test: CollectedTestData, rowKey: string): s
     test.title,
     test.fullTitle,
     test.role,
+    test.module,
+    test.feature,
     test.expectedResult,
     test.actualResult,
     test.errorMessage,
@@ -27,6 +29,8 @@ export function buildFilterDataAttrs(test: CollectedTestData, rowKey: string): s
   const status = String(test.status || '');
   const priority = String(test.priority || 'medium').toLowerCase();
   const role = test.role || '';
+  const module = test.module || '';
+  const feature = test.feature || '';
   const unhealthy = UNHEALTHY.has(status) ? '1' : '0';
 
   return [
@@ -35,6 +39,8 @@ export function buildFilterDataAttrs(test: CollectedTestData, rowKey: string): s
     `data-status="${escapeHtml(status)}"`,
     `data-priority="${escapeHtml(priority)}"`,
     `data-role="${escapeHtml(role)}"`,
+    `data-module="${escapeHtml(module)}"`,
+    `data-feature="${escapeHtml(feature)}"`,
     `data-layers="${escapeHtml(layers)}"`,
     `data-has-trace="${hasTrace}"`,
     `data-has-screenshot="${hasScreenshot}"`,

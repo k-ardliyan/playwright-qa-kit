@@ -226,6 +226,51 @@ function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+/**
+ * Resolve module from annotation value or spec file path.
+ * Priority:
+ *   1. Explicit annotation value (set by generator from requirement metadata)
+ *   2. Subfolder of src/tests/: src/tests/auth/foo.spec.ts → 'auth'
+ *   3. 'general' fallback
+ */
+function resolveModuleFromPath(annotationValue: string, filePath: string): string {
+  const val = (annotationValue || '').trim().toLowerCase();
+  if (val.length > 0) return val;
+  // src/tests/<subfolder>/... or src\tests\<subfolder>\...
+  const normalized = filePath.replace(/\\/g, '/');
+  const match = normalized.match(/src\/tests\/([^/]+)\/.+\.spec\.ts$/i);
+  if (match) {
+    const folder = match[1].toLowerCase();
+    if (!folder.startsWith('_') && folder !== 'demo') return folder;
+  }
+  return '-';
+}
+
+/**
+ * Resolve feature from annotation value or spec file name.
+ * Priority:
+ *   1. Explicit annotation value (set by generator from requirement metadata)
+ *   2. Spec filename stem without role suffix: 'login-empty-fields-finance.spec.ts' → 'login-empty-fields'
+ *   3. 'general' fallback
+ */
+function resolveFeatureFromPath(annotationValue: string, filePath: string): string {
+  const val = (annotationValue || '').trim().toLowerCase();
+  if (val.length > 0) return val;
+  const normalized = filePath.replace(/\\/g, '/');
+  const filename = normalized.split('/').pop() ?? '';
+  let stem = filename.replace(/\.spec\.ts$/i, '').toLowerCase();
+  // Strip known role suffixes
+  const knownRoles = ['super-admin', 'finance', 'hrd', 'admin', 'user'];
+  for (const role of knownRoles) {
+    if (stem.endsWith(`-${role}`)) {
+      stem = stem.slice(0, stem.length - role.length - 1);
+      break;
+    }
+  }
+  if (stem.length > 0 && !stem.startsWith('_') && stem !== 'demo') return stem;
+  return '-';
+}
+
 function formatErrorMessage(errors: CollectedError[]): string {
   const seen = new Set<string>();
   return errors
@@ -375,6 +420,8 @@ export default class CustomReporter implements Reporter {
     const testId = getAnnotation(test, 'testId') || deriveTestId(test.title);
     const scenarioId = getAnnotation(test, 'scenarioId');
     const role = getAnnotation(test, 'role');
+    const module = resolveModuleFromPath(getAnnotation(test, 'module') || '', filePath);
+    const feature = resolveFeatureFromPath(getAnnotation(test, 'feature') || '', filePath);
     const priority = normalizePriority(getAnnotation(test, 'priority') || 'medium');
     const inputData = safeParseJson<Record<string, string>>(getAnnotation(test, 'inputData'), {});
     const expectedResult = getAnnotation(test, 'expectedResult');
@@ -407,6 +454,8 @@ export default class CustomReporter implements Reporter {
       testId,
       scenarioId,
       role,
+      module,
+      feature,
       priority,
       inputData,
       expectedResult,
@@ -437,6 +486,8 @@ export default class CustomReporter implements Reporter {
         scenarioId: t.scenarioId,
         title: t.title,
         role: t.role,
+        module: t.module,
+        feature: t.feature,
         status: t.status,
         priority: t.priority,
         duration: t.duration,

@@ -7,6 +7,8 @@ import { escapeHtml } from './shared';
 
 type ExportRow = {
   testId: string;
+  module: string;
+  feature: string;
   description: string;
   steps: string;
   inputData: string;
@@ -20,6 +22,8 @@ type ExportRow = {
 
 const GENERAL_HEADERS = [
   'TEST ID',
+  'MODULE',
+  'FEATURE',
   'DESCRIPTION',
   'TEST STEP',
   'INPUT DATA',
@@ -33,6 +37,8 @@ const GENERAL_HEADERS = [
 
 const ROLE_HEADERS = [
   'TEST ID',
+  'MODULE',
+  'FEATURE',
   'DESCRIPTION',
   'TEST STEP',
   'INPUT DATA',
@@ -80,6 +86,8 @@ function formatNotes(test: CollectedTestData): string {
 function buildRow(test: CollectedTestData): ExportRow {
   return {
     testId: test.testId || '-',
+    module: test.module || '-',
+    feature: test.feature || '-',
     description: test.title,
     steps: formatSteps(test.steps || []),
     inputData: formatInputData(test.inputData || {}),
@@ -95,6 +103,8 @@ function buildRow(test: CollectedTestData): ExportRow {
 function exportRowValues(role: string | null, row: ExportRow): string[] {
   const base = [
     row.testId,
+    row.module,
+    row.feature,
     row.description,
     row.steps,
     row.inputData,
@@ -357,6 +367,8 @@ function confluenceRowCells(r: ExportRow, bg: string): string {
       `<code style="font-family:${CONF.mono};font-size:11px;font-weight:700;color:${CONF.accentFg};">${escapeHtml(r.testId)}</code>`,
       bg,
     ),
+    htmlCell(escapeHtml(r.module || '-'), bg, 'white-space:nowrap;font-weight:600'),
+    htmlCell(escapeHtml(r.feature || '-'), bg, 'white-space:nowrap'),
     htmlCell(confluenceMultilineHtml(r.description), bg),
     htmlCell(confluenceMultilineHtml(r.steps), bg, 'min-width:140px'),
     htmlCell(confluenceMultilineHtml(r.inputData), bg, 'min-width:120px'),

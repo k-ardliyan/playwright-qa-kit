@@ -25,6 +25,8 @@ function sample(partial: Partial<CollectedTestData> = {}): CollectedTestData {
     testId: 'TC-SAMP-01',
     scenarioId: 'SC-01',
     role: 'finance',
+    module: 'general',
+    feature: 'general',
     priority: 'high',
     inputData: { user: 'a', amount: '100' },
     expectedResult: 'ok',
@@ -41,7 +43,7 @@ test.describe('dashboard export SOURCE column', () => {
     expect(csv).toMatch(/"SOURCE"/);
     expect(csv).toMatch(/"TEST"/);
     const header = csv.split(/\r?\n/)[0] ?? '';
-    expect(header.split(',').length).toBe(10);
+    expect(header.split(',').length).toBe(12);
   });
 
   test('toTsv role-aware includes ROLE and SOURCE', () => {

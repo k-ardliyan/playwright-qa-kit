@@ -13,6 +13,8 @@
 - **Prioritas:** high
 - **Auth state:** unauthenticated
 - **Halaman awal:** /demo/network-assert (fixture self-contained di demo)
+- **Module:** demo
+- **Feature:** network-assert
 - **POM yang dibutuhkan:** —
 - **Role scope:** general
 - **Access expectation:** general: bisa submit demo form

@@ -48,6 +48,10 @@ export interface CollectedTestData {
   testId: string;
   scenarioId: string;
   role: string;
+  /** Module this test belongs to — from requirement metadata or folder. */
+  module: string;
+  /** Feature within the module — from requirement metadata or filename. */
+  feature: string;
   priority: Priority;
   inputData: Record<string, string>;
   expectedResult: string;
@@ -66,6 +70,10 @@ export interface CollectedTestCase {
   scenarioId: string;
   title: string;
   role: string;
+  /** Module this test belongs to — from requirement metadata or folder. */
+  module: string;
+  /** Feature within the module — from requirement metadata or filename. */
+  feature: string;
   status: string;
   priority: Priority;
   duration: number;

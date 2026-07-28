@@ -32,6 +32,8 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 - [ ] `npm run validate:requirement` lulus (tanpa error)
 - [ ] Judul `# REQ-XXX: ...` ada di baris pertama
 - [ ] Section `## Metadata` terisi (minimal Tags, Auth state, Halaman awal)
+- [ ] **`- **Module:** <nama-modul>`** diisi — wajib, validator akan error jika kosong
+- [ ] `- **Feature:** <nama-fitur>` diisi jika memungkinkan — opsional tapi sangat direkomendasikan
 - [ ] Minimal satu bullet di `## Kriteria Penerimaan`, semuanya observable
 - [ ] Setiap skenario punya `### SC-XX:` heading + `**Langkah:**` + `**Hasil:**`
 - [ ] Hasil bersifat observable (URL, teks, visibility — bukan "berjalan baik")

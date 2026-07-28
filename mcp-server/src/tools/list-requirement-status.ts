@@ -11,6 +11,8 @@ import { getPlaywrightTestRoot } from '../utils/playwright-paths';
 
 export interface RequirementStatusRow {
   requirementPath: string;
+  module: string;
+  feature: string;
   planPath: string | null;
   hasPlan: boolean;
   testPaths: string[];
@@ -19,10 +21,83 @@ export interface RequirementStatusRow {
   lastStatus: string | null;
 }
 
+export interface FeatureSummary {
+  total: number;
+  withPlan: number;
+  withTests: number;
+}
+
+/** Opsi B: module contains nested features. */
+export interface ModuleSummary {
+  total: number;
+  withPlan: number;
+  withTests: number;
+  features: Record<string, FeatureSummary>;
+}
+
 export interface ListRequirementStatusOutput {
   status: 'success' | 'error';
   requirements: RequirementStatusRow[];
+  /** Aggregated counts per module. */
+  byModule: Record<string, ModuleSummary>;
   message: string;
+}
+
+/**
+ * Resolve module for a requirement file.
+ * Priority: explicit `- **Module:** <name>` field → parent subfolder → 'general'.
+ */
+function resolveModuleFromRequirement(filePath: string): string {
+  const repoRoot = getRepoRoot();
+  try {
+    const md = fs.readFileSync(path.join(repoRoot, filePath), 'utf-8');
+    const explicit = md.match(/^\s*-\s+\*\*Module:\*\*\s*(.+)$/im);
+    if (explicit) {
+      const val = explicit[1]
+        .trim()
+        .toLowerCase()
+        .replace(/[.,;]+$/, '');
+      if (val.length > 0) return val;
+    }
+  } catch {
+    // non-fatal
+  }
+  // Subfolder: requirements/<folder>/file.md → folder
+  const normalized = filePath.replace(/\\/g, '/');
+  const match = normalized.match(/^requirements\/([^/]+)\/.+\.md$/i);
+  if (match) {
+    const folder = match[1].toLowerCase();
+    if (!folder.startsWith('_') && folder !== 'readme') return folder;
+  }
+  return '-';
+}
+
+/**
+ * Resolve feature for a requirement file.
+ * Priority: explicit `- **Feature:** <name>` field → filename stem → 'general'.
+ */
+function resolveFeatureFromRequirement(filePath: string): string {
+  const repoRoot = getRepoRoot();
+  try {
+    const md = fs.readFileSync(path.join(repoRoot, filePath), 'utf-8');
+    const explicit = md.match(/^\s*-\s+\*\*Feature:\*\*\s*(.+)$/im);
+    if (explicit) {
+      const val = explicit[1]
+        .trim()
+        .toLowerCase()
+        .replace(/[.,;]+$/, '')
+        .replace(/\s+/g, '-');
+      if (val.length > 0) return val;
+    }
+  } catch {
+    // non-fatal
+  }
+  // Filename stem: requirements/auth/login.md → 'login'
+  const normalized = filePath.replace(/\\/g, '/');
+  const filename = normalized.split('/').pop() ?? '';
+  const stem = filename.replace(/\.md$/i, '').toLowerCase().replace(/\s+/g, '-');
+  if (stem.length > 0 && !stem.startsWith('_') && stem !== 'readme') return stem;
+  return '-';
 }
 
 function listFilesRecursive(dirPath: string, extension: string): string[] {
@@ -140,8 +215,13 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
       // ignore
     }
 
+    const module = resolveModuleFromRequirement(requirementPath);
+    const feature = resolveFeatureFromRequirement(requirementPath);
+
     return {
       requirementPath,
+      module,
+      feature,
       planPath,
       hasPlan,
       testPaths,
@@ -153,9 +233,26 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
 
   const planned = rows.filter((r) => r.hasPlan).length;
   const tested = rows.filter((r) => r.hasTests).length;
+
+  // Build byModule aggregation (Opsi B: nested features)
+  const byModule: Record<string, ModuleSummary> = {};
+  for (const row of rows) {
+    const m = row.module;
+    const f = row.feature;
+    if (!byModule[m]) byModule[m] = { total: 0, withPlan: 0, withTests: 0, features: {} };
+    byModule[m].total += 1;
+    if (row.hasPlan) byModule[m].withPlan += 1;
+    if (row.hasTests) byModule[m].withTests += 1;
+    if (!byModule[m].features[f]) byModule[m].features[f] = { total: 0, withPlan: 0, withTests: 0 };
+    byModule[m].features[f].total += 1;
+    if (row.hasPlan) byModule[m].features[f].withPlan += 1;
+    if (row.hasTests) byModule[m].features[f].withTests += 1;
+  }
+
   return {
     status: 'success',
     requirements: rows,
-    message: `${rows.length} requirement(s): ${planned} with plan, ${tested} with tests.`,
+    byModule,
+    message: `${rows.length} requirement(s): ${planned} with plan, ${tested} with tests. Modules: ${Object.keys(byModule).join(', ') || 'none'}.`,
   };
 }

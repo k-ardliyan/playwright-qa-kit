@@ -13,6 +13,8 @@
 - **Prioritas:** high
 - **Auth state:** authenticated
 - **Halaman awal:** /finance/invoices
+- **Module:** invoice
+- **Feature:** invoice-list
 - **POM yang dibutuhkan:** invoicePage
 - **Role scope:** finance
 - **Access expectation:** finance: bisa melihat daftar invoice; hrd: tidak dibahas di requirement ini

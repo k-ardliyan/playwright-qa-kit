@@ -16,18 +16,20 @@
 
 ## Metadata
 
-| Field                 | Wajib?      | Contoh nilai                                     | Keterangan                                                                 |
-| --------------------- | ----------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
-| `Tags`                | ✅ Ya       | `#smoke #regression #ui`                         | Pisahkan dengan spasi. Dipakai filter test.                                |
-| `Prioritas`           | ✅ Ya       | `high` / `medium` / `low`                        | Prioritas bisnis default untuk semua skenario.                             |
-| `Auth state`          | ✅ Ya       | `unauthenticated` / `authenticated`              | Butuh login atau tidak.                                                    |
-| `Halaman awal`        | ✅ Ya       | `/login`                                         | Path URL halaman pembuka scenario.                                         |
-| `POM yang dibutuhkan` | ⚪ Opsional | `loginPage, dashboardPage`                       | Page Object Model yang akan dibuat Generator.                              |
-| `Role scope`          | ⚪ Opsional | `super-admin, finance` / `semua role`            | Role bisnis yang terlibat. Isi jika fitur berbeda per role.                |
-| `Access expectation`  | ⚪ Opsional | `finance: bisa approve; hrd: tidak bisa approve` | Role mana yang boleh/tidak boleh akses. Wajib diisi jika Role scope diisi. |
-| `Risk level`          | ⚪ Opsional | `high` / `medium` / `low`                        | Dampak jika fitur ini gagal di produksi. Dipakai Healer untuk prioritasi.  |
-| `Environment scope`   | ⚪ Opsional | `staging` / `production` / `all`                 | Environment mana yang relevan untuk requirement ini.                       |
-| `Data scope`          | ⚪ Opsional | `seed data diperlukan: invoice_approved`         | Data khusus yang harus ada sebelum test bisa jalan.                        |
+| Field                 | Wajib?       | Contoh nilai                                     | Keterangan                                                                                                      |
+| --------------------- | ------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `Tags`                | ✅ Ya        | `#smoke #regression #ui`                         | Pisahkan dengan spasi. Dipakai filter test.                                                                     |
+| `Prioritas`           | ✅ Ya        | `high` / `medium` / `low`                        | Prioritas bisnis default untuk semua skenario.                                                                  |
+| `Auth state`          | ✅ Ya        | `unauthenticated` / `authenticated`              | Butuh login atau tidak.                                                                                         |
+| `Halaman awal`        | ✅ Ya        | `/login`                                         | Path URL halaman pembuka scenario.                                                                              |
+| `Module`              | ✅ **Wajib** | `invoice` / `auth` / `purchase-order`            | Modul aplikasi yang ditest. Dipakai untuk grouping laporan dan coverage. Validator akan error jika tidak diisi. |
+| `Feature`             | ⚪ Opsional  | `login` / `buat-invoice` / `approve-invoice`     | Fitur spesifik dalam modul. Sangat direkomendasikan untuk grouping skenario. Default: nama file requirement.    |
+| `POM yang dibutuhkan` | ⚪ Opsional  | `loginPage, dashboardPage`                       | Page Object Model yang akan dibuat Generator.                                                                   |
+| `Role scope`          | ⚪ Opsional  | `super-admin, finance` / `semua role`            | Role bisnis yang terlibat. Isi jika fitur berbeda per role.                                                     |
+| `Access expectation`  | ⚪ Opsional  | `finance: bisa approve; hrd: tidak bisa approve` | Role mana yang boleh/tidak boleh akses. Wajib diisi jika Role scope diisi.                                      |
+| `Risk level`          | ⚪ Opsional  | `high` / `medium` / `low`                        | Dampak jika fitur ini gagal di produksi. Dipakai Healer untuk prioritasi.                                       |
+| `Environment scope`   | ⚪ Opsional  | `staging` / `production` / `all`                 | Environment mana yang relevan untuk requirement ini.                                                            |
+| `Data scope`          | ⚪ Opsional  | `seed data diperlukan: invoice_approved`         | Data khusus yang harus ada sebelum test bisa jalan.                                                             |
 
 **Contoh Metadata Path A (default setup awal — tanpa POM):**
 

@@ -1017,12 +1017,14 @@ function renderInteractiveScript(): string {
                   tb.classList.toggle('view-toolbar--hidden', !show);
                 });
 
-            /* ---- Column visibility (Filter columns) ---- */
-    var COL_KEY = 'dashboard-columns-v1';
+    /* ---- Column visibility (Filter columns) ---- */
+    var COL_KEY = 'dashboard-columns-v2';
     var LOCKED_COLS = { testId: true, status: true, no: true };
     var DEFAULT_COLS = {
       no: true,
       testId: true,
+      module: false,
+      feature: false,
       description: true,
       steps: true,
       input: true,
@@ -1030,7 +1032,7 @@ function renderInteractiveScript(): string {
       actual: true,
       status: true,
       priority: true,
-      source: true,
+      source: false,
       notes: true
     };
     var colPicker = document.getElementById('column-picker');

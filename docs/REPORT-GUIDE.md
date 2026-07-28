@@ -148,6 +148,10 @@ interface CollectedTestCase {
   duration: number; // ms
   scenarioId?: string;
   role?: string;
+  /** Module dari requirement `- **Module:** <name>` atau subfolder src/tests/. Default: '-' jika belum diisi. */
+  module: string;
+  /** Feature dari requirement `- **Feature:** <name>` atau filename stem. Default: '-' jika belum diisi. */
+  feature: string;
   priority?: 'high' | 'medium' | 'low';
   inputData?: Record<string, string>;
   expectedResult?: string;

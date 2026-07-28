@@ -54,6 +54,8 @@ function renderTableRow(test: CollectedTestData, rowKey: string): string {
   return `
     <tr class="tbl-row tbl-row--${test.status}" ${buildFilterDataAttrs(test, rowKey)}>
       <td class="tbl-test-id col-sticky-0" data-col="testId"><code>${escapeHtml(test.testId || '-')}</code></td>
+      <td class="tbl-module" data-col="module"><span class="module-chip">${escapeHtml(test.module || 'general')}</span></td>
+      <td class="tbl-feature" data-col="feature"><span class="feature-chip">${escapeHtml(test.feature || 'general')}</span></td>
       <td class="tbl-description" data-col="description">${renderMultilineTextCell(test.title, 'tbl-title')}</td>
       <td class="tbl-steps col-tertiary" data-col="steps">${renderStepsCell(test.steps)}</td>
       <td class="tbl-input col-secondary" data-col="input">${renderInputDataCell(test.inputData)}</td>
@@ -71,6 +73,8 @@ function headerRow(): string {
   return `
     <tr>
       <th class="col-sticky-0" data-col="testId">TEST ID</th>
+      <th data-col="module">MODULE</th>
+      <th data-col="feature">FEATURE</th>
       <th data-col="description">DESCRIPTION</th>
       <th class="col-tertiary" data-col="steps">TEST STEP</th>
       <th class="col-secondary" data-col="input">INPUT DATA</th>
@@ -141,6 +145,8 @@ export function renderTableColumnPicker(): string {
       <div class="column-picker__menu" id="column-picker-menu" role="menu" hidden>
         <div class="column-picker__title">Visible columns</div>
         <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="testId" checked disabled /> Test ID</label>
+        <label class="column-picker__item"><input type="checkbox" data-col-toggle="module" /> Module</label>
+        <label class="column-picker__item"><input type="checkbox" data-col-toggle="feature" /> Feature</label>
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="description" checked /> Description</label>
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="steps" checked /> Test Step</label>
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="input" checked /> Input Data</label>
@@ -148,7 +154,7 @@ export function renderTableColumnPicker(): string {
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="actual" checked /> Actual Result</label>
         <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="status" checked disabled /> Status</label>
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="priority" checked /> Priority</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="source" checked /> Source</label>
+        <label class="column-picker__item"><input type="checkbox" data-col-toggle="source" /> Source</label>
         <label class="column-picker__item"><input type="checkbox" data-col-toggle="notes" checked /> Notes</label>
 
         <div class="column-picker__title column-picker__title--section">Pin / sticky</div>
@@ -187,8 +193,80 @@ export function renderTableToolbar(): string {
     <div class="table-toolbar" id="table-toolbar" data-toolbar-for="table" role="toolbar" aria-label="Table controls">
       <span class="table-toolbar__label">Table</span>
       ${renderSortDropdown('table-sort-select')}
+      <select class="sort-select cmd-select" id="module-filter-select" aria-label="Filter by module">
+        <option value="">All modules</option>
+      </select>
+      <select class="sort-select cmd-select" id="feature-filter-select" aria-label="Filter by feature">
+        <option value="">All features</option>
+      </select>
       ${renderTableColumnPicker()}
     </div>
+    <script>
+    (function () {
+      // Populate module filter from live rows
+      function populateModuleFilter() {
+        var sel = document.getElementById('module-filter-select');
+        if (!sel) return;
+        var rows = document.querySelectorAll('tr[data-module]');
+        var modules = new Set();
+        rows.forEach(function (r) {
+          var m = r.getAttribute('data-module');
+          if (m && m !== '') modules.add(m);
+        });
+        Array.from(modules).sort().forEach(function (m) {
+          var opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          sel.appendChild(opt);
+        });
+      }
+      // Populate feature filter (optionally filtered by active module)
+      function populateFeatureFilter(activeModule) {
+        var sel = document.getElementById('feature-filter-select');
+        if (!sel) return;
+        // Clear existing options except first
+        while (sel.options.length > 1) sel.remove(1);
+        var rows = document.querySelectorAll('tr[data-feature]');
+        var features = new Set();
+        rows.forEach(function (r) {
+          if (activeModule && r.getAttribute('data-module') !== activeModule) return;
+          var f = r.getAttribute('data-feature');
+          if (f && f !== '') features.add(f);
+        });
+        Array.from(features).sort().forEach(function (f) {
+          var opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f;
+          sel.appendChild(opt);
+        });
+      }
+      // Apply both filters
+      function applyFilters() {
+        var modSel = document.getElementById('module-filter-select');
+        var featSel = document.getElementById('feature-filter-select');
+        var modVal = modSel ? modSel.value : '';
+        var featVal = featSel ? featSel.value : '';
+        var rows = document.querySelectorAll('tr.tbl-row');
+        rows.forEach(function (r) {
+          var modMatch = !modVal || r.getAttribute('data-module') === modVal;
+          var featMatch = !featVal || r.getAttribute('data-feature') === featVal;
+          r.style.display = modMatch && featMatch ? '' : 'none';
+        });
+      }
+      document.addEventListener('DOMContentLoaded', function () {
+        populateModuleFilter();
+        populateFeatureFilter('');
+        var modSel = document.getElementById('module-filter-select');
+        var featSel = document.getElementById('feature-filter-select');
+        if (modSel) modSel.addEventListener('change', function () {
+          populateFeatureFilter(modSel.value);
+          if (featSel) featSel.value = '';
+          applyFilters();
+        });
+        if (featSel) featSel.addEventListener('change', applyFilters);
+      });
+    })();
+    </script>
   `;
 }
 

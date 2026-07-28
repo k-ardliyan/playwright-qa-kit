@@ -5,6 +5,8 @@ test.describe('Demo Success Tests', { tag: ['@demo', '@success'] }, () => {
   test('should navigate to Playwright homepage', async ({ page }) => {
     setTestMetadata({
       testId: 'TC-DEMO-01',
+      module: 'demo',
+      feature: 'navigation',
       priority: 'HIGH',
       affectedLayer: ['FE'],
       expectedResult: 'Homepage loads with correct title and Get Started button visible',
@@ -26,6 +28,8 @@ test.describe('Demo Success Tests', { tag: ['@demo', '@success'] }, () => {
   test('should search for coding agent and open documentation', async ({ page }) => {
     setTestMetadata({
       testId: 'TC-DEMO-05',
+      module: 'demo',
+      feature: 'search',
       priority: 'HIGH',
       affectedLayer: ['FE'],
       expectedResult: 'Documentation page for coding agent is displayed',
@@ -60,6 +64,8 @@ test.describe('Demo Success Tests', { tag: ['@demo', '@success'] }, () => {
   test('should search documentation for locators', async ({ page }) => {
     setTestMetadata({
       testId: 'TC-DEMO-02',
+      module: 'demo',
+      feature: 'search',
       priority: 'MEDIUM',
       affectedLayer: ['FE'],
       expectedResult: 'Search returns relevant results for "locators"',

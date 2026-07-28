@@ -42,6 +42,16 @@ export interface ParseRequirementScenariosOutput {
   status: 'success' | 'error';
   scenarios?: RequirementScenario[];
   sourcePath?: string;
+  /**
+   * Module this requirement belongs to.
+   * Priority: explicit `- **Module:** <name>` field → parent subfolder of requirements/ → `'general'`.
+   */
+  module: string;
+  /**
+   * Feature within the module.
+   * Priority: explicit `- **Feature:** <name>` field → requirement filename stem → `'general'`.
+   */
+  feature: string;
   /** Roles found in requirement metadata Role scope field */
   rolesInScope?: string[];
   /** Access expectations parsed from metadata, keyed by role name */
@@ -249,9 +259,57 @@ function stripLabel(trimmed: string, labelRegex: RegExp): string | null {
 }
 
 /**
- * Parse global priority from requirement metadata.
- * Used as fallback when per-scenario priority is not set.
+ * Resolve feature name for a requirement.
+ * Priority:
+ *   1. Explicit `- **Feature:** <name>` field in metadata
+ *   2. Requirement filename stem (without extension, lowercase, spaces as hyphens)
+ *   3. 'general' fallback
  */
+function resolveFeature(text: string, requirementPath?: string): string {
+  // 1. Explicit metadata field
+  const explicit = text.match(/^\s*-\s+\*\*Feature:\*\*\s*(.+)$/im);
+  if (explicit) {
+    const val = explicit[1]
+      .trim()
+      .toLowerCase()
+      .replace(/[.,;]+$/, '')
+      .replace(/\s+/g, '-');
+    if (val.length > 0) return val;
+  }
+  // 2. Filename stem: requirements/auth/login.md → 'login'
+  if (requirementPath) {
+    const normalized = requirementPath.replace(/\\/g, '/');
+    const filename = normalized.split('/').pop() ?? '';
+    const stem = filename.replace(/\.md$/i, '').toLowerCase().replace(/\s+/g, '-');
+    if (stem.length > 0 && !stem.startsWith('_') && stem !== 'readme') return stem;
+  }
+  return '-';
+}
+
+function resolveModule(text: string, requirementPath?: string): string {
+  // 1. Explicit metadata field
+  const explicit = text.match(/^\s*-\s+\*\*Module:\*\*\s*(.+)$/im);
+  if (explicit) {
+    const val = explicit[1]
+      .trim()
+      .toLowerCase()
+      .replace(/[.,;]+$/, '');
+    if (val.length > 0) return val;
+  }
+  // 2. Parent subfolder: requirements/auth/login.md → 'auth'
+  if (requirementPath) {
+    const normalized = requirementPath.replace(/\\/g, '/');
+    // Match: requirements/<subfolder>/<anything>.md
+    const folderMatch = normalized.match(/^requirements\/([^/]+)\/.+\.md$/i);
+    if (folderMatch) {
+      const folder = folderMatch[1].toLowerCase();
+      // Skip template/utility files
+      if (!folder.startsWith('_') && folder !== 'readme') return folder;
+    }
+  }
+  return '-';
+}
+
 function parseGlobalPriority(text: string): ScenarioPriority {
   const match = text.match(/^\s*-\s+\*\*Prioritas:\*\*\s*(\S+)/im);
   if (!match) return 'medium';
@@ -547,25 +605,45 @@ export function parseRequirementScenarios(options: {
       readOnly: true,
     });
     if (!resolved.ok) {
-      return { status: 'error', message: resolved.error.message, error: resolved.error };
+      return {
+        status: 'error',
+        module: '-',
+        feature: '-',
+        message: resolved.error.message,
+        error: resolved.error,
+      };
     }
     text = fs.readFileSync(resolved.absolutePath, 'utf-8');
   }
 
   if (typeof text !== 'string' || text.trim().length === 0) {
     const err = createToolError('INVALID_INPUT', 'Provide requirementsText or requirementPath.');
-    return { status: 'error', message: err.error.message, error: err.error };
+    return {
+      status: 'error',
+      module: '-',
+      feature: '-',
+      message: err.error.message,
+      error: err.error,
+    };
   }
 
   const sizeError = assertRequirementsTextSize(text);
   if (sizeError) {
-    return { status: 'error', message: sizeError.message, error: sizeError };
+    return {
+      status: 'error',
+      module: '-',
+      feature: '-',
+      message: sizeError.message,
+      error: sizeError,
+    };
   }
 
   const scenarios = parseRequirementScenariosFromText(text);
   if (scenarios.length === 0) {
     return {
       status: 'error',
+      module: '-',
+      feature: '-',
       message:
         'No scenarios found. Use ### headings with **Langkah:**/**Steps:** and **Hasil:**/**Expected Result:** sections.',
       error: { code: 'NO_SCENARIOS', message: 'No parseable test scenarios in input.' },
@@ -574,13 +652,17 @@ export function parseRequirementScenarios(options: {
 
   const rolesInScope = parseRolesInScope(text);
   const accessExpectations = parseAccessExpectations(text);
+  const module = resolveModule(text, options.requirementPath);
+  const feature = resolveFeature(text, options.requirementPath);
 
   return {
     status: 'success',
     scenarios,
     sourcePath: options.requirementPath,
+    module,
+    feature,
     ...(rolesInScope.length > 0 && { rolesInScope }),
     ...(Object.keys(accessExpectations).length > 0 && { accessExpectations }),
-    message: `Parsed ${scenarios.length} scenario(s)${rolesInScope.length > 0 ? `, roles in scope: ${rolesInScope.join(', ')}` : ''}.`,
+    message: `Parsed ${scenarios.length} scenario(s)${rolesInScope.length > 0 ? `, roles in scope: ${rolesInScope.join(', ')}` : ''}. Module: ${module}, Feature: ${feature}.`,
   };
 }

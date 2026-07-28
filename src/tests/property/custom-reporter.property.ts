@@ -604,6 +604,59 @@ async function property14FailureSourceAnnotationAndHeuristic(): Promise<void> {
   console.log('✓ Property 14 passed: failureSource annotation + heuristic');
 }
 
+// ---------------------------------------------------------------------------
+// Property 15: Annotation extraction — module, feature
+// ---------------------------------------------------------------------------
+
+async function property15ModuleFeatureAnnotationExtraction(): Promise<void> {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.record({
+        module: fc.constantFrom('invoice', 'auth', 'hrd', 'admin', '-'),
+        feature: fc.constantFrom('invoice-list', 'login', 'employee-list', 'system-settings', '-'),
+      }),
+      async ({ module, feature }) => {
+        const reporter = new CustomReporter();
+        reporter.onBegin(
+          {} as unknown as FullConfig,
+          {
+            allTests: () => [{}],
+          } as unknown as Suite,
+        );
+
+        const annotations: Array<{ type: string; description: string }> = [
+          { type: 'module', description: module },
+          { type: 'feature', description: feature },
+        ];
+
+        reporter.onTestEnd(
+          makeSyntheticTest(0, annotations),
+          makeSyntheticResult(0, { status: 'passed', duration: 100 }),
+        );
+
+        await reporter.onEnd({} as unknown as FullResult);
+
+        const summary = JSON.parse(
+          fs.readFileSync(SUMMARY_PATH, 'utf8'),
+        ) as ReporterRunOutput['summary'];
+
+        assert.ok(summary.testCases, 'testCases should be present in summary');
+        assert.strictEqual(summary.testCases!.length, 1);
+
+        const tc = summary.testCases![0] as {
+          module: string;
+          feature: string;
+        };
+
+        assert.strictEqual(tc.module, module, 'module should match annotation');
+        assert.strictEqual(tc.feature, feature, 'feature should match annotation');
+      },
+    ),
+    { numRuns: 8, verbose: false },
+  );
+  console.log('Property 15 passed: module and feature annotation extraction');
+}
+
 async function main(): Promise<void> {
   try {
     await property5ReporterOutputCompleteness();
@@ -616,6 +669,7 @@ async function main(): Promise<void> {
     await property12TestIdDeriveFromTitle();
     await property13RunMetaAndDashboardShell();
     await property14FailureSourceAnnotationAndHeuristic();
+    await property15ModuleFeatureAnnotationExtraction();
   } finally {
     cleanReportArtifacts();
   }

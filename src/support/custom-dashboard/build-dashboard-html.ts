@@ -6,6 +6,8 @@ import {
 } from './shared';
 import { renderAccordionToolbar, renderTestAccordion } from './render-test-detail';
 import { buildTableView, renderTableToolbar } from './build-table-view';
+import { buildHistorySection, buildHistoryJs } from './build-history-view';
+import type { ReportHistoryEntry } from '../../agents/reporter/report-history';
 import type { CollectedTestData, TestSummary } from './types';
 
 const UNHEALTHY_STATUSES = new Set(['failed', 'timedOut', 'interrupted']);
@@ -20,6 +22,19 @@ const MODE_COPY: Record<'ci' | 'local', { title: string; copy: string }> = {
     copy: 'Failure-first triage view for local debugging, reruns, and evidence review.',
   },
 };
+
+export interface DashboardOptions {
+  /** Whether a latest test run exists (for Save to History banner). */
+  hasLatestRun?: boolean;
+  /** Whether the latest run has already been archived by QA. */
+  latestRunArchived?: boolean;
+  /**
+   * When true, the dashboard is served via dashboard-server.ts (localhost).
+   * Buttons call fetch() API instead of copying CLI commands.
+   * Default: false (static HTML mode).
+   */
+  serveMode?: boolean;
+}
 
 function renderCommandBar(summary: TestSummary): string {
   const roles = summary.rolesInScope || [];
@@ -57,12 +72,8 @@ function renderCommandBar(summary: TestSummary): string {
 
       ${roleOptions}
 
-      <label class="cmd-check">
-        <input type="checkbox" id="filter-evidence" />
-        <span>Has evidence</span>
-      </label>
-
-      <span id="filter-count" class="filter-count" aria-live="polite">Showing …</span>
+      <button class="cmd-btn" id="btn-export" type="button">Export CSV</button>
+      <button class="cmd-btn" id="btn-columns" type="button">Columns</button>
     </div>
   `;
 }
@@ -74,9 +85,16 @@ export function buildDashboardHtml(
   mode: 'ci' | 'local',
   summary: TestSummary,
   collectedTests: CollectedTestData[],
+  history?: ReportHistoryEntry[],
+  options?: DashboardOptions,
 ): string {
   const unhealthyCount = collectedTests.filter((t) => UNHEALTHY_STATUSES.has(t.status)).length;
   const { title, copy } = MODE_COPY[mode];
+
+  // Resolve archive banner state — use passed options, never hardcode
+  const hasLatestRun = options?.hasLatestRun ?? false;
+  const latestRunArchived = options?.latestRunArchived ?? false;
+  const serveMode = options?.serveMode ?? false;
 
   const viewToggle = `
     <div class="view-toggle" role="tablist" aria-label="View mode">
@@ -89,6 +107,11 @@ export function buildDashboardHtml(
               aria-selected="false" data-view="accordion"
               id="tab-accordion" aria-controls="view-accordion" type="button">
         Accordion
+      </button>
+      <button class="toggle-btn" role="tab"
+              aria-selected="false" data-view="history"
+              id="tab-history" aria-controls="view-history" type="button">
+        History
       </button>
     </div>
   `;
@@ -103,10 +126,32 @@ export function buildDashboardHtml(
          role="tabpanel" aria-labelledby="tab-table">
       ${buildTableView(summary, collectedTests)}
     </div>
+    <div id="view-history" class="view-panel view-panel--hidden"
+         role="tabpanel" aria-labelledby="tab-history" aria-hidden="true">
+      ${buildHistorySection(history ?? [], { hasLatestRun, latestRunArchived, serveMode })}
+    </div>
   `;
+
+  // Save banner — always at top level so QA sees it regardless of active tab
+  const saveBannerTop =
+    hasLatestRun && !latestRunArchived
+      ? `<div class="save-banner-top" id="save-banner">
+          <div class="save-banner-top__content">
+            <span class="save-banner-top__icon">💾</span>
+            <span class="save-banner-top__text">Run selesai — belum disimpan ke history</span>
+          </div>
+          <div class="save-banner-top__actions">
+            <button class="btn-save-primary" onclick="openSaveModal()" type="button">
+              💾 Save to History
+            </button>
+            <button class="btn-dismiss-sm" onclick="dismissSaveBanner()" type="button" aria-label="Dismiss">✕</button>
+          </div>
+        </div>`
+      : '';
 
   // Toolbars are top-level siblings of .report-layout (NOT inside panel/view).
   const body = `
+    ${saveBannerTop}
     ${renderCommandBar(summary)}
     ${renderRoleHealthStrip(summary, collectedTests)}
     ${renderFailureAlert(unhealthyCount)}
@@ -135,6 +180,8 @@ export function buildDashboardHtml(
     <p class="results-footer" id="results-footer">Total ${collectedTests.length} results</p>
 
     ${renderArtifactsStrip(collectedTests)}
+
+    ${buildHistoryJs({ serveMode })}
   `;
 
   return renderDocumentShell({

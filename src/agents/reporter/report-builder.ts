@@ -11,6 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { archiveReport, type ArchivedReportLegacy as ArchivedReport } from './report-archive';
 
 /**
  * Coverage status for a single requirement scenario.
@@ -199,6 +200,50 @@ export function writeReportMarkdown(report: PipelineReport): string {
 
   const reportPath = path.join(REPORTS_DIR, `pipeline-report-${report.runId}.md`);
   fs.writeFileSync(reportPath, markdown, 'utf-8');
+
+  // Archive structured JSON alongside the markdown report
+  const totalTests =
+    report.summary.testsPassing + report.summary.testsFailing + report.summary.testsSkipped;
+  const passRate =
+    totalTests > 0 ? Math.round((report.summary.testsPassing / totalTests) * 100) : 0;
+
+  const archived: ArchivedReport = {
+    runId: report.runId,
+    timestamp: report.timestamp,
+    requirementPath: report.requirementPath ?? '',
+    appEnv: process.env.APP_ENV ?? 'local',
+    summary: {
+      scenariosPlanned: report.summary.scenariosPlanned,
+      testsGenerated: report.summary.testsGenerated,
+      testsPassing: report.summary.testsPassing,
+      testsFailing: report.summary.testsFailing,
+      testsHealed: report.summary.testsHealed,
+      testsSkipped: report.summary.testsSkipped,
+      passRate,
+    },
+    scenarios: report.coverage.map((c) => ({
+      scenarioId: c.scenarioId,
+      name: c.scenarioName,
+      status: c.status,
+    })),
+    unresolvedFailures: report.unresolvedFailures.map((f) => ({
+      scenarioId: '',
+      stage: f.stage,
+      errorMessage: f.errorMessage,
+      failureSource:
+        f.stage === 'healer' ? 'test' : f.stage === 'planner' ? 'requirement' : 'unknown',
+      tracePath: f.tracePath,
+      screenshotPath: f.screenshotPath,
+    })),
+  };
+
+  try {
+    const archivePath = archiveReport(archived);
+    console.log(`Report archived: ${archivePath}`);
+  } catch (err) {
+    // Non-blocking — archive failure should not fail the report
+    console.warn('Failed to archive report:', err instanceof Error ? err.message : err);
+  }
 
   return reportPath;
 }

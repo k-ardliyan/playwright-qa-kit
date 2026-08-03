@@ -83,3 +83,4 @@ src/utils/*.d.ts
 
 # Setup wizard state (per-machine, not tracked)
 .wizard-state.json
+.latest-run

@@ -3733,5 +3733,147 @@ export function getDashboardStyles(): string {
     .fallback-bars .bar--passed > span { background: var(--passed); }
     .fallback-bars .bar--failed > span { background: var(--failed); }
     .fallback-bars .bar--skipped > span { background: var(--skipped); }
+
+    /* ── History tab ────────────────────────────────────────────────────── */
+    .history-section { padding: 16px 0; }
+    .history-empty { text-align: center; padding: 40px 0; color: var(--muted); font-size: 0.9rem; }
+    .history-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .history-table th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--border-strong); font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .history-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .history-table tr:hover td { background: var(--bg-accent); }
+    .history-row { transition: background 0.15s; }
+    .history-run-id { font-family: var(--mono, monospace); font-size: 0.78rem; }
+    .history-date { white-space: nowrap; }
+    .history-req { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .history-env { font-size: 0.78rem; text-transform: uppercase; }
+    .history-rate { font-weight: 600; text-align: right; }
+    .history-tests { text-align: center; }
+    .history-status { text-align: center; }
+    .history-actions { text-align: right; white-space: nowrap; }
+    .history-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .history-trend { margin-top: 16px; padding: 12px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+
+    .rate-good { color: var(--passed); font-weight: 700; }
+    .rate-warn { color: var(--skipped); font-weight: 700; }
+    .rate-bad  { color: var(--failed); font-weight: 700; }
+
+    .trend-sparkline { display: inline-block; vertical-align: middle; }
+    .trend-sparkline polyline { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; }
+    .trend-sparkline circle { fill: var(--accent); }
+
+    .btn-sm { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+    .btn-compare {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--accent-strong); font-size: 0.75rem;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-compare:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+    .muted { color: var(--muted); }
+
+    .comparison-section { margin-top: 24px; padding: 16px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+    .comparison-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .comparison-header h3 { font-size: 0.9rem; margin: 0; color: var(--accent-strong); }
+    .comparison-stats { display: flex; gap: 16px; font-size: 0.78rem; color: var(--muted); }
+    .comparison-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .comparison-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid var(--border-strong); font-weight: 600; color: var(--muted); }
+    .comparison-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .diff-row { transition: background 0.15s; }
+    .diff-row:hover td { background: var(--bg-accent); }
+    .diff-regressed { color: var(--failed); font-weight: 600; }
+    .diff-fixed { color: var(--passed); font-weight: 600; }
+    .diff-stable { color: var(--muted); }
+    .diff-flaky { color: var(--skipped); font-weight: 600; }
+    .diff-new { color: var(--info); font-weight: 600; }
+    .diff-removed { color: var(--muted); font-style: italic; }
+
+    /* ── Save banner (top-level, always visible) ─────────────────────── */
+    .save-banner-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; margin-bottom: 0;
+      background: linear-gradient(90deg, rgba(196,149,106,0.15) 0%, rgba(196,149,106,0.05) 100%);
+      border-bottom: 2px solid var(--accent, #c4956a);
+      font-size: 0.9rem; position: sticky; top: 0; z-index: 100;
+    }
+    .save-banner-top__content { display: flex; align-items: center; gap: 8px; }
+    .save-banner-top__icon { font-size: 1.1rem; }
+    .save-banner-top__text { font-weight: 500; color: var(--fg); }
+    .save-banner-top__actions { display: flex; align-items: center; gap: 8px; }
+    .btn-save-primary {
+      padding: 8px 20px; background: var(--accent, #c4956a); color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-weight: 700;
+      font-size: 0.9rem; letter-spacing: 0.02em; transition: opacity 0.15s;
+    }
+    .btn-save-primary:hover { opacity: 0.85; }
+    .btn-dismiss-sm {
+      padding: 4px 8px; background: transparent;
+      border: 1px solid var(--border); border-radius: 4px;
+      cursor: pointer; color: var(--muted); font-size: 0.8rem;
+    }
+    .btn-dismiss-sm:hover { background: var(--bg-accent); color: var(--fg); }
+
+    /* ── Save banner (in-History tab, legacy) ────────────────────────── */
+    .save-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; margin-bottom: 12px;
+      background: var(--bg-accent); border: 1px solid var(--accent, #c4956a);
+      border-radius: 6px; font-size: 0.9rem;
+    }
+    .save-banner__actions { display: flex; gap: 8px; }
+
+    /* ── Save modal ──────────────────────────────────────────────────── */
+    .save-modal { position: fixed; inset: 0; z-index: 1400; display: flex; align-items: center; justify-content: center; }
+    .save-modal__overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+    .save-modal__content { position: relative; background: var(--bg); border-radius: 8px; padding: 24px; min-width: 400px; max-width: 500px; z-index: 1; }
+    .save-modal__content h3 { margin-top: 0; }
+    .save-modal__form { display: flex; flex-direction: column; gap: 12px; }
+    .save-modal__form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+    .save-modal__form select, .save-modal__form textarea {
+      padding: 8px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); color: var(--fg); font-size: 0.85rem;
+    }
+    .save-modal__form textarea { resize: vertical; }
+    .save-modal__actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-save-confirm { padding: 8px 16px; background: var(--accent, #c4956a); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-save-confirm:hover { opacity: 0.9; }
+    .btn-cancel { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+    .required { color: var(--failed); }
+
+    /* ── Archive detail ──────────────────────────────────────────────── */
+    .archive-detail { padding: 16px 0; }
+    .archive-detail__header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .archive-detail__header h3 { margin: 0; }
+    .btn-back { padding: 6px 12px; background: transparent; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+    .btn-back:hover { background: var(--bg-accent); }
+    .archive-detail__meta { padding: 12px; background: var(--bg-accent); border-radius: 6px; margin-bottom: 12px; font-size: 0.85rem; line-height: 1.6; }
+    .archive-detail__summary { margin-bottom: 12px; }
+    .archive-detail__breakdown { margin-bottom: 12px; }
+    .archive-detail__cases { margin-bottom: 12px; }
+
+    /* ── Decision badges ─────────────────────────────────────────────── */
+    .decision-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+    .decision-approve { background: #d4edda; color: #155724; }
+    .decision-file-bug { background: #f8d7da; color: #721c24; }
+    .decision-revise-requirement { background: #fff3cd; color: #856404; }
+    .decision-fix-test { background: #cce5ff; color: #004085; }
+    .decision-fix-env { background: #e2e3e5; color: #383d41; }
+    .decision-mark-blocked { background: #d6d8db; color: #1b1e21; }
+
+    /* ── Action buttons ──────────────────────────────────────────────── */
+    .btn-view { background: transparent; border: 1px solid var(--accent, #c4956a); color: var(--accent, #c4956a); }
+    .btn-view:hover { background: var(--accent, #c4956a); color: #fff; }
+    .btn-delete { background: transparent; border: 1px solid var(--failed); color: var(--failed); opacity: 0.6; }
+    .btn-delete:hover { opacity: 1; background: var(--failed); color: #fff; }
+    .btn-save { background: var(--accent, #c4956a); color: #fff; border: none; }
+    .btn-save:hover { opacity: 0.9; }
+    .btn-dismiss { background: transparent; border: 1px solid var(--border); }
+    .btn-dismiss:hover { background: var(--bg-accent); }
+
+    /* ── History table update ────────────────────────────────────────── */
+    .history-decision { text-align: center; }
+    .history-notes { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .history-row { cursor: pointer; }
+    .history-row:hover td { background: var(--bg-accent); }
   `;
 }

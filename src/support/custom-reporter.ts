@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { buildCiHtml } from './custom-dashboard/build-ci-html';
 import { buildLocalHtml } from './custom-dashboard/build-local-html';
+import { listReportHistory } from '../agents/reporter/report-history';
+import { generateRunId, listArchivedRunIds } from '../agents/reporter/report-archive';
 import type {
   AffectedLayer,
   AttachmentKind,
@@ -515,12 +517,68 @@ export default class CustomReporter implements Reporter {
         runMeta,
       };
 
+      // Load report history for the dashboard History tab (only saved archives)
+      let reportHistory: import('../agents/reporter/report-history').ReportHistoryEntry[] = [];
+      try {
+        reportHistory = listReportHistory({ sort: 'newest', limit: 20 });
+      } catch {
+        // Non-blocking — history tab will show empty state
+      }
+
+      // Determine archive banner state for the current run.
+      // Check archive directly using the current run's timestamp to generate
+      // the expected runId — this is correct because .latest-run is written AFTER HTML.
+      let latestRunArchived = false;
+      try {
+        const expectedRunId = generateRunId(summary.timestamp);
+        latestRunArchived = listArchivedRunIds().includes(expectedRunId);
+      } catch {
+        // Non-blocking — default to not archived (show save banner)
+      }
+      const dashboardOptions = {
+        hasLatestRun: true, // We just finished a run — it definitely exists
+        latestRunArchived,
+      };
+
       const html = isCiMode
-        ? buildCiHtml(summary, this.collectedTests)
-        : buildLocalHtml(summary, this.collectedTests);
+        ? buildCiHtml(summary, this.collectedTests, reportHistory, dashboardOptions)
+        : buildLocalHtml(summary, this.collectedTests, reportHistory, dashboardOptions);
 
       fs.writeFileSync(DASHBOARD_PATH, html, 'utf-8');
       fs.writeFileSync(SUMMARY_PATH, JSON.stringify(summary, null, 2), 'utf-8');
+
+      // Write .latest-run marker so archive:save can detect the latest run
+      try {
+        const latestRunMarker = path.join(REPORT_DIR, '.latest-run');
+        fs.writeFileSync(
+          latestRunMarker,
+          JSON.stringify({
+            timestamp: summary.timestamp,
+            summaryPath: path.relative(process.cwd(), SUMMARY_PATH),
+            total: summary.total,
+            passed: summary.passed,
+            failed: summary.failed,
+            skipped: summary.skipped,
+            passRate: summary.passRate,
+            reportMode,
+          }),
+          'utf-8',
+        );
+      } catch {
+        // Non-blocking
+      }
+
+      // Opt-in archive banner — never auto-save; QA decides
+      console.log('');
+      console.log('────────────────────────────────────────────────────────');
+      console.log(
+        `  📊 Run complete: ${summary.passed}✅ ${summary.failed}❌ ${summary.skipped}⏭️  (${summary.passRate}%)`,
+      );
+      console.log('  🌐 View & save via dashboard:  npm run dashboard:serve');
+      console.log('  💾 Save via CLI:               npm run archive:save');
+      console.log('  📋 View history:               npm run archive:view');
+      console.log('────────────────────────────────────────────────────────');
+      console.log('');
 
       forcePlaywrightHtmlToLight(HTML_REPORT_DIR);
 

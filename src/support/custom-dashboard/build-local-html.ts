@@ -1,6 +1,13 @@
 import { buildDashboardHtml } from './build-dashboard-html';
+import type { DashboardOptions } from './build-dashboard-html';
+import type { ReportHistoryEntry } from '../../agents/reporter/report-history';
 import type { CollectedTestData, TestSummary } from './types';
 
-export function buildLocalHtml(summary: TestSummary, collectedTests: CollectedTestData[]): string {
-  return buildDashboardHtml('local', summary, collectedTests);
+export function buildLocalHtml(
+  summary: TestSummary,
+  collectedTests: CollectedTestData[],
+  history?: ReportHistoryEntry[],
+  options?: DashboardOptions,
+): string {
+  return buildDashboardHtml('local', summary, collectedTests, history, options);
 }

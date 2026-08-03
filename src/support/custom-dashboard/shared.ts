@@ -999,6 +999,15 @@ function renderInteractiveScript(): string {
               b.classList.toggle('toggle-btn--active', isActive);
               b.setAttribute('aria-selected', String(isActive));
             });
+            // Hide/show command-bar filter tools when switching to/from History tab
+            var isHistory = view === 'history';
+            var cmdBar = document.getElementById('command-bar');
+            if (cmdBar) {
+              var tableOnlyEls = cmdBar.querySelectorAll('#btn-export,#btn-columns,#filter-status,#filter-priority,#filter-role,.cmd-search-wrap');
+              tableOnlyEls.forEach(function(el) {
+                el.style.display = isHistory ? 'none' : '';
+              });
+            }
             // Recount after view switch
             if (typeof applyFilters === 'function') applyFilters();
             else {

@@ -147,6 +147,21 @@ jobs:
             npx playwright test --project=chromium --shard=${{ matrix.shardIndex }}/$TOTAL --grep-invert @demo
           fi
 
+      - name: Auto-archive if all tests pass
+        if: success() && steps.shard.outputs.skip != 'true'
+        run: |
+          if [ -f reports/test-summary.json ]; then
+            PASS_RATE=$(node -e "const s=require('./reports/test-summary.json'); console.log(s.passRate||0)")
+            if [ "$PASS_RATE" = "100" ]; then
+              echo "All tests passed (100%). Auto-archiving..."
+              npm run archive:save -- --decision=APPROVE --notes="CI auto-pass (100%)" --yes || true
+            else
+              echo "Pass rate: ${PASS_RATE}%. Skipping auto-archive (not 100%)."
+            fi
+          else
+            echo "No test-summary.json found. Skipping auto-archive."
+          fi
+
       - name: Upload blob report
         if: always() && steps.shard.outputs.skip != 'true' && (github.event.inputs.shardCount || '1') != '1'
         uses: actions/upload-artifact@v4
@@ -173,6 +188,8 @@ jobs:
             reports/test-summary.json
             reports/custom-dashboard.html
             reports/html/
+            reports/archive/
+            reports/pipeline-report-*.md
           retention-days: 30
 
   merge-blob-reports:

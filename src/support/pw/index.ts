@@ -76,3 +76,29 @@ export {
   type ExcelSummary,
   type InspectFileResult,
 } from './files';
+
+export {
+  downloadIf,
+  downloadTemplateWithMaster,
+  downloadTemplateWithMasterApi,
+  type DownloadIfOptions,
+  type DownloadResult,
+} from './conditional-download';
+
+export {
+  uploadImageAndVerify,
+  expectImagePreviewDimensions,
+  validateImageFixture,
+  type ImageValidationResult,
+  type ImageUploadVerifyResult,
+  type ImageUploadOptions,
+} from './image-upload';
+
+export {
+  verifyUploadedFileInList,
+  verifyUploadViaApi,
+  uploadAndVerify,
+  type UploadVerifyResult,
+} from './upload-verify';
+
+export { templateRoundtrip, type TemplateRoundtripResult } from './template-roundtrip';

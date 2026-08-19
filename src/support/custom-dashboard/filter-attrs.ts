@@ -5,7 +5,9 @@ const UNHEALTHY = new Set(['failed', 'timedOut', 'interrupted']);
 
 /** Build data-* attributes used by client-side filter/search. */
 export function buildFilterDataAttrs(test: CollectedTestData, rowKey: string): string {
-  const hasTrace = test.attachments.some((a) => a.kind === 'trace') ? '1' : '0';
+  // Serve mode normalizes attachments to [] but keeps hasTrace/hasScreenshot/
+  // hasVideo booleans — prefer the flags, fall back to attachment inspection.
+  const hasTrace = (test.hasTrace ?? test.attachments.some((a) => a.kind === 'trace')) ? '1' : '0';
   const hasScreenshot = test.attachments.some((a) => a.kind === 'screenshot') ? '1' : '0';
   const hasVideo = test.attachments.some((a) => a.kind === 'video') ? '1' : '0';
   const layers = (test.affectedLayer || []).join(',');
@@ -79,7 +81,7 @@ export function toExportPayload(tests: CollectedTestData[]): unknown[] {
         actualResult: t.actualResult || '-',
         failureSource: t.failureSource || '',
         affectedLayer: t.affectedLayer || [],
-        hasTrace: t.attachments.some((a) => a.kind === 'trace'),
+        hasTrace: t.hasTrace ?? t.attachments.some((a) => a.kind === 'trace'),
         hasScreenshot: t.attachments.some((a) => a.kind === 'screenshot'),
         hasVideo: t.attachments.some((a) => a.kind === 'video'),
       });

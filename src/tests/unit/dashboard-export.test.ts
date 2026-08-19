@@ -4,6 +4,7 @@ import {
   toTsv,
   toConfluenceMarkup,
   toConfluenceHtml,
+  buildExportScript,
 } from '../../support/custom-dashboard/export-helpers';
 import type { CollectedTestData } from '../../support/custom-dashboard/types';
 
@@ -131,5 +132,83 @@ test.describe('dashboard Confluence export paste quality', () => {
     expect(lines.length).toBe(2);
     expect(lines[1]).toContain(' | ');
     expect(lines[1]).toContain('SC-01');
+  });
+});
+
+test.describe('dashboard export formula injection protection', () => {
+  test('toCsv neutralizes cells starting with =, +, @, -', () => {
+    const csv = toCsv(
+      [
+        sample({
+          title: '=HYPERLINK("http://evil")',
+          actualResult: '+cmd|whoami',
+          expectedResult: '@SUM(A1:A9)',
+          scenarioId: '-2+3',
+        }),
+      ],
+      'general',
+    );
+    expect(csv).toContain("'=HYPERLINK");
+    expect(csv).toContain("'+cmd|whoami");
+    expect(csv).toContain("'@SUM");
+    expect(csv).toContain("'-2+3");
+    // Plain text cells stay untouched.
+    expect(csv).not.toContain("'sample");
+    expect(csv).not.toContain("'TC-SAMP");
+  });
+
+  test('toTsv neutralizes cells starting with formula chars', () => {
+    const tsv = toTsv(
+      [
+        sample({
+          title: '=1+1',
+          actualResult: 'normal text',
+        }),
+      ],
+      'general',
+    );
+    expect(tsv).toContain("'=1+1");
+    expect(tsv).toContain('normal text');
+  });
+
+  test('toCsv keeps normal values unquoted-prefixed', () => {
+    const csv = toCsv([sample({ actualResult: 'plain error' })], 'general');
+    expect(csv).toContain('plain error');
+    expect(csv).not.toContain("'plain error");
+  });
+});
+
+test.describe('dashboard export script XSS safety', () => {
+  const hostile = '</script><script>alert(1)</script>';
+
+  test('buildExportScript escapes </script> in test-controlled content', () => {
+    const script = buildExportScript(
+      toTsv([sample({ title: hostile })], 'general'),
+      toCsv([sample({ actualResult: hostile })], 'general'),
+      toConfluenceMarkup([sample({ expectedResult: hostile })], 'general'),
+      toConfluenceHtml([sample({ title: hostile })], 'general'),
+      '2026-08-15',
+      [],
+      'general',
+    );
+    // No raw </script> sequence must reach the inline <script> block.
+    expect(script).not.toContain('</script>');
+    // jsonForScript escapes '<' as \u003c so the block cannot terminate early.
+    expect(script).toContain('\\u003c');
+  });
+
+  test('buildExportScript round-trips normal content intact', () => {
+    const script = buildExportScript(
+      'plain tsv',
+      'plain,csv',
+      'plain confluence',
+      '<b>rich</b>',
+      '2026-08-15',
+      [{ key: 'k', testId: 'TC-1' }],
+      'general',
+    );
+    expect(script).toContain('plain tsv');
+    expect(script).toContain('plain,csv');
+    expect(script).toContain('TC-1');
   });
 });

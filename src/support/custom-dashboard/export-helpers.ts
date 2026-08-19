@@ -1,5 +1,7 @@
 import type { CollectedTestData, ReportMode } from './types';
-import { escapeHtml } from './shared';
+import type { FailureSource } from './types';
+import { escapeHtml, jsonForScript } from './shared';
+import { decisionHintFor, decisionHintTooltipFor, decisionHintBlurbFor } from './failure-source';
 
 // ---------------------------------------------------------------------------
 // Column definitions — same order for all export formats
@@ -51,7 +53,8 @@ const ROLE_HEADERS = [
 ];
 
 function formatDuration(ms: number): string {
-  return `${(ms / 1000).toFixed(2)}s`;
+  const safe = Number.isFinite(ms) ? ms : 0;
+  return `${(safe / 1000).toFixed(2)}s`;
 }
 
 function formatInputData(inputData: Record<string, string>): string {
@@ -122,8 +125,24 @@ function exportRowValues(role: string | null, row: ExportRow): string[] {
 // TSV (Tab-Separated Values) — paste directly into Google Sheets / Excel
 // ---------------------------------------------------------------------------
 
+/**
+ * Neutralize spreadsheet formula injection: Excel/Sheets interpret cells that
+ * start with =, +, -, @, tab, or CR as formulas. Prefix with a single quote
+ * (renders as text, invisible to users in Sheets/Excel).
+ */
+function sanitizeFormulaCell(value: string): string {
+  const s = String(value ?? '');
+  // A lone "-" is a common placeholder (e.g. empty SOURCE) — not a formula.
+  if (s.length > 1 && /^[=+\-@\t\r]/.test(s)) {
+    return `'${s}`;
+  }
+  return s;
+}
+
 function rowToTsvLine(values: string[]): string {
-  return values.map((v) => v.replace(/\t/g, ' ').replace(/\n/g, ' | ')).join('\t');
+  return values
+    .map((v) => sanitizeFormulaCell(v).replace(/\t/g, ' ').replace(/\n/g, ' | '))
+    .join('\t');
 }
 
 export function toTsv(tests: CollectedTestData[], mode: ReportMode): string {
@@ -153,8 +172,10 @@ export function toTsv(tests: CollectedTestData[], mode: ReportMode): string {
 // ---------------------------------------------------------------------------
 
 function csvQuote(value: string): string {
-  const escaped = value.replace(/"/g, '""');
-  return `"${escaped}"`;
+  // Prevent formula injection (same rationale as sanitizeFormulaCell) and
+  // escape embedded quotes per RFC 4180.
+  const sanitized = sanitizeFormulaCell(value).replace(/"/g, '""');
+  return `"${sanitized}"`;
 }
 
 function rowToCsvLine(values: string[]): string {
@@ -442,12 +463,16 @@ export function buildExportScript(
   payload?: unknown[],
   mode: ReportMode = 'general',
 ): string {
-  const safeTsv = JSON.stringify(tsvContent);
-  const safeCsv = JSON.stringify(csvContent);
-  const safeConfluence = JSON.stringify(confluenceContent);
-  const safeConfluenceHtml = JSON.stringify(confluenceHtml);
+  // jsonForScript (NOT JSON.stringify): these strings contain test-controlled
+  // text (titles, error messages, notes). JSON.stringify leaves '<' unescaped,
+  // so a payload containing '</script>' would terminate the inline <script>
+  // block and allow XSS. jsonForScript escapes <, >, & as unicode sequences.
+  const safeTsv = jsonForScript(tsvContent);
+  const safeCsv = jsonForScript(csvContent);
+  const safeConfluence = jsonForScript(confluenceContent);
+  const safeConfluenceHtml = jsonForScript(confluenceHtml);
   const safeFilename = JSON.stringify(`qa-report-${featureName}.csv`);
-  const safePayload = JSON.stringify(payload ?? []);
+  const safePayload = jsonForScript(payload ?? []);
   const safeMode = JSON.stringify(mode);
 
   return `
@@ -660,10 +685,11 @@ export function buildExportScript(
           });
         }
 
-        // 2) Fallback: localStorage
+        // 2) Fallback: localStorage — current key is v3 (column picker shell);
+        //    keep v1 for legacy static reports.
         if (!state) {
           try {
-            var raw = localStorage.getItem('dashboard-columns-v1');
+            var raw = localStorage.getItem('dashboard-columns-v3') || localStorage.getItem('dashboard-columns-v1');
             if (raw) state = JSON.parse(raw);
           } catch (e) {}
         }
@@ -913,6 +939,30 @@ export function renderPriorityBadge(priority: string): string {
   const safe = (priority || '').toLowerCase();
   const cls = map[safe] ?? 'priority-badge--medium';
   return `<span class="priority-badge ${cls}">${(priority || 'MEDIUM').toUpperCase()}</span>`;
+}
+
+export function renderFailureSourceCell(test: {
+  failureSource?: FailureSource;
+  errorMessage?: string;
+}): string {
+  if (!test.failureSource) {
+    return '<span class="muted">-</span>';
+  }
+  const src = test.failureSource;
+  const hint = decisionHintFor(src);
+  const tip = decisionHintTooltipFor(src, test.errorMessage ?? '');
+  const blurb = decisionHintBlurbFor(src, test.errorMessage ?? '');
+  return `<div class="src-cell" title="${escapeHtml(tip)}">
+      <div class="src-cell__row">
+        <span class="src-cell__k">Cause</span>
+        <span class="failure-source failure-source--${escapeHtml(src)}">${escapeHtml(src.toUpperCase())}</span>
+      </div>
+      <div class="src-cell__row">
+        <span class="src-cell__k">Do</span>
+        <span class="decision-hint">${escapeHtml(hint)}</span>
+      </div>
+      <p class="src-cell__blurb">${escapeHtml(blurb)}</p>
+    </div>`;
 }
 
 export function renderLayerBadges(layers: string[]): string {

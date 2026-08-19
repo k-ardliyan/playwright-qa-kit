@@ -682,8 +682,11 @@ async function main(): Promise<void> {
     const s = derive(sc.cases);
     const collected = toCollected(sc.cases);
     await writeAttachments(sc.cases);
-    const localHtml = buildLocalHtml(s, collected);
-    const ciHtml = buildCiHtml(s, collected);
+    // Fix: pass hasLatestRun so preview HTML includes save banner for testing.
+    // serveMode stays false (preview = static file mode, not serve mode).
+    const previewOpts = { hasLatestRun: true, latestRunArchived: false };
+    const localHtml = buildLocalHtml(s, collected, undefined, previewOpts);
+    const ciHtml = buildCiHtml(s, collected, undefined, previewOpts);
     const fileKey = sc.key;
     await fs.writeFile(path.join(dir, `${fileKey}-local.html`), localHtml);
     await fs.writeFile(path.join(dir, `${fileKey}-ci.html`), ciHtml);

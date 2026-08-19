@@ -278,7 +278,12 @@ function buildComparison(baseline: ArchivedReport, comparison: ArchivedReport): 
   };
 }
 
-function classifyChange(base: ArchivedScenario, comp: ArchivedScenario): ScenarioDiff {
+/**
+ * Classify the change between a baseline and comparison scenario status.
+ *
+ * Exported for unit testing (pure function, no I/O).
+ */
+export function classifyChange(base: ArchivedScenario, comp: ArchivedScenario): ScenarioDiff {
   const prev = base.status;
   const curr = comp.status;
 
@@ -308,6 +313,18 @@ function classifyChange(base: ArchivedScenario, comp: ArchivedScenario): Scenari
     change = 'fix';
   } else if (prev === 'healed' && curr === 'failed') {
     change = 'regression';
+  } else if (prev === 'healed' && curr === 'passed') {
+    // Healed → passed: healer succeeded, test now green. This is a fix.
+    change = 'fix';
+  } else if (prev === 'passed' && curr === 'healed') {
+    // Passed → healed: functionally unchanged (still green).
+    change = 'unchanged';
+  } else if (prev === 'skipped' && curr === 'healed') {
+    // Skipped → healed: previously not run, now green — treat as fix.
+    change = 'fix';
+  } else if (prev === 'healed' && curr === 'skipped') {
+    // Healed → skipped: lost green status — treat as flaky.
+    change = 'flaky';
   } else {
     change = 'flaky';
   }

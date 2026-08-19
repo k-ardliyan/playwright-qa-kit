@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Archive CLI — save and view archived test runs.
+ * Archive CLI — save, view, compare, and delete archived test runs.
  *
  * Usage:
  *   npm run archive:save                                # Interactive
@@ -9,6 +9,8 @@
  *   npm run archive:view                                # List all
  *   npm run archive:view -- --run=run-20260730-125523   # Detail
  *   npm run archive:view -- --run=run-20260730-125523 --verbose  # Full test cases
+ *   npm run archive:compare                             # Latest vs previous
+ *   npm run archive:compare -- --baseline=<id> --current=<id>  # Explicit runs
  *
  * @module src/cli/archive-cli
  */
@@ -38,7 +40,7 @@ const VALID_DECISIONS: QaDecision[] = [
   'MARK_BLOCKED',
 ];
 
-function parseArgs(argv: string[]): Record<string, string | boolean> {
+export function parseArgs(argv: string[]): Record<string, string | boolean> {
   const result: Record<string, string | boolean> = {};
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -336,33 +338,76 @@ async function deleteCommand(args: Record<string, string | boolean>): Promise<vo
   }
 }
 
+// ─── Compare Command ──────────────────────────────────────────────────────────
+
+async function compareCommand(args: Record<string, string | boolean>): Promise<void> {
+  const { compareLatestVsPrevious, compareReports, generateComparisonSummary } =
+    await import('../agents/reporter/report-compare');
+
+  const baseline = args['baseline'] as string | undefined;
+  const current = args['current'] as string | undefined;
+
+  let result;
+  if (baseline && current) {
+    console.log(`\nComparing ${baseline} → ${current}…\n`);
+    result = compareReports(baseline, current);
+  } else {
+    console.log('\nComparing latest vs previous archived run…\n');
+    result = compareLatestVsPrevious();
+  }
+
+  if ('error' in result) {
+    console.error(`❌ ${result.error}`);
+    process.exit(1);
+  }
+
+  console.log(generateComparisonSummary(result));
+  console.log(`\n  Baseline:   ${result.baselineRunId}  (${result.baselinePassRate}% pass)`);
+  console.log(`  Comparison: ${result.comparisonRunId}  (${result.comparisonPassRate}% pass)`);
+  const delta = result.passRateDelta;
+  const deltaStr = delta > 0 ? `+${delta}%` : `${delta}%`;
+  const deltaIcon = delta > 0 ? '📈' : delta < 0 ? '📉' : '➡️';
+  console.log(`  Delta:      ${deltaIcon} ${deltaStr}\n`);
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-const args = parseArgs(process.argv);
-const command = process.argv[2]?.startsWith('--') ? null : process.argv[2];
+// Only dispatch when executed directly (not when imported by tests).
+// tsx runs this as CJS (package.json has no "type":"module"), so the
+// require.main check works; avoid import.meta (breaks CJS test transpile).
+const isMain = typeof require !== 'undefined' && require.main === module;
+if (isMain) {
+  const args = parseArgs(process.argv);
+  const command = process.argv[2]?.startsWith('--') ? null : process.argv[2];
 
-switch (command) {
-  case 'save':
-    saveCommand(args).catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
-    break;
-  case 'view':
-    viewCommand(args).catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
-    break;
-  case 'delete':
-    deleteCommand(args).catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
-    break;
-  default:
-    console.log(`
-archive-cli — Save and view archived test runs
+  switch (command) {
+    case 'save':
+      saveCommand(args).catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+      break;
+    case 'view':
+      viewCommand(args).catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+      break;
+    case 'delete':
+      deleteCommand(args).catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+      break;
+    case 'compare':
+      compareCommand(args).catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+      break;
+    default:
+      console.log(`
+archive-cli — Save, view, compare, and delete archived test runs
 
 Usage:
   npm run archive:save                                # Interactive save
@@ -373,8 +418,11 @@ Usage:
   npm run archive:view -- --run=<runId>               # View run detail
   npm run archive:view -- --run=<runId> --verbose     # Full test cases
   npm run archive:delete -- --run=<runId>             # Delete archive
+  npm run archive:compare                             # Latest vs previous
+  npm run archive:compare -- --baseline=<id> --current=<id>  # Explicit runs
 
 QA Decisions:
   APPROVE | FILE_BUG | REVISE_REQUIREMENT | FIX_TEST | FIX_ENV | MARK_BLOCKED
 `);
+  }
 }

@@ -500,6 +500,10 @@ export default class CustomReporter implements Reporter {
         attachmentCount: t.attachments.length,
         hasTrace: t.attachments.some((a) => a.kind === 'trace'),
         failureSource: t.failureSource,
+        // Richer runtime data so the inspection drawer can render details
+        errorMessage: t.errorMessage,
+        errors: t.errors,
+        steps: t.steps,
       }));
 
       const runMeta = buildRunMeta(this.collectedTests);
@@ -561,6 +565,10 @@ export default class CustomReporter implements Reporter {
             skipped: summary.skipped,
             passRate: summary.passRate,
             reportMode,
+            // archive:save fallback fields — without these, saves from a shell
+            // without APP_ENV set mislabel the env and lose totalDurationMs.
+            appEnv: runMeta.appEnv,
+            totalDurationMs: runMeta.totalDurationMs,
           }),
           'utf-8',
         );

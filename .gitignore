@@ -77,6 +77,18 @@ Thumbs.db
 debug-validator.ts
 *.diff
 
+# Debug dumps / screenshots / MCP console logs (never commit)
+_rpc*.json
+_rpc*.jsonl
+snack-*.png
+*.mockup-detail.html
+.playwright-mcp/
+scripts/_*.html
+scripts/_*.mjs
+
+# Playwright visual-test snapshots (platform-specific PNG artifacts)
+**/*.spec.ts-snapshots/
+
 # Compiled env loader for plain node execution in MCP server
 src/utils/*.js
 src/utils/*.d.ts

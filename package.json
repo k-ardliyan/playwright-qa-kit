@@ -66,7 +66,7 @@
     "archive:save": "tsx src/cli/archive-cli.ts save",
     "archive:view": "tsx src/cli/archive-cli.ts view",
     "archive:delete": "tsx src/cli/archive-cli.ts delete",
-    "dashboard:serve": "tsx src/cli/dashboard-server.ts",
+    "dashboard:serve": "tsx src/cli/dashboard-server.ts --no-idle",
     "archive:compare": "tsx src/cli/archive-cli.ts compare"
   },
   "devDependencies": {

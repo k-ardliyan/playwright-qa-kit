@@ -49,4 +49,24 @@ export default tseslint.config(
       'playwright/expect-expect': 'off',
     },
   },
+
+  // ── Standalone Node scripts (.mjs) — Node env, not browser ────────
+  {
+    files: ['scripts/**/*.mjs', 'scripts/**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        URL: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off', // Node globals registered above; TypeScript handles imports
+    },
+  },
 );

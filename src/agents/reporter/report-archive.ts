@@ -188,10 +188,17 @@ export function saveLatestRun(options: {
   fs.writeFileSync(archiveSummaryPath, JSON.stringify(summary, null, 2), 'utf-8');
 
   // 8. Write metadata.json
+  // durationMs: prefer summary.runMeta.totalDurationMs (set by custom reporter),
+  // fall back to latestRun.totalDurationMs (written by .latest-run marker).
+  const durationMs =
+    ((summary.runMeta as Record<string, unknown> | undefined)?.totalDurationMs as
+      number | undefined) ?? (latestRun.totalDurationMs as number | undefined);
+
   const metadata: ArchiveMetadata = {
     runId,
     savedAt: new Date().toISOString(),
     ranAt,
+    durationMs,
     appEnv: (process.env.APP_ENV as string) || (latestRun.appEnv as string) || 'local',
     baseUrl: process.env.BASE_URL,
     requirementPath: (summary.requirementPath as string) || '',
@@ -217,6 +224,10 @@ export function saveLatestRun(options: {
  * Returns null if the run does not exist.
  */
 export function loadArchivedSummary(runId: string): Record<string, unknown> | null {
+  // Security: reject invalid runId (path traversal guard)
+  if (!isValidRunId(runId)) return null;
+  const resolved = path.resolve(path.join(ARCHIVE_DIR, runId));
+  if (!resolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
   const summaryPath = path.join(ARCHIVE_DIR, runId, 'summary.json');
   if (!fs.existsSync(summaryPath)) return null;
   try {
@@ -231,6 +242,10 @@ export function loadArchivedSummary(runId: string): Record<string, unknown> | nu
  * Returns null if the metadata does not exist.
  */
 export function loadArchivedMetadata(runId: string): ArchiveMetadata | null {
+  // Security: reject invalid runId (path traversal guard)
+  if (!isValidRunId(runId)) return null;
+  const resolved = path.resolve(path.join(ARCHIVE_DIR, runId));
+  if (!resolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
   const metadataPath = path.join(ARCHIVE_DIR, runId, 'metadata.json');
   if (!fs.existsSync(metadataPath)) return null;
   try {
@@ -285,6 +300,10 @@ export function loadArchivedReport(runId: string): ArchivedReportLegacy | null {
     };
   }
 
+  // Security: reject invalid runId before legacy read
+  if (!isValidRunId(runId)) return null;
+  const legacyResolved = path.resolve(path.join(ARCHIVE_DIR, runId));
+  if (!legacyResolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
   // Fallback: legacy format (report.json)
   const legacyPath = path.join(ARCHIVE_DIR, runId, 'report.json');
   if (!fs.existsSync(legacyPath)) return null;
@@ -324,7 +343,7 @@ export function deleteArchivedReport(runId: string): boolean {
  * Accepted format: run-YYYYMMDD-HHmmss-SSS (e.g. run-20260730-140422-162)
  * Also accepts legacy format: run-<digits> (e.g. run-1785387552280)
  */
-function isValidRunId(runId: string): boolean {
+export function isValidRunId(runId: string): boolean {
   return (
     /^run-[\d-]+$/.test(runId) &&
     !runId.includes('..') &&
@@ -354,8 +373,25 @@ export function listArchivedRunIds(): string[] {
     runIds.push({ runId: entry.name, mtime: stat.mtimeMs });
   }
 
-  // Sort newest first
-  runIds.sort((a, b) => b.mtime - a.mtime);
+  // Sort newest first — parse timestamp from runId string (deterministic, immune
+  // to filesystem mtime drift when archives are copied or restored).
+  const parseRunIdMs = (id: string): number => {
+    const canon = id.match(/^run-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-(\d{3})$/);
+    if (canon) {
+      const [, yr, mo, dy, hh, mm, ss, ms] = canon;
+      return new Date(`${yr}-${mo}-${dy}T${hh}:${mm}:${ss}.${ms}Z`).getTime();
+    }
+    const legacy = id.match(/^run-(\d+)$/);
+    if (legacy) return parseInt(legacy[1], 10);
+    return 0; // unknown format: stable relative to mtime fallback below
+  };
+  runIds.sort((a, b) => {
+    const ta = parseRunIdMs(a.runId);
+    const tb = parseRunIdMs(b.runId);
+    // Both unknown → preserve mtime order
+    if (ta === 0 && tb === 0) return b.mtime - a.mtime;
+    return tb - ta;
+  });
   return runIds.map((r) => r.runId);
 }
 

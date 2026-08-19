@@ -59,6 +59,9 @@ export interface CollectedTestData {
   affectedLayer: AffectedLayer[];
   /** Present on unhealthy tests; optional on passed/skipped. */
   failureSource?: FailureSource;
+  /** Mirror of flat summary metadata — useful for drawer evidence fallback. */
+  attachmentCount?: number;
+  hasTrace?: boolean;
 }
 
 /**
@@ -84,6 +87,11 @@ export interface CollectedTestCase {
   attachmentCount: number;
   hasTrace: boolean;
   failureSource?: FailureSource;
+  /** Richer runtime data for detail inspection (drawer). Optional — populated
+   *  by the custom reporter so the dashboard can render error/step/evidence. */
+  errorMessage?: string;
+  errors?: CollectedError[];
+  steps?: CollectedStep[];
 }
 
 /**
@@ -116,4 +124,18 @@ export interface TestSummary {
   rolesInScope: string[];
   testCases: CollectedTestCase[];
   runMeta: RunMeta;
+}
+
+export interface ExecutionReportOptions {
+  /** Whether a latest test run exists (for Save to History action). */
+  hasLatestRun?: boolean;
+  /** Whether the latest run has already been archived by QA. */
+  latestRunArchived?: boolean;
+  /** When true, served via dashboard-server.ts (localhost API mode). */
+  serveMode?: boolean;
+}
+
+export interface GlobalDashboardOptions {
+  /** When true, served via dashboard-server.ts. */
+  serveMode?: boolean;
 }

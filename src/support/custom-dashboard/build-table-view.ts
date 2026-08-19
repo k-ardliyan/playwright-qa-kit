@@ -8,6 +8,7 @@ import {
   renderPriorityBadge,
   renderStatusBadge,
   renderStepsCell,
+  renderFailureSourceCell,
   toConfluenceHtml,
   toCsv,
   toConfluenceMarkup,
@@ -15,7 +16,6 @@ import {
 } from './export-helpers';
 import { escapeHtml } from './shared';
 import { buildFilterDataAttrs, toExportPayload } from './filter-attrs';
-import { decisionHintFor, decisionHintTooltipFor, decisionHintBlurbFor } from './failure-source';
 
 function buildRoleGroups(tests: CollectedTestData[]): RoleGroup[] {
   const roleMap = new Map<string, CollectedTestData[]>();
@@ -27,32 +27,10 @@ function buildRoleGroups(tests: CollectedTestData[]): RoleGroup[] {
   return [...roleMap.entries()].map(([role, roleTests]) => ({ role, tests: roleTests }));
 }
 
-function renderFailureSourceCell(test: CollectedTestData): string {
-  if (!test.failureSource) {
-    return '<span class="muted">-</span>';
-  }
-  const src = test.failureSource;
-  const hint = decisionHintFor(src);
-  const tip = decisionHintTooltipFor(src, test.errorMessage);
-  const blurb = decisionHintBlurbFor(src, test.errorMessage);
-  // Stacked: source badge → decision → short blurb (tooltip = full meaning)
-  return `<div class="src-cell" title="${escapeHtml(tip)}">
-      <div class="src-cell__row">
-        <span class="src-cell__k">Cause</span>
-        <span class="failure-source failure-source--${escapeHtml(src)}">${escapeHtml(src.toUpperCase())}</span>
-      </div>
-      <div class="src-cell__row">
-        <span class="src-cell__k">Do</span>
-        <span class="decision-hint">${escapeHtml(hint)}</span>
-      </div>
-      <p class="src-cell__blurb">${escapeHtml(blurb)}</p>
-    </div>`;
-}
-
 function renderTableRow(test: CollectedTestData, rowKey: string): string {
-  // Only Test ID sticks on the left.
+  const dataTestId = escapeHtml(test.testId || '');
   return `
-    <tr class="tbl-row tbl-row--${test.status}" ${buildFilterDataAttrs(test, rowKey)}>
+    <tr class="tbl-row tbl-row--${test.status}" ${buildFilterDataAttrs(test, rowKey)} data-test-id="${dataTestId}" style="cursor: pointer;" title="Click to inspect test details">
       <td class="tbl-test-id col-sticky-0" data-col="testId"><code>${escapeHtml(test.testId || '-')}</code></td>
       <td class="tbl-module" data-col="module"><span class="module-chip">${escapeHtml(test.module || 'general')}</span></td>
       <td class="tbl-feature" data-col="feature"><span class="feature-chip">${escapeHtml(test.feature || 'general')}</span></td>
@@ -95,7 +73,7 @@ function buildGeneralTable(tests: CollectedTestData[]): string {
   const rows = tests.map((t, i) => renderTableRow(t, `${t.testId || 'row'}-${i}`)).join('');
   return `
     <div class="table-wrapper">
-      <table class="qa-report-table">
+      <table class="qa-report-table data-table">
         <thead>${headerRow()}</thead>
         <tbody>${rows}</tbody>
       </table>
@@ -105,7 +83,6 @@ function buildGeneralTable(tests: CollectedTestData[]): string {
 
 function buildRoleSection(group: RoleGroup): string {
   const roleSlug = (group.role || 'general').toLowerCase().replace(/[^a-z0-9]/g, '_');
-  // Local index per role group (matches toExportPayload key scheme)
   const rows = group.tests
     .map((t, i) => renderTableRow(t, `${roleSlug}__${t.testId || 'row'}-${i}`))
     .join('');
@@ -117,7 +94,7 @@ function buildRoleSection(group: RoleGroup): string {
         <span class="role-section-count">${group.tests.length} test${group.tests.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="table-wrapper">
-        <table class="qa-report-table">
+        <table class="qa-report-table data-table">
           <thead>${headerRow()}</thead>
           <tbody>${rows}</tbody>
         </table>
@@ -187,23 +164,48 @@ function renderSortDropdown(id = 'table-sort-select'): string {
   `;
 }
 
-/** Standalone toolbar — must sit OUTSIDE #view-table. */
+/** Unified Control Toolbar — sits above data views. */
 export function renderTableToolbar(): string {
   return `
-    <div class="table-toolbar" id="table-toolbar" data-toolbar-for="table" role="toolbar" aria-label="Table controls">
-      <span class="table-toolbar__label">Table</span>
-      ${renderSortDropdown('table-sort-select')}
-      <select class="sort-select cmd-select" id="module-filter-select" aria-label="Filter by module">
-        <option value="">All modules</option>
-      </select>
-      <select class="sort-select cmd-select" id="feature-filter-select" aria-label="Filter by feature">
-        <option value="">All features</option>
-      </select>
-      ${renderTableColumnPicker()}
+    <div class="unified-toolbar" id="table-toolbar" data-toolbar-for="table" role="toolbar" aria-label="Unified Controls">
+      <div class="unified-toolbar__row">
+        <label class="cmd-search-wrap" for="dash-search">
+          <span class="cmd-search__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </span>
+          <span class="sr-only">Search tests</span>
+          <input id="dash-search" class="cmd-search" type="search" placeholder="Search test id, title, error..." autocomplete="off" />
+        </label>
+
+        <select id="filter-status" class="cmd-select" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="failed">Failed / unhealthy</option>
+          <option value="passed">Passed</option>
+          <option value="skipped">Skipped</option>
+        </select>
+
+        <select id="filter-priority" class="cmd-select" aria-label="Filter by priority">
+          <option value="">All priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <select id="module-filter-select" class="sort-select cmd-select" aria-label="Filter by module">
+          <option value="">All modules</option>
+        </select>
+
+        <select id="feature-filter-select" class="sort-select cmd-select" aria-label="Filter by feature">
+          <option value="">All features</option>
+        </select>
+
+        ${renderSortDropdown('table-sort-select')}
+
+        ${renderTableColumnPicker()}
+      </div>
     </div>
     <script>
     (function () {
-      // Populate module filter from live rows
       function populateModuleFilter() {
         var sel = document.getElementById('module-filter-select');
         if (!sel) return;
@@ -220,11 +222,9 @@ export function renderTableToolbar(): string {
           sel.appendChild(opt);
         });
       }
-      // Populate feature filter (optionally filtered by active module)
       function populateFeatureFilter(activeModule) {
         var sel = document.getElementById('feature-filter-select');
         if (!sel) return;
-        // Clear existing options except first
         while (sel.options.length > 1) sel.remove(1);
         var rows = document.querySelectorAll('tr[data-feature]');
         var features = new Set();
@@ -240,7 +240,6 @@ export function renderTableToolbar(): string {
           sel.appendChild(opt);
         });
       }
-      // Apply both filters
       function applyFilters() {
         var modSel = document.getElementById('module-filter-select');
         var featSel = document.getElementById('feature-filter-select');
@@ -341,14 +340,17 @@ export function buildTableView(summary: TestSummary, collectedTests: CollectedTe
           var priorityOrder = { high: 0, medium: 1, low: 2 };
           rows.sort(function (a, b) {
             if (sortKey === 'status-fail-first') {
-              var av = getTableValue(a, colMap.status, 'status');
-              var bv = getTableValue(b, colMap.status, 'status');
-              return (statusOrder[av] ?? 99) - (statusOrder[bv] ?? 99);
+              // Read data-status (raw value, no icon/label) — textContent would
+              // include the badge icon ("⏱ Timed out") and never match the
+              // statusOrder keys. Lowercase to normalize "timedOut" → "timedout".
+              var av = statusOrder[(a.getAttribute('data-status') || '').toLowerCase()] ?? 99;
+              var bv = statusOrder[(b.getAttribute('data-status') || '').toLowerCase()] ?? 99;
+              return av - bv;
             }
             if (sortKey === 'priority-high-first') {
-              var av2 = getTableValue(a, colMap.priority, 'priority');
-              var bv2 = getTableValue(b, colMap.priority, 'priority');
-              return (priorityOrder[av2] ?? 99) - (priorityOrder[bv2] ?? 99);
+              var av2 = priorityOrder[(a.getAttribute('data-priority') || '').toLowerCase()] ?? 99;
+              var bv2 = priorityOrder[(b.getAttribute('data-priority') || '').toLowerCase()] ?? 99;
+              return av2 - bv2;
             }
             if (sortKey === 'duration-desc') {
               return getTableValue(b, colMap.notes, 'duration') - getTableValue(a, colMap.notes, 'duration');

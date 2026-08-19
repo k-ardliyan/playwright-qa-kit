@@ -16,12 +16,26 @@ export function toReportRelativePath(absolutePath: string): string {
 }
 
 export function escapeHtml(raw: string): string {
-  return raw
+  return String(raw ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Serialize a value for embedding inside an inline <script> block safely.
+ * JSON.stringify does NOT escape '<', so a string containing '</script>' would
+ * terminate the script tag and allow HTML/JS injection. Replacing '<' (and
+ * '>'/'&' for symmetry) with unicode escapes makes the payload inert while
+ * JSON.parse still round-trips it correctly.
+ */
+export function jsonForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
 }
 
 export function renderTraceLinkFromAttachments(attachments: CollectedAttachment[]): string {
@@ -937,9 +951,9 @@ export function renderDocumentShell(options: {
   summary: TestSummary;
   collectedTests: CollectedTestData[];
   body: string;
-  includeChart: boolean;
+  includeChart?: boolean;
 }): string {
-  const { pageTitle, mode, summary, collectedTests, body, includeChart } = options;
+  const { pageTitle, summary, body, includeChart } = options;
   const chartScript = includeChart ? renderChartScript(summary) : '';
   const themeScript = renderThemeScript();
   const interactiveScript = renderInteractiveScript();
@@ -960,7 +974,6 @@ export function renderDocumentShell(options: {
   <div class="page-shell">
     <div class="page-backdrop" aria-hidden="true"></div>
     <main class="page">
-      ${renderHero(mode, summary, collectedTests)}
       ${body}
     </main>
   </div>
@@ -1027,7 +1040,9 @@ function renderInteractiveScript(): string {
                 });
 
     /* ---- Column visibility (Filter columns) ---- */
-    var COL_KEY = 'dashboard-columns-v2';
+    // v3: taxonomy added module/feature/source columns — bump key so users with
+    // stale v2 localStorage get the new defaults instead of hidden columns.
+    var COL_KEY = 'dashboard-columns-v3';
     var LOCKED_COLS = { testId: true, status: true, no: true };
     var DEFAULT_COLS = {
       no: true,

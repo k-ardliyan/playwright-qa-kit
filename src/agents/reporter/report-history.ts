@@ -132,6 +132,17 @@ export function getRequirementHistory(requirementPath: string): ReportHistoryEnt
 
 // ─── Internal ────────────────────────────────────────────────────────────────
 
+function deriveStatus(
+  passRate: number,
+  failed: number,
+  skipped: number,
+): ReportHistoryEntry['status'] {
+  if (failed > 0) return 'failed';
+  if (skipped > 0) return 'partial';
+  if (passRate >= 100) return 'success';
+  return 'partial';
+}
+
 function buildEntry(
   runId: string,
   summary: Record<string, unknown>,
@@ -159,7 +170,7 @@ function buildEntry(
     failed,
     skipped,
     reportMode: (summary.reportMode as string) ?? metadata?.reportMode ?? 'general',
-    status: passRate >= 100 ? 'success' : passRate > 0 ? 'partial' : 'failed',
+    status: deriveStatus(passRate, failed, skipped),
     durationMs: metadata?.durationMs,
     rolesInScope: summary.rolesInScope as string[] | undefined,
     summaryByRole: summary.summaryByRole as ReportHistoryEntry['summaryByRole'],
@@ -172,6 +183,8 @@ function buildLegacyEntry(
   legacy: import('./report-archive').ArchivedReportLegacy,
 ): ReportHistoryEntry {
   const passRate = legacy.summary.passRate;
+  const failed = legacy.summary.testsFailing;
+  const skipped = legacy.summary.testsSkipped;
   return {
     runId,
     ranAt: legacy.timestamp,
@@ -187,7 +200,7 @@ function buildLegacyEntry(
     failed: legacy.summary.testsFailing,
     skipped: legacy.summary.testsSkipped,
     reportMode: 'general',
-    status: passRate >= 100 ? 'success' : passRate > 0 ? 'partial' : 'failed',
+    status: deriveStatus(passRate, failed, skipped),
     summaryByRole: legacy.summaryByRole,
     summaryByModule: legacy.summaryByModule,
   };

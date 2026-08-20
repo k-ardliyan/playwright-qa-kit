@@ -102,3 +102,11 @@ export {
 } from './upload-verify';
 
 export { templateRoundtrip, type TemplateRoundtripResult } from './template-roundtrip';
+
+export {
+  withTemporaryRoute,
+  cleanupActiveRoutes,
+  withOfflineMode,
+  trackActiveRoute,
+  untrackActiveRoute,
+} from './network-lifecycle';

@@ -87,6 +87,18 @@ Before calling `browser_snapshot` for live verification, check `selector-catalog
 2. The first `candidates[]` entry that is not a CSS chain.
 3. CSS chain as a last resort — flagged `fragile: true` in the catalog; surface that fragility in the POM JSDoc comment.
 
+### Live Verification Gate (Browser-Backed Pre-Generation Check)
+
+Before committing generated test code:
+
+1. **Decision**: Check `shouldExploreLive()` — if fresh catalog and verified POM exist, skip live browser launch.
+2. **Live Execution**: If live exploration is needed:
+   - Launch MCP in isolated `author` profile (`npx tsx scripts/playwright-mcp-launch.ts --profile=author`).
+   - Use `browser_generate_locator` to discover semantic locators (`getByRole`, `getByLabel`, `getByPlaceholder`, `getByTestId`).
+   - Assert expected acceptance criteria live via `browser_verify_element_visible` / `browser_verify_text_visible`.
+   - Reconcile candidates using `resolveLocatorPriority()`.
+3. **Safety Constraint**: **NEVER** persist runtime ephemeral element `ref`s (e.g. `ref:tw-123`) or hardcoded waits (`page.waitForTimeout`) into generated spec files.
+
 ## Metadata → Code Mapping
 
 | Source (requirement / test plan)              | Generated code                                                                                                                                   |

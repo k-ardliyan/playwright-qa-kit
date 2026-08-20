@@ -28,3 +28,9 @@ export { prioritizeFailures } from './failure-prioritizer';
 
 // Official Playwright power failure seeds (network / hybrid / auth)
 export { ensurePowerSeedPatterns, listPowerSeedSignatures } from './power-seed-patterns';
+
+// Evidence-backed failure classifier & application bug guard
+export {
+  classifyFailureFromEvidence,
+  type ClassifiedFailureResult,
+} from '../../shared/evidence/failure-classifier';

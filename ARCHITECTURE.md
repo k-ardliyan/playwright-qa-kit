@@ -14,6 +14,8 @@ requirements/          ← QA User menulis requirement di sini
        ↓
 .github/agents/        ← Sub-agent instructions (planner, generator, healer, reporter)
        ↓
+Browser Intelligence   ← Intent Router + Live Verification Gate + Pinned MCP
+       ↓
 specs/                 ← Planner output: test plan markdown
        ↓
 src/tests/             ← Generator output: Playwright TypeScript specs
@@ -23,7 +25,8 @@ src/pages/             ← Page Object Models (optional, registered di project.f
 src/support/pw/        ← Low-level PW helpers (barrel: src/support/pw/index.ts)
        ↓
 reports/               ← Runtime output: pipeline-state.json, HTML, archive/
-selector-catalog/      ← ARIA snapshots per page (auto-generated)
+selector-catalog/      ← ARIA snapshots & semantic locators per page
+test-results/mcp/      ← Evidence Manifests, traces, and reproduction videos
 ```
 
 ## Canonical References

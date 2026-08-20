@@ -22,3 +22,6 @@ export type {
 
 export { retryScenario, calculateBackoffDelay, generateSkeletonContent } from './retry-engine';
 export type { RetryResult } from './retry-engine';
+
+export { LiveVerificationGate } from './live-verification-gate';
+export type { GateInput } from './live-verification-gate';

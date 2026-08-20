@@ -1,0 +1,64 @@
+name: MCP Compatibility Check
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/shared/mcp/**'
+      - 'src/shared/evidence/**'
+      - 'src/shared/utils/**'
+      - 'src/support/pw/**'
+      - 'src/tests/unit/**'
+      - 'mcp-server/**'
+      - 'scripts/mcp*/**'
+      - 'scripts/mcp-compat-check.ts'
+      - 'scripts/playwright-mcp-launch.ts'
+      - 'scripts/playwright-test-mcp-launch.ts'
+      - 'scripts/playwright-mcp*'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.mcp.json'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/shared/mcp/**'
+      - 'src/shared/evidence/**'
+      - 'src/shared/utils/**'
+      - 'src/support/pw/**'
+      - 'src/tests/unit/**'
+      - 'mcp-server/**'
+      - 'scripts/mcp*/**'
+      - 'scripts/mcp-compat-check.ts'
+      - 'scripts/playwright-mcp-launch.ts'
+      - 'scripts/playwright-test-mcp-launch.ts'
+      - 'scripts/playwright-mcp*'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.mcp.json'
+
+jobs:
+  mcp-compat:
+    name: MCP Compatibility Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run MCP Compatibility Check
+        run: npm run mcp:check
+
+      - name: Run MCP Unit Tests
+        run: npm run test:unit
+
+      - name: Run Property Tests (validator rules)
+        run: npm run test:property

@@ -45,16 +45,85 @@ function checkMcpBuild(): HealthCheckItem {
   };
 }
 
-function checkPlaywrightMcp(): HealthCheckItem {
-  const pkg = path.join(getRepoRoot(), 'node_modules', '@playwright', 'mcp');
-  if (fs.existsSync(pkg)) {
-    return { name: 'playwright_mcp', status: 'ok', message: '@playwright/mcp installed' };
+/**
+ * Normalize a package spec like "^0.0.79", "~0.0.79" or "0.0.79" to the exact version.
+ * Returns null when no concrete version can be pinned.
+ */
+export function normalizePinnedVersion(spec: string | undefined): string | null {
+  if (!spec) return null;
+  const m = spec.match(/(\d+\.\d+\.\d+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Resolve the MCP baseline from the repository's pinned dependency so the health
+ * check and the canonical version constant never drift independently.
+ */
+function getExpectedPlaywrightMcpVersion(): string | null {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(getRepoRoot(), 'package.json'), 'utf-8')) as {
+      devDependencies?: Record<string, string>;
+    };
+    return normalizePinnedVersion(pkg.devDependencies?.['@playwright/mcp']);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pure assessment of installed vs expected MCP version.
+ * Exported for unit testing (match / mismatch / missing).
+ */
+export function assessPlaywrightMcp(
+  installed: string | null,
+  expectedVersion: string | null,
+): HealthCheckItem {
+  if (!installed) {
+    return {
+      name: 'playwright_mcp',
+      status: 'fail',
+      message: 'Missing @playwright/mcp — run: npm install',
+    };
+  }
+  if (!expectedVersion) {
+    return {
+      name: 'playwright_mcp',
+      status: 'ok',
+      message: `@playwright/mcp ${installed}`,
+    };
+  }
+  if (installed === expectedVersion) {
+    return {
+      name: 'playwright_mcp',
+      status: 'ok',
+      message: `@playwright/mcp ${installed} (expected: ${expectedVersion})`,
+    };
   }
   return {
     name: 'playwright_mcp',
-    status: 'fail',
-    message: 'Missing @playwright/mcp — run: npm install',
+    status: 'warn',
+    message: `@playwright/mcp ${installed} — expected baseline is ${expectedVersion}`,
   };
+}
+
+function checkPlaywrightMcp(): HealthCheckItem {
+  const pkgPath = path.join(getRepoRoot(), 'node_modules', '@playwright', 'mcp', 'package.json');
+  const expected = getExpectedPlaywrightMcpVersion();
+
+  if (!fs.existsSync(pkgPath)) {
+    return assessPlaywrightMcp(null, expected);
+  }
+
+  let installed: string | null;
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string };
+    installed = pkgJson.version ?? null;
+  } catch {
+    // Malformed metadata is treated as present-but-unavailable; keep lenient.
+    return { name: 'playwright_mcp', status: 'ok', message: '@playwright/mcp installed' };
+  }
+
+  return assessPlaywrightMcp(installed, expected);
 }
 
 function checkPlaywrightTest(): HealthCheckItem {

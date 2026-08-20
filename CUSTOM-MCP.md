@@ -10,8 +10,9 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 
 Register and use these **three** servers. **Project source of truth:** [`.mcp.json`](.mcp.json). Keep [`.vscode/mcp.json`](.vscode/mcp.json) only for editor compatibility when needed.
 
-1. **Playwright MCP** (`playwright`) — browser automation for Planner/Generator
-   - Command: `npx -y @playwright/mcp@0.0.78 --headless`
+1. **Playwright MCP** (`playwright`) — browser intelligence layer for Planner/Generator/Healer
+   - Launcher: `npx tsx scripts/playwright-mcp-launch.ts` (resolves profiles, isolated sessions, and allowed origins)
+   - Baseline: `@playwright/mcp@0.0.79`
 
 2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
    - Launcher: `npx tsx scripts/playwright-test-mcp-launch.ts` (loads `environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
@@ -21,33 +22,24 @@ Register and use these **three** servers. **Project source of truth:** [`.mcp.js
    - Build: `npm run mcp:build`
    - Run: `node mcp-server/dist/index-mcp.js` (bootstraps env at startup via `mcp-env-bootstrap.ts`)
 
-### Playwright profile seam
+### Intent Profiles & Capability Router
 
-Both `playwright-test` and `playwright-qa` read **`PLAYWRIGHT_CONFIG`** from `environments/{APP_ENV}.env` after bootstrap. Default: `playwright.config.ts`. For Reference Adapter runs:
+The framework automatically manages MCP capabilities based on scenario intent. QA does not need to manually configure flags:
 
-```bash
-PLAYWRIGHT_CONFIG=example/erpku/playwright.config.ts
-```
+| Profile    | Capabilities Enabled                                | Default State       | Purpose                                                              |
+| ---------- | --------------------------------------------------- | ------------------- | -------------------------------------------------------------------- |
+| `author`   | `core, testing, storage, config`                    | Headless, Isolated  | Requirement exploration and live semantic locator generation         |
+| `debug`    | `core, testing, storage, network, devtools, config` | Headless, Isolated  | Reproducing failures with network logs, console, and on-demand trace |
+| `auth`     | `core, storage, config`                             | Headed, Interactive | Interactive SSO / 2FA credential setup                               |
+| `visual`   | `core, vision, config`                              | Headless, Isolated  | Canvas / WebGL fallback when no semantic ARIA node exists            |
+| `artifact` | `core, pdf, config`                                 | Headless, Isolated  | Browser-rendered PDF document export                                 |
+| `minimal`  | `core`                                              | Headless, Isolated  | Fast public page crawling and discovery                              |
 
-Set in `environments/local.env`, then **restart MCP servers** in the IDE.
+### Architectural Invariants & Safety Rules
 
-Bootstrap module: [`mcp-server/src/utils/mcp-env-bootstrap.ts`](mcp-server/src/utils/mcp-env-bootstrap.ts) — also used by [`scripts/health-check-cli.ts`](scripts/health-check-cli.ts) and [`scripts/playwright-test-mcp-launch.ts`](scripts/playwright-test-mcp-launch.ts).
-
-### Optional: Playwright MCP capability flags
-
-Default install uses core browser tools only. Power users can enable extra capabilities via args in [`.vscode/mcp.json`](.vscode/mcp.json):
-
-```json
-"args": ["-y", "@playwright/mcp@0.0.78", "--headless", "--caps=network"]
-```
-
-| Flag              | Enables                                     |
-| ----------------- | ------------------------------------------- |
-| `--caps=network`  | `browser_network_requests`, request routing |
-| `--caps=devtools` | DevTools-oriented tooling                   |
-| `--caps=vision`   | Coordinate-based mouse interactions         |
-
-See [Playwright MCP configuration](https://github.com/microsoft/playwright-mcp) for full capability list.
+- **Ephemeral Refs:** Runtime element `ref`s (e.g. `ref:tw-123`) are ephemeral and must **never** be saved into spec files or selector catalogs.
+- **Isolation by Default:** All automation profiles run in isolated browser contexts to guarantee test determinism.
+- **Application Bug Guard:** Healer does not attempt locator modifications when failures stem from 5xx server errors or unhandled frontend exceptions.
 
 ## Running the Custom QA MCP Server
 

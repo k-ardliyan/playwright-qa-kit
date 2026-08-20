@@ -383,6 +383,69 @@ export function validateSpecFile(filePath: string, relativePath?: string): Valid
 
   violations.push(...validateTraceabilityRule(content, filePath, rel));
   violations.push(...validateCapabilityPowerRules(content, filePath, rel));
+  violations.push(...validateNoEphemeralRefs(content, filePath, rel));
+  violations.push(...validateNoHardcodedWaits(content, filePath, rel));
+
+  return violations;
+}
+
+/**
+ * Detect persisted MCP snapshot refs. Pattern derived from the ACTUAL installed
+ * @playwright/mcp bundle, which serializes snapshot elements with a numeric ref
+ * as `ref: <id>` (or `"ref": <id>` in JSON). No longer guesses at `node_id=`
+ * (that is a CDP attribute that also legitimately appears in app URLs such as
+ * `?node_id=5` and caused false positives).
+ */
+export function validateNoEphemeralRefs(
+  content: string,
+  filePath: string,
+  relativePath: string,
+): ValidationViolation[] {
+  if (isTraceabilityExempt(relativePath)) {
+    return [];
+  }
+
+  const violations: ValidationViolation[] = [];
+  const refPattern = /(?:\bref\s*:\s*\d+|\bref_\d+|\bdata-mcp-ref)|"ref"\s*:\s*\d+/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = refPattern.exec(content)) !== null) {
+    violations.push({
+      filePath,
+      lineNumber: getLineNumberFromIndex(content, match.index),
+      ruleName: `Ephemeral ref rule: ephemeral MCP ref detected ("${match[0]}"). Use semantic locators (getByRole, getByLabel, etc.) instead.`,
+      severity: 'error',
+    });
+  }
+
+  return violations;
+}
+
+/**
+ * Flag hardcoded waits/sleeps. Warning severity so existing tests are not
+ * rejected outright, but the Generator cannot casually emit them.
+ */
+export function validateNoHardcodedWaits(
+  content: string,
+  filePath: string,
+  relativePath: string,
+): ValidationViolation[] {
+  if (isTraceabilityExempt(relativePath)) {
+    return [];
+  }
+
+  const violations: ValidationViolation[] = [];
+  const waitPattern = /\b(?:page\.waitForTimeout|\.waitForTimeout)\s*\(/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = waitPattern.exec(content)) !== null) {
+    violations.push({
+      filePath,
+      lineNumber: getLineNumberFromIndex(content, match.index),
+      ruleName: `Hardcoded wait rule: avoid hardcoded timeout/sleep ("${match[0]}"). Use observable assertions/states instead.`,
+      severity: 'warning',
+    });
+  }
 
   return violations;
 }

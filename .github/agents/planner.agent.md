@@ -114,11 +114,12 @@ Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requ
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated` | `storageState: undefined`
 **Seed:** `src/tests/seed.spec.ts`
+**Browser Intent:** `network: <boolean>, storage: <boolean>, vision: <boolean>, devtools: <boolean>, dialog: <boolean>, multiTab: <boolean>, fileUpload: <boolean>`
 **Capabilities:** <none | network | network-assert | hybrid | aria | visual | download | upload | file-content — derived from title tags / requirement Tags>
 
-| Scenario Name | Steps | Expected Result | Capabilities         |
-| ------------- | ----- | --------------- | -------------------- |
-| SC-01: ...    | ...   | ...             | network, soft-assert |
+| Scenario Name | Steps | Expected Result | Browser Intent | Capabilities         |
+| ------------- | ----- | --------------- | -------------- | -------------------- |
+| SC-01: ...    | ...   | ...             | storage: true  | network, soft-assert |
 
 For **general mode**, the table per scenario is:
 

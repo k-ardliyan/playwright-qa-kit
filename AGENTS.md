@@ -95,11 +95,21 @@ List every tool explicitly by server:
   - `read_excel_summary` (headers/sample rows — compare to scenario Expected Result)
 - **playwright-test**
   - `run_tests` (and related test-runner tools from this server)
-- **playwright** (`@playwright/mcp`)
-  - Navigation: `browser_navigate`, `browser_navigate_back`, `browser_tabs`
-  - Inspection: `browser_snapshot`, `browser_take_screenshot`
-  - Interaction: `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_press_key`, `browser_hover`, `browser_wait_for`
-  - Diagnostics (Heal): `browser_console_messages`, `browser_network_requests`
+- **playwright** (`@playwright/mcp` via `scripts/playwright-mcp-launch.ts`)
+  - **Tool Routing Policy:**
+    - Code search/refactor → CLI / repository tools
+    - Test execution → `playwright-test` MCP (`run_tests`)
+    - Live browser semantics & assertions → `playwright` MCP (Intent profiles: `minimal`, `author`, `debug`, `auth`, `visual`, `artifact`)
+    - Framework state & artifacts → `playwright-qa` MCP
+    - Vision mode → fallback only when semantic accessibility tree is unavailable
+  - **Capabilities:**
+    - Navigation: `browser_navigate`, `browser_navigate_back`, `browser_tabs`
+    - Inspection: `browser_snapshot`, `browser_take_screenshot`
+    - Interaction: `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_press_key`, `browser_hover`, `browser_wait_for`
+    - Live Testing: `browser_generate_locator`, `browser_verify_element_visible`, `browser_verify_text_visible`, `browser_verify_value`
+    - Diagnostics (Heal/Debug): `browser_console_messages`, `browser_network_requests`, `browser_start_tracing`, `browser_stop_tracing`
+    - Storage/Auth: `browser_storage_state`, `browser_set_storage_state` (+ cookie/localstorage tools)
+  - **Constraints:** `browser_run_code_unsafe` is an escape hatch only; MCP element `ref`s are ephemeral and must NEVER be persisted as test selectors.
 - **playwright-cli** (shell skill — Generator live verification, preferred when available)
   - `npx playwright test --debug=cli` + `playwright-cli attach tw-XXXX`
 

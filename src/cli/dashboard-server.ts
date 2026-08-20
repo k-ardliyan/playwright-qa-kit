@@ -24,6 +24,7 @@ import { exec } from 'node:child_process';
 import { listReportHistory } from '../agents/reporter/report-history';
 import {
   saveLatestRun,
+  updateArchivedMetadata,
   deleteArchivedReport,
   getLatestRunInfo,
   listArchivedRunIds,
@@ -41,9 +42,16 @@ import {
   buildHistoryPage,
   buildDetailPage,
 } from '../support/custom-dashboard/build-fragments';
-import { escapeHtml } from '../support/custom-dashboard/shared'; // Fix #4: import, tidak duplikat
+import { escapeHtml } from '../support/custom-dashboard/shared';
 import type { DashboardOptions } from '../support/custom-dashboard/build-dashboard-html';
 import type { QaDecision } from '../agents/reporter/report-archive';
+
+import { buildDashboardOverview } from '../support/custom-dashboard/domain/dashboard-overview';
+import { DashboardPage } from '../support/custom-dashboard/pages/dashboard';
+import { HistoryPage } from '../support/custom-dashboard/pages/history';
+import { ComparePage } from '../support/custom-dashboard/pages/compare';
+import { ReportDetailPage } from '../support/custom-dashboard/pages/report-detail';
+import { deriveDisplayName } from '../support/custom-dashboard/domain/run';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -210,12 +218,192 @@ function buildOrphanRunPage(latestRun: {
 </body></html>`;
 }
 
-// Fix #4: escapeHtml diimpor dari shared, tidak didefinisikan ulang di sini.
-// (Lihat import di atas — duplikasi lokal dihapus.)
+// ─── Modern Page Builders ───────────────────────────────────────────────────
 
-// ─── Dashboard HTML builder ───────────────────────────────────────────────────
+function renderDashboardOverviewPage(): string {
+  const history = listReportHistory({ sort: 'newest', limit: 50 });
+  const latestRun = getLatestRunInfo();
+  const latestRunArchived = isLatestRunArchived();
 
-function buildDashboard(): string {
+  let latestSummary: Record<string, unknown> | null = null;
+  if (fs.existsSync(SUMMARY_PATH)) {
+    try {
+      latestSummary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+    } catch {
+      // ignore
+    }
+  }
+
+  const overview = buildDashboardOverview({
+    latestRunInfo: latestRun,
+    latestSummary,
+    latestRunArchived,
+    history,
+  });
+
+  return String(
+    DashboardPage({
+      overview,
+      hasLatestRun: latestRun !== null,
+      latestRunArchived,
+      serveMode: true,
+    }),
+  );
+}
+
+function renderHistoryPage(): string {
+  const history = listReportHistory({ sort: 'newest', limit: 100 });
+  const latestRun = getLatestRunInfo();
+  const latestRunArchived = isLatestRunArchived();
+  const latestRunId = latestRun ? generateRunId(latestRun.timestamp) : undefined;
+
+  return String(
+    HistoryPage({
+      history,
+      hasLatestRun: latestRun !== null,
+      latestRunArchived,
+      latestRunId,
+      serveMode: true,
+    }),
+  );
+}
+
+function renderComparePage(baseline?: string, candidate?: string, series?: string): string {
+  const history = listReportHistory({ sort: 'newest', limit: 100 });
+  const latestRun = getLatestRunInfo();
+  const latestRunArchived = isLatestRunArchived();
+
+  let comparison: ReportComparison | null = null;
+  if (baseline && candidate) {
+    const result = compareReports(baseline, candidate);
+    if (!('error' in result)) comparison = result;
+  }
+
+  return String(
+    ComparePage({
+      history,
+      comparison,
+      selectedBaseline: baseline || '',
+      selectedCandidate: candidate || '',
+      selectedSeries: series,
+      serveMode: true,
+      hasLatestRun: latestRun !== null,
+      latestRunArchived,
+    }),
+  );
+}
+
+function renderLatestDetailPage(): string {
+  let summary: object | undefined;
+  let collectedTests: import('../support/custom-dashboard/types').CollectedTestData[] = [];
+
+  try {
+    if (fs.existsSync(SUMMARY_PATH)) {
+      const raw = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+      summary = raw;
+      collectedTests = Array.isArray(raw.testCases) ? normalizeTestCases(raw.testCases) : [];
+    }
+  } catch (err) {
+    return buildErrorPage(
+      'test-summary.json is unreadable',
+      `The file exists but could not be parsed:\n\n${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (!summary) {
+    const latestRun = getLatestRunInfo();
+    if (latestRun) return buildOrphanRunPage(latestRun);
+    return buildErrorPage(
+      'No test run found yet.',
+      'Run tests first, then refresh this page.',
+      'npx playwright test',
+    );
+  }
+
+  const latestRun = getLatestRunInfo();
+  const isArchived = isLatestRunArchived();
+  const rawSummary = summary as Record<string, unknown>;
+
+  const displayName = deriveDisplayName({
+    requirementTitle: rawSummary.requirementTitle as string,
+    requirementPath: rawSummary.requirementPath as string,
+    appEnv: (rawSummary.appEnv as string) || (process.env.APP_ENV as string),
+    ranAt: rawSummary.timestamp as string,
+  });
+
+  return String(
+    ReportDetailPage({
+      mode: 'local',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      summary: summary as any,
+      collectedTests,
+      displayName,
+      isArchived,
+      hasLatestRun: latestRun !== null,
+      serveMode: true,
+      breadcrumb: [{ label: 'Dashboard', href: '/dashboard' }, { label: 'Latest Report' }],
+    }),
+  );
+}
+
+function renderArchivedDetailPage(runId: string): string | null {
+  if (!isValidRunId(runId)) return null;
+  const summary = loadArchivedSummary(runId);
+  const metadata = loadArchivedMetadata(runId);
+  if (!summary && !metadata) return null;
+
+  const rawSummary = (summary ?? {}) as Record<string, unknown>;
+  const tc = Array.isArray(rawSummary.testCases)
+    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      normalizeTestCases(rawSummary.testCases as any[])
+    : [];
+
+  const displayName =
+    metadata?.displayName ||
+    deriveDisplayName({
+      requirementTitle: metadata?.requirementTitle,
+      requirementPath: metadata?.requirementPath,
+      appEnv: metadata?.appEnv,
+      ranAt: metadata?.ranAt,
+    });
+
+  return String(
+    ReportDetailPage({
+      mode: 'local',
+      summary: {
+        total: (rawSummary.total as number) ?? 0,
+        passed: (rawSummary.passed as number) ?? 0,
+        failed: (rawSummary.failed as number) ?? 0,
+        skipped: (rawSummary.skipped as number) ?? 0,
+        passRate: (rawSummary.passRate as number) ?? 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        reportMode: (rawSummary.reportMode as any) ?? metadata?.reportMode ?? 'general',
+        timestamp: metadata?.ranAt ?? (rawSummary.timestamp as string) ?? '',
+        rolesInScope: (rawSummary.rolesInScope as string[]) ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        testCases: (rawSummary.testCases as any) ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        runMeta: (rawSummary.runMeta as any) ?? {
+          appEnv: metadata?.appEnv ?? 'local',
+          ci: false,
+          totalDurationMs: metadata?.durationMs ?? 0,
+          generatedAt: metadata?.savedAt ?? '',
+        },
+      },
+      collectedTests: tc,
+      runId,
+      displayName,
+      isArchived: true,
+      hasLatestRun: false,
+      serveMode: true,
+      breadcrumb: [{ label: 'History', href: '/history' }, { label: displayName || runId }],
+    }),
+  );
+}
+
+// ─── Dashboard HTML builder (Legacy & Direct) ──────────────────────────────────
+
+export function buildDashboard(): string {
   let summary: object | undefined;
   let collectedTests: object[] = [];
 
@@ -223,13 +411,9 @@ function buildDashboard(): string {
     if (fs.existsSync(SUMMARY_PATH)) {
       const raw = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
       summary = raw;
-      // test-summary.json stores CollectedTestCase[] (flat), but renderers
-      // expect CollectedTestData[] (with errors, steps, attachments, retry, etc.)
-      // normalizeTestCases bridges the gap with safe defaults.
       collectedTests = Array.isArray(raw.testCases) ? normalizeTestCases(raw.testCases) : [];
     }
   } catch (err) {
-    // test-summary.json exists but is unreadable — surface the error
     const message = err instanceof Error ? err.message : String(err);
     return buildErrorPage(
       'test-summary.json is unreadable',
@@ -238,8 +422,6 @@ function buildDashboard(): string {
   }
 
   if (!summary) {
-    // test-summary.json is missing. .latest-run marker may still have basic
-    // metadata (totals + pass rate) — surface that so QA knows a run exists.
     const latestRun = getLatestRunInfo();
     if (latestRun) {
       return buildOrphanRunPage(latestRun);
@@ -251,8 +433,6 @@ function buildDashboard(): string {
     );
   }
 
-  // Fix #5: validasi minimal struct summary sebelum di-cast ke any.
-  // Jika field kritis hilang, render error page daripada crash di renderer.
   const rawSummary = summary as Record<string, unknown>;
   if (
     typeof rawSummary['total'] === 'undefined' &&
@@ -266,8 +446,6 @@ function buildDashboard(): string {
 
   const history = listReportHistory({ sort: 'newest', limit: 20 });
   const latestRun = getLatestRunInfo();
-  // Fix #10: gunakan isLatestRunArchived() yang sudah ada daripada reimplementasi
-  // listArchivedRunIds().includes(generateRunId(...)) — satu titik kebenaran.
   const latestRunArchived = isLatestRunArchived();
 
   const options: DashboardOptions = {
@@ -311,13 +489,17 @@ function jsonResponse(res: http.ServerResponse, status: number, body: unknown) {
   const json = JSON.stringify(body, null, 2);
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    // No CORS wildcard — the dashboard is same-origin (served by this server),
-    // and a wildcard would let ANY website read archived QA data via fetch.
-    // Archive/history data is mutable (save/delete) — never cache GETs so
-    // post-SSE refreshes always see fresh data.
     'Cache-Control': 'no-store',
   });
   res.end(json);
+}
+
+function htmlResponse(res: http.ServerResponse, status: number, html: string) {
+  res.writeHead(status, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  res.end(html);
 }
 
 // ─── Request router ───────────────────────────────────────────────────────────
@@ -330,7 +512,7 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
   // CORS preflight — kept minimal; dashboard is same-origin so no wildcard.
   if (method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     res.end();
@@ -343,7 +525,6 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
-      // Same-origin only (no CORS wildcard) — see jsonResponse comment.
     });
     res.write(':connected\n\n');
     sseClients.add(res);
@@ -365,17 +546,11 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
-  // ── GET / — serve dynamic dashboard ──────────────────────────────────────
-  if (pathname === '/' && method === 'GET') {
+  // ── Page Route: GET / or GET /dashboard ──────────────────────────────────
+  if ((pathname === '/' || pathname === '/dashboard') && method === 'GET') {
     try {
-      const html = buildDashboard();
-      res.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8',
-        // Dynamic HTML embeds mutable archive data — never cache (consistency
-        // with fragment + API responses).
-        'Cache-Control': 'no-store',
-      });
-      res.end(html);
+      const html = renderDashboardOverviewPage();
+      htmlResponse(res, 200, html);
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end(`Error building dashboard: ${err instanceof Error ? err.message : String(err)}`);
@@ -383,9 +558,88 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
+  // ── Page Route: GET /history ─────────────────────────────────────────────
+  if (pathname === '/history' && method === 'GET') {
+    try {
+      const html = renderHistoryPage();
+      htmlResponse(res, 200, html);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(`Error building history page: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  // ── Page Route: GET /history/:runId ──────────────────────────────────────
+  if (pathname.startsWith('/history/') && method === 'GET') {
+    const runId = pathname.replace('/history/', '').split('/')[0];
+    if (!runId || !isValidRunId(runId)) {
+      htmlResponse(
+        res,
+        400,
+        buildErrorPage('Invalid Run ID', `The run ID "${escapeHtml(runId)}" is invalid.`),
+      );
+      return;
+    }
+    try {
+      const html = renderArchivedDetailPage(runId);
+      if (!html) {
+        htmlResponse(
+          res,
+          404,
+          buildErrorPage(
+            'Archive Not Found',
+            `Archived run "${escapeHtml(runId)}" could not be found.`,
+          ),
+        );
+        return;
+      }
+      htmlResponse(res, 200, html);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(`Error building report detail: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  // ── Page Route: GET /latest ──────────────────────────────────────────────
+  if (pathname === '/latest' && method === 'GET') {
+    try {
+      const html = renderLatestDetailPage();
+      htmlResponse(res, 200, html);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(`Error building latest report: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
+  // ── Page Route: GET /compare ─────────────────────────────────────────────
+  if (pathname === '/compare' && method === 'GET') {
+    const baseline = parsed.query['baseline'] as string | undefined;
+    const candidate = (parsed.query['candidate'] ?? parsed.query['current']) as string | undefined;
+    const series = parsed.query['series'] as string | undefined;
+
+    if (baseline && !isValidRunId(baseline)) {
+      htmlResponse(res, 400, buildErrorPage('Invalid Run ID', 'Baseline runId is invalid.'));
+      return;
+    }
+    if (candidate && !isValidRunId(candidate)) {
+      htmlResponse(res, 400, buildErrorPage('Invalid Run ID', 'Candidate runId is invalid.'));
+      return;
+    }
+
+    try {
+      const html = renderComparePage(baseline, candidate, series);
+      htmlResponse(res, 200, html);
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(`Error building compare page: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
   // ── GET /fragment/:view — server-rendered HTML fragment for hash-router ──
-  // The client's hash (#/history, #/compare, #/detail/:id) never reaches the
-  // server, so the router fetches these fragments and swaps them into <main>.
   if (pathname.startsWith('/fragment/') && method === 'GET') {
     try {
       const frag = pathname.replace('/fragment/', '').split('/');
@@ -406,8 +660,6 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
         const runIds = listArchivedRunIds();
         const baseline = parsed.query['baseline'] as string | undefined;
         const current = parsed.query['current'] as string | undefined;
-        // Defense-in-depth: runIds come from query params — validate before any
-        // file access (compareReports reads from the archive dir).
         if (baseline && !isValidRunId(baseline)) {
           jsonResponse(res, 400, { error: 'Invalid baseline runId' });
           return;
@@ -462,15 +714,34 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
         return;
       }
 
-      res.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-      });
-      res.end(fragmentHtml);
+      htmlResponse(res, 200, fragmentHtml);
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end(`Error building fragment: ${err instanceof Error ? err.message : String(err)}`);
     }
+    return;
+  }
+
+  // ── GET /api/dashboard ────────────────────────────────────────────────────
+  if (pathname === '/api/dashboard' && method === 'GET') {
+    const history = listReportHistory({ sort: 'newest', limit: 50 });
+    const latestRun = getLatestRunInfo();
+    const latestRunArchived = isLatestRunArchived();
+    let latestSummary: Record<string, unknown> | null = null;
+    if (fs.existsSync(SUMMARY_PATH)) {
+      try {
+        latestSummary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+      } catch {
+        // ignore
+      }
+    }
+    const overview = buildDashboardOverview({
+      latestRunInfo: latestRun,
+      latestSummary,
+      latestRunArchived,
+      history,
+    });
+    jsonResponse(res, 200, overview);
     return;
   }
 
@@ -487,19 +758,44 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
-  // ── GET /api/history ──────────────────────────────────────────────────────
-  if (pathname === '/api/history' && method === 'GET') {
-    const limit = parseInt((parsed.query['limit'] as string) ?? '20', 10);
+  // ── GET /api/history or GET /api/runs ─────────────────────────────────────
+  if ((pathname === '/api/history' || pathname === '/api/runs') && method === 'GET') {
+    const limit = parseInt((parsed.query['limit'] as string) ?? '50', 10);
     const history = listReportHistory({ sort: 'newest', limit });
     jsonResponse(res, 200, { history });
     return;
   }
 
-  // ── POST /api/archive/save ─────────────────────────────────────────────────
-  if (pathname === '/api/archive/save' && method === 'POST') {
+  // ── GET /api/runs/latest ─────────────────────────────────────────────────
+  if (pathname === '/api/runs/latest' && method === 'GET') {
+    if (!fs.existsSync(SUMMARY_PATH)) {
+      jsonResponse(res, 404, { error: 'No latest run found' });
+      return;
+    }
+    try {
+      const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+      const latestRun = getLatestRunInfo();
+      jsonResponse(res, 200, {
+        summary,
+        latestRun,
+        isArchived: isLatestRunArchived(),
+      });
+    } catch (err) {
+      jsonResponse(res, 500, { error: String(err) });
+    }
+    return;
+  }
+
+  // ── POST /api/archive/save or POST /api/runs/latest/archive ───────────────
+  if (
+    (pathname === '/api/archive/save' ||
+      pathname === '/api/runs/latest/archive' ||
+      pathname === '/api/runs/save') &&
+    method === 'POST'
+  ) {
     try {
       const body = (await readBody(req)) as Record<string, string>;
-      const { decision, notes } = body;
+      const { decision, notes, label, series } = body;
 
       if (!decision) {
         jsonResponse(res, 400, { error: 'decision is required' });
@@ -509,6 +805,8 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       const result = saveLatestRun({
         qaDecision: decision as QaDecision,
         qaNotes: notes ?? '',
+        displayName: label,
+        testSeriesId: series,
         triggerSource: 'dashboard-button',
       });
 
@@ -523,15 +821,16 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
-  // ── GET /api/archive/:runId — load archived summary + metadata for detail view ──
+  // ── GET /api/archive/:runId or GET /api/runs/:runId ──────────────────────
   if (
-    pathname.startsWith('/api/archive/') &&
+    (pathname.startsWith('/api/archive/') || pathname.startsWith('/api/runs/')) &&
     method === 'GET' &&
     pathname !== '/api/archive/compare' &&
-    pathname !== '/api/archive/save' // POST-only, guard against accidental GET
+    pathname !== '/api/runs/compare' &&
+    pathname !== '/api/archive/save' &&
+    pathname !== '/api/runs/latest'
   ) {
-    const runId = pathname.replace('/api/archive/', '');
-    // Guard: runId harus valid (alphanum + dash, no traversal chars)
+    const runId = pathname.replace(/^\/api\/(archive|runs)\//, '');
     if (!runId || /[/\\.]/.test(runId) || runId.includes('..')) {
       jsonResponse(res, 400, { error: 'Invalid runId' });
       return;
@@ -543,12 +842,14 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
         jsonResponse(res, 404, { error: `Archive ${escapeHtml(runId)} not found` });
         return;
       }
-      // Merge summary fields dengan metadata agar detail view mendapat passRate, appEnv, reportMode
       const merged = {
         runId,
         ...(summary ?? {}),
         ...(metadata
           ? {
+              displayName: metadata.displayName,
+              testSeriesId: metadata.testSeriesId,
+              requirementId: metadata.requirementId,
               qaDecision: metadata.qaDecision,
               qaNotes: metadata.qaNotes,
               savedAt: metadata.savedAt,
@@ -567,12 +868,12 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
-  // ── DELETE /api/archive/:runId ─────────────────────────────────────────────
-  if (pathname.startsWith('/api/archive/') && method === 'DELETE') {
-    const runId = pathname.replace('/api/archive/', '');
-    // Fix #7: path traversal guard di sisi server — tolak runId yang mengandung
-    // path separator atau komponen berbahaya (../ dll). deleteArchivedReport() juga
-    // memiliki guard sendiri, tapi defense-in-depth: reject di router sebelum masuk.
+  // ── DELETE /api/archive/:runId or DELETE /api/runs/:runId ─────────────────
+  if (
+    (pathname.startsWith('/api/archive/') || pathname.startsWith('/api/runs/')) &&
+    method === 'DELETE'
+  ) {
+    const runId = pathname.replace(/^\/api\/(archive|runs)\//, '');
     if (!runId || /[/\\.]/.test(runId) || runId.includes('..')) {
       jsonResponse(res, 400, { error: 'Invalid runId' });
       return;
@@ -593,13 +894,52 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     return;
   }
 
-  // ── GET /api/archive/compare ───────────────────────────────────────────────
-  if (pathname === '/api/archive/compare' && method === 'GET') {
-    const baseline = parsed.query['baseline'] as string | undefined;
-    const current = parsed.query['current'] as string | undefined;
+  // ── PATCH /api/archive/:runId or POST /api/archive/:runId/edit ─────────────
+  if (
+    ((pathname.startsWith('/api/archive/') || pathname.startsWith('/api/runs/')) &&
+      (method === 'PATCH' || method === 'PUT')) ||
+    ((pathname.startsWith('/api/archive/') || pathname.startsWith('/api/runs/')) &&
+      pathname.endsWith('/edit') &&
+      method === 'POST')
+  ) {
+    let runId = pathname.replace(/^\/api\/(archive|runs)\//, '');
+    if (runId.endsWith('/edit')) runId = runId.replace(/\/edit$/, '');
+    if (!runId || /[/\\.]/.test(runId) || runId.includes('..')) {
+      jsonResponse(res, 400, { error: 'Invalid runId' });
+      return;
+    }
+    try {
+      const parsedBody = ((await readBody(req)) as Record<string, unknown>) || {};
+      const updated = updateArchivedMetadata(runId, {
+        displayName: (parsedBody['displayName'] ?? parsedBody['label']) as string | undefined,
+        qaDecision: (parsedBody['qaDecision'] ?? parsedBody['decision']) as
+          import('../agents/reporter/report-archive').QaDecision | undefined,
+        qaNotes: (parsedBody['qaNotes'] ?? parsedBody['notes']) as string | undefined,
+        testSeriesId: (parsedBody['testSeriesId'] ?? parsedBody['series']) as string | undefined,
+        requirementId: parsedBody['requirementId'] as string | undefined,
+        requirementTitle: parsedBody['requirementTitle'] as string | undefined,
+      });
 
-    // Defense-in-depth: validate query runIds before any file access
-    // (compareReports reads from the archive dir).
+      if (!updated) {
+        jsonResponse(res, 404, { error: `Archive ${runId} not found` });
+        return;
+      }
+      broadcastEvent('archive-updated', { runId, metadata: updated });
+      jsonResponse(res, 200, { ok: true, runId, metadata: updated });
+    } catch (err) {
+      const status = (err as { code?: number }).code === 413 ? 413 : 400;
+      jsonResponse(res, status, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    return;
+  }
+
+  // ── GET /api/archive/compare or GET /api/compare ─────────────────────────
+  if ((pathname === '/api/archive/compare' || pathname === '/api/compare') && method === 'GET') {
+    const baseline = parsed.query['baseline'] as string | undefined;
+    const current = (parsed.query['current'] ?? parsed.query['candidate']) as string | undefined;
+
     if (baseline && !isValidRunId(baseline)) {
       jsonResponse(res, 400, { error: 'Invalid baseline runId' });
       return;
@@ -613,8 +953,6 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
       const result =
         baseline && current ? compareReports(baseline, current) : compareLatestVsPrevious();
 
-      // compare* returns either a ReportComparison or { error: string } — the
-      // error object is truthy, so distinguish by shape, not by falsiness.
       if (!result || 'error' in result) {
         const message =
           result && 'error' in result

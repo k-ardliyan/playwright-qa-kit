@@ -1,68 +1,114 @@
-/**
- * Cross-Run Report Comparison — diff two archived reports.
- *
- * Classifies per-scenario changes as: regression, fix, stable failure,
- * flaky, new scenario, or removed scenario.
- *
- * @module src/agents/reporter/report-compare
- */
 import {
   loadArchivedReport,
+  loadArchivedMetadata,
+  loadArchivedSummary,
   type ArchivedReportLegacy as ArchivedReport,
   type ArchivedScenario,
+  type ArchiveMetadata,
 } from './report-archive';
 import { listReportHistory } from './report-history';
+import { deriveDisplayName, deriveTestSeriesId } from '../../support/custom-dashboard/domain/run';
+import type {
+  ComparisonCompatibility,
+  ComparisonRunIdentity,
+  CompatibilityLevel,
+  ReportComparison as DomainReportComparison,
+  ScenarioDiff as DomainScenarioDiff,
+} from '../../support/custom-dashboard/domain/comparison';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface ScenarioDiff {
-  scenarioId: string;
-  name: string;
-  role?: string;
-  module?: string;
-  feature?: string;
-  previousStatus: string;
-  currentStatus: string;
-  /** 'regression' | 'fix' | 'stable' | 'flaky' | 'new' | 'removed' */
-  change: string;
-  failureSource?: string;
-  previousError?: string;
-  currentError?: string;
-}
-
-export interface ReportComparison {
-  baselineRunId: string;
-  comparisonRunId: string;
-  baselineTimestamp: string;
-  comparisonTimestamp: string;
-  baselinePassRate: number;
-  comparisonPassRate: number;
-  /** Positive = improvement, negative = regression */
-  passRateDelta: number;
-  regressions: ScenarioDiff[];
-  fixes: ScenarioDiff[];
-  newScenarios: ScenarioDiff[];
-  removedScenarios: ScenarioDiff[];
-  stableFailures: ScenarioDiff[];
-  flakyScenarios: ScenarioDiff[];
-  summary: {
-    totalScenarios: number;
-    regressed: number;
-    fixed: number;
-    new: number;
-    removed: number;
-    stableFailures: number;
-    flaky: number;
-  };
-}
+export type ScenarioDiff = DomainScenarioDiff;
+export type ReportComparison = DomainReportComparison;
+export type { ComparisonCompatibility, ComparisonRunIdentity, CompatibilityLevel };
 
 // ─── Public API ──────────────────────────────────────────────────────────────
+
+/**
+ * Calculate compatibility between baseline and candidate runs.
+ */
+export function getComparisonCompatibility(
+  baseline: ArchivedReport,
+  candidate: ArchivedReport,
+  baselineMeta?: ArchiveMetadata | null,
+  candidateMeta?: ArchiveMetadata | null,
+): ComparisonCompatibility {
+  const baseScenarios = new Set(baseline.scenarios.map((s) => s.scenarioId || s.name));
+  const candScenarios = new Set(candidate.scenarios.map((s) => s.scenarioId || s.name));
+
+  let intersection = 0;
+  for (const id of candScenarios) {
+    if (baseScenarios.has(id)) intersection++;
+  }
+
+  const union = new Set([...baseScenarios, ...candScenarios]).size;
+  const overlapRatio = union === 0 ? 1 : intersection / union;
+
+  const baseSeries =
+    baselineMeta?.testSeriesId ||
+    deriveTestSeriesId({
+      requirementPath: baseline.requirementPath,
+      requirementId: baselineMeta?.requirementId,
+    });
+  const candSeries =
+    candidateMeta?.testSeriesId ||
+    deriveTestSeriesId({
+      requirementPath: candidate.requirementPath,
+      requirementId: candidateMeta?.requirementId,
+    });
+
+  const sameTestSeries = Boolean(baseSeries && candSeries && baseSeries === candSeries);
+  const sameEnvironment = (baseline.appEnv || 'local') === (candidate.appEnv || 'local');
+
+  const reasons: string[] = [];
+  if (sameTestSeries) {
+    reasons.push(`Same test series: ${candSeries}`);
+  } else {
+    reasons.push(`Different test series: "${baseSeries}" vs "${candSeries}"`);
+  }
+
+  if (sameEnvironment) {
+    reasons.push(`Same environment: ${candidate.appEnv || 'local'}`);
+  } else {
+    reasons.push(
+      `Different environments: ${baseline.appEnv || 'local'} → ${candidate.appEnv || 'local'}`,
+    );
+  }
+
+  const overlapPercent = Math.round(overlapRatio * 100);
+  reasons.push(`${intersection}/${union} scenarios overlap (${overlapPercent}%)`);
+
+  let level: CompatibilityLevel;
+  if (sameTestSeries && sameEnvironment && overlapRatio >= 0.75) {
+    level = 'exact';
+  } else if (sameTestSeries || overlapRatio >= 0.75) {
+    level = 'compatible';
+  } else if (
+    overlapRatio >= 0.4 ||
+    (baseline.requirementPath && baseline.requirementPath === candidate.requirementPath)
+  ) {
+    level = 'partial';
+  } else {
+    level = 'mismatch';
+  }
+
+  return {
+    level,
+    reasons,
+    overlapRatio,
+    scenarioIntersectionCount: intersection,
+    scenarioUnionCount: union,
+    sameTestSeries,
+    sameEnvironment,
+  };
+}
 
 /**
  * Compare two archived reports by runId.
  *
  * The "baseline" is the earlier run; "comparison" is the later run.
- * If runIds are provided in reverse order, they are swapped automatically.
+ * If runIds are provided in reverse order, they are swapped automatically for delta calculations,
+ * and `isCandidateOlder` is set to notify the UI.
  */
 export function compareReports(
   baselineRunId: string,
@@ -74,15 +120,73 @@ export function compareReports(
   if (!baseline) return { error: `Baseline report not found: ${baselineRunId}` };
   if (!comparison) return { error: `Comparison report not found: ${comparisonRunId}` };
 
-  // Ensure chronological order
+  const baselineMeta = loadArchivedMetadata(baselineRunId);
+  const comparisonMeta = loadArchivedMetadata(comparisonRunId);
+
+  // Check if requested order is reversed chronologically
+  const isReversed =
+    new Date(baseline.timestamp).getTime() > new Date(comparison.timestamp).getTime();
+
   let base = baseline;
   let comp = comparison;
-  if (new Date(baseline.timestamp).getTime() > new Date(comparison.timestamp).getTime()) {
+  let bMeta = baselineMeta;
+  let cMeta = comparisonMeta;
+
+  if (isReversed) {
     base = comparison;
     comp = baseline;
+    bMeta = comparisonMeta;
+    cMeta = baselineMeta;
   }
 
-  return buildComparison(base, comp);
+  const compatibility = getComparisonCompatibility(base, comp, bMeta, cMeta);
+
+  const baselineSummary = loadArchivedSummary(base.runId);
+  const comparisonSummary = loadArchivedSummary(comp.runId);
+
+  const baselineIdentity: ComparisonRunIdentity = {
+    runId: base.runId,
+    displayName:
+      bMeta?.displayName ||
+      deriveDisplayName({
+        requirementPath: base.requirementPath,
+        appEnv: base.appEnv,
+        ranAt: base.timestamp,
+      }),
+    testSeriesId: bMeta?.testSeriesId,
+    requirementId: bMeta?.requirementId,
+    appEnv: base.appEnv,
+    ranAt: base.timestamp,
+    passRate: base.summary.passRate,
+    totalTests: (baselineSummary?.total as number) ?? base.summary.testsGenerated,
+  };
+
+  const candidateIdentity: ComparisonRunIdentity = {
+    runId: comp.runId,
+    displayName:
+      cMeta?.displayName ||
+      deriveDisplayName({
+        requirementPath: comp.requirementPath,
+        appEnv: comp.appEnv,
+        ranAt: comp.timestamp,
+      }),
+    testSeriesId: cMeta?.testSeriesId,
+    requirementId: cMeta?.requirementId,
+    appEnv: comp.appEnv,
+    ranAt: comp.timestamp,
+    passRate: comp.summary.passRate,
+    totalTests: (comparisonSummary?.total as number) ?? comp.summary.testsGenerated,
+  };
+
+  const compResult = buildComparison(base, comp);
+
+  return {
+    ...compResult,
+    baseline: baselineIdentity,
+    candidate: candidateIdentity,
+    compatibility,
+    isCandidateOlder: isReversed,
+  };
 }
 
 /**

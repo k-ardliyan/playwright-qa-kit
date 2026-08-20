@@ -120,29 +120,31 @@ export function renderTableColumnPicker(): string {
         Filter columns
       </button>
       <div class="column-picker__menu" id="column-picker-menu" role="menu" hidden>
-        <div class="column-picker__title">Visible columns</div>
-        <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="testId" checked disabled /> Test ID</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="module" /> Module</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="feature" /> Feature</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="description" checked /> Description</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="steps" checked /> Test Step</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="input" checked /> Input Data</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="expected" checked /> Expected Result</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="actual" checked /> Actual Result</label>
-        <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="status" checked disabled /> Status</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="priority" checked /> Priority</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="source" /> Source</label>
-        <label class="column-picker__item"><input type="checkbox" data-col-toggle="notes" checked /> Notes</label>
+        <div class="column-picker__body">
+          <div class="column-picker__title">Visible columns</div>
+          <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="testId" checked disabled /> Test ID</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="module" /> Module</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="feature" /> Feature</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="description" checked /> Description</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="steps" checked /> Test Step</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="input" checked /> Input Data</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="expected" checked /> Expected Result</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="actual" checked /> Actual Result</label>
+          <label class="column-picker__item column-picker__item--locked"><input type="checkbox" data-col-toggle="status" checked disabled /> Status</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="priority" checked /> Priority</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="source" /> Source</label>
+          <label class="column-picker__item"><input type="checkbox" data-col-toggle="notes" checked /> Notes</label>
 
-        <div class="column-picker__title column-picker__title--section">Pin / sticky</div>
-        <label class="column-picker__item" title="Keep header row visible while scrolling the table">
-          <input type="checkbox" id="pin-sticky-header" data-pin-sticky="header" checked />
-          <span>Pin header <span class="column-picker__hint">sticky top</span></span>
-        </label>
-        <label class="column-picker__item" title="Keep Test ID column visible while scrolling horizontally">
-          <input type="checkbox" id="pin-sticky-left" data-pin-sticky="left" checked />
-          <span>Pin Test ID <span class="column-picker__hint">sticky left</span></span>
-        </label>
+          <div class="column-picker__title column-picker__title--section">Pin / sticky</div>
+          <label class="column-picker__item" title="Keep header row visible while scrolling the table">
+            <input type="checkbox" id="pin-sticky-header" data-pin-sticky="header" checked />
+            <span>Pin header <span class="column-picker__hint">sticky top</span></span>
+          </label>
+          <label class="column-picker__item" title="Keep Test ID column visible while scrolling horizontally">
+            <input type="checkbox" id="pin-sticky-left" data-pin-sticky="left" checked />
+            <span>Pin Test ID <span class="column-picker__hint">sticky left</span></span>
+          </label>
+        </div>
 
         <div class="column-picker__actions">
           <button type="button" id="column-picker-show-all">Show all</button>

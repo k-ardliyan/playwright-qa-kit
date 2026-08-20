@@ -47,6 +47,12 @@ pre,
   border: 0;
 }
 
+.icon-svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .page-shell {
   min-height: 100vh;
   position: relative;
@@ -240,6 +246,19 @@ html[data-theme='dark'] .btn--ghost:hover {
 .btn__icon svg {
   width: 14px;
   height: 14px;
+  display: block;
+}
+
+.btn svg,
+.btn-sm svg,
+.btn-compare svg,
+.btn-view svg,
+.btn-delete svg,
+.btn-primary-action svg,
+.btn-secondary-action svg,
+.btn-save-primary svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .btn-sm {
@@ -251,6 +270,7 @@ html[data-theme='dark'] .btn--ghost:hover {
   border: 1px solid var(--border);
   background: var(--surface);
   font-size: 0.75rem;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -291,16 +311,21 @@ html[data-theme='dark'] .btn--ghost:hover {
 }
 
 .btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: transparent;
   border: 1px solid var(--failed);
   color: var(--failed);
-  opacity: 0.6;
+  line-height: 1;
+  transition: all var(--transition-fast, 0.15s);
 }
 
 .btn-delete:hover {
-  opacity: 1;
-  background: var(--failed);
-  color: #fff;
+  background: var(--failed-bg, rgba(196, 92, 92, 0.15));
+  border-color: var(--failed);
+  color: var(--failed);
 }
 
 .btn-save {
@@ -374,25 +399,36 @@ html[data-theme='dark'] .btn--ghost:hover {
 }
 
 .btn-secondary-action:hover {
-  background: var(--bg-accent);
-  border-color: var(--border-strong);
+  background: var(--surface-muted);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .btn-save-primary {
-  padding: 8px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 20px;
   background: var(--accent, #c4956a);
   color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent, #c4956a);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   letter-spacing: 0.02em;
-  transition: opacity 0.15s;
+  line-height: 1;
+  transition: all var(--transition-fast, 0.15s);
+  white-space: nowrap;
 }
 
 .btn-save-primary:hover {
-  opacity: 0.85;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+  opacity: 1;
 }
 
 .btn-dismiss-sm {

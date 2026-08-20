@@ -14,11 +14,20 @@ import {
   loadArchivedReport,
   type QaDecision,
 } from './report-archive';
+import { deriveDisplayName, deriveTestSeriesId } from '../../support/custom-dashboard/domain/run';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ReportHistoryEntry {
   runId: string;
+  /** Human-readable QA label (e.g. "Login Regression — Staging RC12") */
+  displayName?: string;
+  /** Logical grouping identifier for comparable runs (e.g. "auth-login-regression") */
+  testSeriesId?: string;
+  /** Requirement identifier (e.g. "REQ-AUTH-001") */
+  requirementId?: string;
+  /** Requirement title */
+  requirementTitle?: string;
   /** When the test was executed. */
   ranAt: string;
   /** When the run was saved to archive. */
@@ -71,6 +80,8 @@ export interface ReportHistoryQuery {
   appEnv?: string;
   /** Filter by requirement path. */
   requirementPath?: string;
+  /** Filter by test series. */
+  testSeriesId?: string;
   /** Filter by role. */
   role?: string;
 }
@@ -154,16 +165,43 @@ function buildEntry(
   const failed = (summary.failed as number) ?? 0;
   const skipped = (summary.skipped as number) ?? 0;
 
+  const ranAt = metadata?.ranAt ?? (summary.timestamp as string) ?? '';
+  const appEnv = metadata?.appEnv ?? 'local';
+  const requirementPath = metadata?.requirementPath ?? (summary.requirementPath as string) ?? '';
+  const requirementTitle = metadata?.requirementTitle ?? (summary.requirementTitle as string) ?? '';
+  const requirementId = metadata?.requirementId ?? (summary.requirementId as string) ?? '';
+
+  const displayName =
+    metadata?.displayName ||
+    deriveDisplayName({
+      requirementTitle,
+      requirementPath,
+      appEnv,
+      ranAt,
+    });
+
+  const testSeriesId =
+    metadata?.testSeriesId ||
+    deriveTestSeriesId({
+      requirementId,
+      requirementPath,
+      requirementTitle,
+    });
+
   return {
     runId,
-    ranAt: metadata?.ranAt ?? (summary.timestamp as string) ?? '',
+    displayName,
+    testSeriesId,
+    requirementId,
+    requirementTitle,
+    ranAt,
     savedAt: metadata?.savedAt ?? '',
     qaDecision: metadata?.qaDecision ?? '',
     qaNotes: metadata?.qaNotes ?? '',
     triggerSource: metadata?.triggerSource ?? 'cli',
-    appEnv: metadata?.appEnv ?? 'local',
+    appEnv,
     baseUrl: metadata?.baseUrl,
-    requirementPath: metadata?.requirementPath ?? '',
+    requirementPath,
     passRate,
     totalTests: total,
     passed,
@@ -185,8 +223,21 @@ function buildLegacyEntry(
   const passRate = legacy.summary.passRate;
   const failed = legacy.summary.testsFailing;
   const skipped = legacy.summary.testsSkipped;
+
+  const displayName = deriveDisplayName({
+    requirementPath: legacy.requirementPath,
+    appEnv: legacy.appEnv,
+    ranAt: legacy.timestamp,
+  });
+
+  const testSeriesId = deriveTestSeriesId({
+    requirementPath: legacy.requirementPath,
+  });
+
   return {
     runId,
+    displayName,
+    testSeriesId,
     ranAt: legacy.timestamp,
     savedAt: legacy.timestamp, // No separate savedAt in legacy
     qaDecision: (legacy.qaDecision as QaDecision) ?? '',
@@ -211,6 +262,7 @@ function matchesFilter(entry: ReportHistoryEntry, query?: ReportHistoryQuery): b
   if (query.qaDecision && entry.qaDecision !== query.qaDecision) return false;
   if (query.appEnv && entry.appEnv !== query.appEnv) return false;
   if (query.requirementPath && entry.requirementPath !== query.requirementPath) return false;
+  if (query.testSeriesId && entry.testSeriesId !== query.testSeriesId) return false;
   if (query.role) {
     const roles = entry.rolesInScope ?? [];
     if (!roles.includes(query.role)) return false;

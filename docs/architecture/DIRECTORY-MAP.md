@@ -6,27 +6,32 @@
 
 ## src/ — Core Framework
 
-| Path                            | Peran                                           | Entry Point                                                                                                          |
-| ------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `src/agents/generator/`         | Test code generator logic                       | `index.ts`                                                                                                           |
-| `src/agents/healer/`            | Auto-heal failing tests                         | `index.ts`, `pattern-database.ts`                                                                                    |
-| `src/agents/integration/`       | Universal agent integration layer               | `orchestrator.ts`, `state.ts`, `protocol.ts`                                                                         |
-| `src/agents/planner/`           | Scenario clarification + feedback               | `index.ts`                                                                                                           |
-| `src/agents/reporter/`          | Pipeline report builder + history + comparison  | `index.ts`, `report-builder.ts`, `report-archive.ts`, `report-history.ts`, `report-compare.ts`, `report-ai-query.ts` |
-| `src/executor/`                 | Test runner wrapper (multi-browser, sharding)   | `index.ts`                                                                                                           |
-| `src/fixtures/`                 | Playwright fixture chain                        | `base.fixture.ts` (re-export all)                                                                                    |
-| `src/support/pw/`               | Low-level PW helpers + file/image/network       | `index.ts` ← always import from here                                                                                 |
-| `src/support/custom-dashboard/` | KitaJS TSX report builder + styles + components | `build-dashboard-html.ts`, `components/`, `layouts/`, `styles/`, `renderer/`                                         |
-| `src/support/auth.setup.ts`     | Auth session materialization                    | —                                                                                                                    |
-| `src/setup/`                    | Setup wizard (interactive CLI)                  | `index.ts`, `wizard.ts`                                                                                              |
-| `src/shared/types/`             | Shared TypeScript schemas                       | `index.ts` ← always import from here                                                                                 |
-| `src/shared/utils/`             | Shared utilities                                | `role-credentials.ts`, `factories.ts`                                                                                |
-| `src/utils/`                    | Framework-level utilities                       | `env-loader.ts`, `logger.ts`, `app-env.ts`, `configuration.ts`                                                       |
-| `src/tests/`                    | E2E spec files                                  | `*.spec.ts`                                                                                                          |
-| `src/tests/demo/`               | Demo specs (no auth dependency)                 | Playwright project: `demo`                                                                                           |
-| `src/tests/property/`           | Property-based unit tests                       | `*.property.ts`                                                                                                      |
-| `src/tests/unit/`               | Unit tests                                      | `*.test.ts`                                                                                                          |
-| `src/tests/seed.spec.ts`        | Seeding test                                    | —                                                                                                                    |
+| Path                                                  | Peran                                           | Entry Point                                                                                                          |
+| ----------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `src/agents/generator/`                               | Test code generator logic                       | `index.ts`                                                                                                           |
+| `src/agents/healer/`                                  | Auto-heal failing tests                         | `index.ts`, `pattern-database.ts`                                                                                    |
+| `src/agents/integration/`                             | Universal agent integration layer               | `orchestrator.ts`, `state.ts`, `protocol.ts`                                                                         |
+| `src/agents/planner/`                                 | Scenario clarification + feedback               | `index.ts`                                                                                                           |
+| `src/agents/reporter/`                                | Pipeline report builder + history + comparison  | `index.ts`, `report-builder.ts`, `report-archive.ts`, `report-history.ts`, `report-compare.ts`, `report-ai-query.ts` |
+| `src/executor/`                                       | Test runner wrapper (multi-browser, sharding)   | `index.ts`                                                                                                           |
+| `src/fixtures/`                                       | Playwright fixture chain                        | `base.fixture.ts` (re-export all)                                                                                    |
+| `src/support/pw/`                                     | Low-level PW helpers + file/image/network       | `index.ts` ← always import from here                                                                                 |
+| `src/support/custom-dashboard/`                       | KitaJS TSX report builder + styles + components | `build-dashboard-html.ts`, `domain/`, `pages/`, `components/`, `layouts/`, `styles/`, `renderer/`                    |
+| `src/support/custom-dashboard/domain/`                | Reporting domain models & aggregates            | `run.ts`, `comparison.ts`, `dashboard.ts`, `dashboard-overview.ts`                                                   |
+| `src/support/custom-dashboard/pages/`                 | Server & static TSX pages                       | `dashboard/`, `history/`, `compare/`, `report-detail/`                                                               |
+| `src/support/custom-dashboard/components/data-table/` | Shared DataTable primitives                     | `DataTable.tsx`, `DataTableContainer.tsx`, `DataTableRow.tsx`, `index.ts`                                            |
+| `src/support/custom-dashboard/components/navigation/` | Shared navigation components                    | `AppNav.tsx`, `Breadcrumb.tsx`, `index.ts`                                                                           |
+| `src/support/custom-dashboard/components/shared/`     | Shared UI icon primitives and badges            | `icons.tsx`, `index.ts`                                                                                              |
+| `src/support/auth.setup.ts`                           | Auth session materialization                    | —                                                                                                                    |
+| `src/setup/`                                          | Setup wizard (interactive CLI)                  | `index.ts`, `wizard.ts`                                                                                              |
+| `src/shared/types/`                                   | Shared TypeScript schemas                       | `index.ts` ← always import from here                                                                                 |
+| `src/shared/utils/`                                   | Shared utilities                                | `role-credentials.ts`, `factories.ts`                                                                                |
+| `src/utils/`                                          | Framework-level utilities                       | `env-loader.ts`, `logger.ts`, `app-env.ts`, `configuration.ts`                                                       |
+| `src/tests/`                                          | E2E spec files                                  | `*.spec.ts`                                                                                                          |
+| `src/tests/demo/`                                     | Demo specs (no auth dependency)                 | Playwright project: `demo`                                                                                           |
+| `src/tests/property/`                                 | Property-based unit tests                       | `*.property.ts`                                                                                                      |
+| `src/tests/unit/`                                     | Unit tests                                      | `*.test.ts`                                                                                                          |
+| `src/tests/seed.spec.ts`                              | Seeding test                                    | —                                                                                                                    |
 
 ## Project Root — Key Files
 

@@ -122,18 +122,6 @@ export function Hero({ mode, summary, collectedTests }: HeroProps) {
           <span class={`badge ${mode === 'ci' ? 'badge--ci' : 'badge--local'}`}>
             <Icon name="pin" /> {mode === 'ci' ? 'CI MODE' : 'LOCAL MODE'}
           </span>
-          <button
-            class="theme-toggle"
-            id="themeToggle"
-            type="button"
-            aria-label="Switch to dark mode"
-            aria-pressed="false"
-          >
-            <span class="theme-toggle__icon" aria-hidden="true">
-              <Icon name="sun" />
-            </span>
-            <span class="theme-toggle__label">Light</span>
-          </button>
         </div>
       </div>
 

@@ -112,9 +112,13 @@ async function saveCommand(args: Record<string, string | boolean>): Promise<void
   console.log(`   Pass Rate: ${latestRun.passRate}%`);
   console.log(`   Mode:      ${latestRun.reportMode}`);
 
-  // Parse decision from args
+  // Parse decision and metadata from args
   let decision = args.decision as string | undefined;
   let notes = args.notes as string | undefined;
+  const label = args.label as string | undefined;
+  const series = args.series as string | undefined;
+  const requirementId = args['requirement-id'] as string | undefined;
+  const requirementTitle = args['requirement-title'] as string | undefined;
   const yes = args.yes === true;
 
   // Interactive mode
@@ -156,6 +160,8 @@ async function saveCommand(args: Record<string, string | boolean>): Promise<void
   // Confirm — skip when --yes
   if (!yes) {
     console.log(`\n   Decision: ${decision}`);
+    if (label) console.log(`   Label:    ${label}`);
+    if (series) console.log(`   Series:   ${series}`);
     console.log(`   Notes:    ${notes || '(none)'}`);
     const confirm = await askQuestion('   Confirm save? (y/N): ');
     if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
@@ -169,6 +175,10 @@ async function saveCommand(args: Record<string, string | boolean>): Promise<void
     const result = saveLatestRun({
       qaDecision: decision as QaDecision,
       qaNotes: notes,
+      displayName: label,
+      testSeriesId: series,
+      requirementId,
+      requirementTitle,
       triggerSource: 'cli',
     });
     console.log(`\n✅ Run saved to history!`);
@@ -195,8 +205,12 @@ async function viewCommand(args: Record<string, string | boolean>): Promise<void
     }
 
     console.log(`\n📋 Archived Runs (${runIds.length} total):\n`);
-    console.log('  Run ID                    Saved At              Decision    Pass%   Tests');
-    console.log('  ───────────────────────── ───────────────────── ─────────── ─────── ──────');
+    console.log(
+      '  Testing Label / Run ID                  Saved At              Decision    Pass%   Tests',
+    );
+    console.log(
+      '  ─────────────────────────────────────── ───────────────────── ─────────── ─────── ──────',
+    );
 
     for (const id of runIds) {
       const metadata = loadArchivedMetadata(id);
@@ -208,10 +222,14 @@ async function viewCommand(args: Record<string, string | boolean>): Promise<void
       const failed = (summary?.failed as number) ?? -1;
       const passRate = (summary?.passRate as number) ?? -1;
       const statusIcon = failed === 0 ? '✅' : failed < 0 ? '❓' : '⚠️';
+      const labelOrId = (metadata?.displayName || id).slice(0, 39);
 
       console.log(
-        `  ${id.padEnd(26)} ${savedAt.padEnd(21)} ${decision.padEnd(11)} ${String(passRate).padStart(5)}%   ${String(total).padStart(2)} (${passed}✅ ${failed}❌) ${statusIcon}`,
+        `  ${labelOrId.padEnd(39)} ${savedAt.padEnd(21)} ${decision.padEnd(11)} ${String(passRate).padStart(5)}%   ${String(total).padStart(2)} (${passed}✅ ${failed}❌) ${statusIcon}`,
       );
+      if (metadata?.displayName && metadata.displayName !== id) {
+        console.log(`    ↳ ${id} (${metadata.testSeriesId || 'default-series'})`);
+      }
     }
     console.log('');
     return;
@@ -231,6 +249,12 @@ async function viewCommand(args: Record<string, string | boolean>): Promise<void
   console.log('─'.repeat(60));
 
   if (metadata) {
+    if (metadata.displayName) {
+      console.log(`  Label:      ${metadata.displayName}`);
+    }
+    if (metadata.testSeriesId) {
+      console.log(`  Series:     ${metadata.testSeriesId}`);
+    }
     console.log(`  Ran at:     ${formatTimestamp(metadata.ranAt)}`);
     console.log(`  Saved at:   ${formatTimestamp(metadata.savedAt)}`);
     console.log(`  Decision:   ${metadata.qaDecision}`);

@@ -173,13 +173,17 @@ html[data-theme='dark'] .layer-badge--api {
   letter-spacing: 0.3px;
   background: var(--accent, #c4956a);
   color: #fff;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
   text-transform: lowercase;
+  line-height: 1.35;
 }
 
 .feature-chip {
   display: inline-block;
-  padding: 1px 7px;
+  padding: 2px 7px;
   border-radius: var(--radius-lg);
   font-size: 11px;
   font-weight: 500;
@@ -187,8 +191,12 @@ html[data-theme='dark'] .layer-badge--api {
   background: var(--surface-muted, #e8e0d6);
   color: var(--text, #333);
   border: 1px solid var(--border, #d0c8bc);
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
   text-transform: lowercase;
+  line-height: 1.35;
 }
 
 html[data-theme='dark'] .module-chip {

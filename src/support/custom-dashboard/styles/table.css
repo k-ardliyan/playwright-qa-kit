@@ -2,13 +2,14 @@
 .accordion-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .table-toolbar.view-toolbar--hidden,
@@ -53,7 +54,7 @@
   align-items: center;
   gap: 6px;
   height: 38px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -61,34 +62,50 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  line-height: 1;
+  transition: all var(--transition-fast, 0.15s ease);
 }
 
 .column-picker__btn:hover {
-  border-color: var(--border-strong);
+  border-color: var(--accent);
   background: var(--surface-muted);
+  color: var(--accent-strong);
 }
 
 .column-picker__btn svg {
   width: 15px;
   height: 15px;
+  display: block;
+  flex-shrink: 0;
 }
 
 .column-picker__menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 220px;
-  padding: 10px;
+  min-width: 240px;
+  max-height: min(420px, 80vh);
+  display: none;
+  flex-direction: column;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);
   z-index: 40;
-  display: none;
+  overflow: hidden;
 }
 
 .column-picker.is-open .column-picker__menu {
-  display: block;
+  display: flex;
+}
+
+/* Scrollable content area */
+.column-picker__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 10px 10px 6px;
+  min-height: 0;
 }
 
 .column-picker__title {
@@ -138,12 +155,14 @@
   opacity: 0.75;
 }
 
+/* Sticky footer */
 .column-picker__actions {
+  flex: 0 0 auto;
   display: flex;
   gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
+  padding: 8px 10px;
   border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .column-picker__actions button {
@@ -156,6 +175,10 @@
   font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.column-picker__actions button:hover {
+  background: var(--border);
 }
 
 .table-view {
@@ -232,6 +255,10 @@ html[data-theme='dark'] .data-table {
   overflow: visible;
   padding: 5px 8px;
   font-size: 12px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  vertical-align: top;
 }
 
 .qa-report-table th {
@@ -275,7 +302,7 @@ html[data-theme='dark'] .tbl-row--interrupted td {
 
 .qa-report-table .tbl-feature,
 .qa-report-table th[data-col='feature'] {
-  width: 110px;
+  width: 125px;
 }
 
 .qa-report-table .tbl-description,

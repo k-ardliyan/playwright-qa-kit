@@ -14,6 +14,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { deriveDisplayName, deriveTestSeriesId } from '../../support/custom-dashboard/domain/run';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,9 +25,28 @@ export type QaDecision =
 /** Who triggered the save. */
 export type TriggerSource = 'cli' | 'dashboard-button';
 
+/** Options passed to saveLatestRun. */
+export interface SaveRunOptions {
+  qaDecision: QaDecision;
+  qaNotes?: string;
+  triggerSource: TriggerSource;
+  displayName?: string;
+  testSeriesId?: string;
+  requirementId?: string;
+  requirementTitle?: string;
+  branch?: string;
+  buildRef?: string;
+  gitSha?: string;
+}
+
 /** Metadata written alongside the test summary when QA saves a run. */
 export interface ArchiveMetadata {
+  schemaVersion?: number;
   runId: string;
+  displayName?: string;
+  testSeriesId?: string;
+  requirementId?: string;
+  requirementTitle?: string;
   /** When the run was saved to archive (ISO 8601 with ms). */
   savedAt: string;
   /** When the test was actually executed (ISO 8601 with ms). */
@@ -39,6 +59,10 @@ export interface ArchiveMetadata {
   baseUrl?: string;
   /** Requirement file path, if pipeline run. */
   requirementPath?: string;
+  /** Branch/ref or commit. */
+  branch?: string;
+  buildRef?: string;
+  gitSha?: string;
   /** Report mode: 'general' | 'role-aware'. */
   reportMode?: string;
   /** QA decision — mandatory when saving. */
@@ -145,12 +169,19 @@ export function generateRunId(isoTimestamp?: string): string {
  *
  * Returns the save result or throws on validation failure.
  */
-export function saveLatestRun(options: {
-  qaDecision: QaDecision;
-  qaNotes?: string;
-  triggerSource: TriggerSource;
-}): ArchiveSaveResult {
-  const { qaDecision, qaNotes = '', triggerSource } = options;
+export function saveLatestRun(options: SaveRunOptions): ArchiveSaveResult {
+  const {
+    qaDecision,
+    qaNotes = '',
+    triggerSource,
+    displayName: customDisplayName,
+    testSeriesId: customTestSeriesId,
+    requirementId: customRequirementId,
+    requirementTitle: customRequirementTitle,
+    branch: customBranch,
+    buildRef: customBuildRef,
+    gitSha: customGitSha,
+  } = options;
 
   // 1. Validate test-summary.json exists
   if (!fs.existsSync(summaryPath())) {
@@ -205,14 +236,42 @@ export function saveLatestRun(options: {
     ((summary.runMeta as Record<string, unknown> | undefined)?.totalDurationMs as
       number | undefined) ?? (latestRun.totalDurationMs as number | undefined);
 
+  const appEnv = (process.env.APP_ENV as string) || (latestRun.appEnv as string) || 'local';
+  const requirementPath = (summary.requirementPath as string) || '';
+  const requirementTitle = customRequirementTitle || (summary.requirementTitle as string) || '';
+  const requirementId = customRequirementId || (summary.requirementId as string) || '';
+
+  const displayName = deriveDisplayName({
+    displayName: customDisplayName,
+    requirementTitle,
+    requirementPath,
+    appEnv,
+    ranAt,
+  });
+
+  const testSeriesId = deriveTestSeriesId({
+    testSeriesId: customTestSeriesId,
+    requirementId,
+    requirementPath,
+    requirementTitle,
+  });
+
   const metadata: ArchiveMetadata = {
+    schemaVersion: 2,
     runId,
+    displayName,
+    testSeriesId,
+    requirementId,
+    requirementTitle,
     savedAt: new Date().toISOString(),
     ranAt,
     durationMs,
-    appEnv: (process.env.APP_ENV as string) || (latestRun.appEnv as string) || 'local',
+    appEnv,
     baseUrl: process.env.BASE_URL,
-    requirementPath: (summary.requirementPath as string) || '',
+    requirementPath,
+    branch: customBranch || (process.env.GIT_BRANCH as string) || undefined,
+    buildRef: customBuildRef || (process.env.BUILD_REF as string) || undefined,
+    gitSha: customGitSha || (process.env.GIT_SHA as string) || undefined,
     reportMode: (summary.reportMode as string) || (latestRun.reportMode as string) || 'general',
     qaDecision,
     qaNotes,
@@ -262,7 +321,23 @@ export function loadArchivedMetadata(runId: string): ArchiveMetadata | null {
   const mp = path.join(ad, runId, 'metadata.json');
   if (!fs.existsSync(mp)) return null;
   try {
-    return JSON.parse(fs.readFileSync(mp, 'utf-8')) as ArchiveMetadata;
+    const raw = JSON.parse(fs.readFileSync(mp, 'utf-8')) as ArchiveMetadata;
+    if (!raw.displayName) {
+      raw.displayName = deriveDisplayName({
+        requirementTitle: raw.requirementTitle,
+        requirementPath: raw.requirementPath,
+        appEnv: raw.appEnv,
+        ranAt: raw.ranAt,
+      });
+    }
+    if (!raw.testSeriesId) {
+      raw.testSeriesId = deriveTestSeriesId({
+        requirementId: raw.requirementId,
+        requirementPath: raw.requirementPath,
+        requirementTitle: raw.requirementTitle,
+      });
+    }
+    return raw;
   } catch {
     return null;
   }
@@ -351,6 +426,84 @@ export function deleteArchivedReport(runId: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Update metadata for an existing archived report.
+ * Returns the updated ArchiveMetadata, or null if the run is not found.
+ */
+export function updateArchivedMetadata(
+  runId: string,
+  updates: Partial<SaveRunOptions>,
+): ArchiveMetadata | null {
+  if (!isValidRunId(runId)) {
+    throw new Error(`Invalid runId: "${runId}". RunId must match pattern run-YYYYMMDD-HHmmss-SSS.`);
+  }
+  const ad = archiveDir();
+  const runDir = path.join(ad, runId);
+  const resolved = path.resolve(runDir);
+  if (!resolved.startsWith(path.resolve(ad) + path.sep)) {
+    throw new Error(`Refusing to access outside archive directory.`);
+  }
+  if (!fs.existsSync(runDir)) return null;
+
+  const metadataPath = path.join(runDir, 'metadata.json');
+  let existingMeta: ArchiveMetadata | null = null;
+  if (fs.existsSync(metadataPath)) {
+    try {
+      existingMeta = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+    } catch {
+      existingMeta = null;
+    }
+  }
+
+  const updatedMeta: ArchiveMetadata = {
+    schemaVersion: existingMeta?.schemaVersion ?? 2,
+    runId,
+    displayName:
+      updates.displayName !== undefined ? updates.displayName : existingMeta?.displayName,
+    testSeriesId:
+      updates.testSeriesId !== undefined ? updates.testSeriesId : existingMeta?.testSeriesId,
+    requirementId:
+      updates.requirementId !== undefined ? updates.requirementId : existingMeta?.requirementId,
+    requirementTitle:
+      updates.requirementTitle !== undefined
+        ? updates.requirementTitle
+        : existingMeta?.requirementTitle,
+    qaDecision:
+      updates.qaDecision !== undefined
+        ? updates.qaDecision
+        : (existingMeta?.qaDecision ?? 'APPROVE'),
+    qaNotes: updates.qaNotes !== undefined ? updates.qaNotes : (existingMeta?.qaNotes ?? ''),
+    savedAt: existingMeta?.savedAt ?? new Date().toISOString(),
+    ranAt: existingMeta?.ranAt ?? new Date().toISOString(),
+    appEnv: existingMeta?.appEnv ?? (process.env.APP_ENV as string) ?? 'local',
+    triggeredBy: existingMeta?.triggeredBy ?? 'dashboard',
+    triggerSource: existingMeta?.triggerSource ?? 'dashboard-button',
+    durationMs: existingMeta?.durationMs,
+    baseUrl: existingMeta?.baseUrl,
+    requirementPath: existingMeta?.requirementPath,
+    branch: updates.branch ?? existingMeta?.branch,
+    buildRef: updates.buildRef ?? existingMeta?.buildRef,
+    gitSha: updates.gitSha ?? existingMeta?.gitSha,
+    reportMode: existingMeta?.reportMode ?? 'general',
+  };
+
+  fs.writeFileSync(metadataPath, JSON.stringify(updatedMeta, null, 2), 'utf-8');
+
+  // If legacy report.json exists, also update qaDecision
+  const legacyPath = path.join(runDir, 'report.json');
+  if (fs.existsSync(legacyPath)) {
+    try {
+      const rep = JSON.parse(fs.readFileSync(legacyPath, 'utf-8'));
+      if (updates.qaDecision !== undefined) rep.qaDecision = updates.qaDecision;
+      fs.writeFileSync(legacyPath, JSON.stringify(rep, null, 2), 'utf-8');
+    } catch {
+      // Ignore legacy report.json read/write errors
+    }
+  }
+
+  return updatedMeta;
 }
 
 /**

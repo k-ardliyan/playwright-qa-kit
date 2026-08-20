@@ -900,9 +900,6 @@ export function renderThemeScript(): string {
       (function () {
         const STORAGE_KEY = 'dashboard-theme';
         const root = document.documentElement;
-        const toggle = document.getElementById('themeToggle');
-        const iconEl = toggle ? toggle.querySelector('.theme-toggle__icon') : null;
-        const labelEl = toggle ? toggle.querySelector('.theme-toggle__label') : null;
 
         function detectInitial() {
           try {
@@ -920,12 +917,15 @@ export function renderThemeScript(): string {
         function applyTheme(theme) {
           const next = theme === 'dark' ? 'dark' : 'light';
           root.dataset.theme = next;
-          if (toggle) {
-            toggle.setAttribute('aria-pressed', next === 'dark' ? 'true' : 'false');
-            toggle.setAttribute('aria-label', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-          }
-          if (iconEl) iconEl.textContent = next === 'dark' ? '☾' : '☀';
-          if (labelEl) labelEl.textContent = next === 'dark' ? 'Dark' : 'Light';
+          document.querySelectorAll('.theme-toggle, #themeToggle, #theme-toggle-btn, [data-theme-toggle]').forEach(function(btn) {
+            btn.setAttribute('aria-pressed', next === 'dark' ? 'true' : 'false');
+            btn.setAttribute('aria-label', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+            btn.setAttribute('title', next === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+            const iconEl = btn.querySelector('.theme-toggle__icon');
+            const labelEl = btn.querySelector('.theme-toggle__label');
+            if (iconEl) iconEl.textContent = next === 'dark' ? '☾' : '☀';
+            if (labelEl) labelEl.textContent = next === 'dark' ? 'Dark' : 'Light';
+          });
           try { window.localStorage.setItem(STORAGE_KEY, next); } catch (error) { /* ignore */ }
           if (typeof window.__rebuildDashboardChart === 'function') {
             window.__rebuildDashboardChart();
@@ -935,11 +935,12 @@ export function renderThemeScript(): string {
 
         applyTheme(detectInitial());
 
-        if (toggle) {
-          toggle.addEventListener('click', () => {
+        document.addEventListener('click', function (e) {
+          const btn = e.target.closest('.theme-toggle, #themeToggle, #theme-toggle-btn, [data-theme-toggle]');
+          if (btn) {
             applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
-          });
-        }
+          }
+        });
       })();
     </script>
   `;
@@ -1140,26 +1141,34 @@ export function renderInteractiveScript(): string {
       var resetBtn = document.getElementById('column-picker-reset');
       if (showAllBtn) {
         showAllBtn.addEventListener('click', function () {
-          colState = Object.assign({}, DEFAULT_COLS);
+          var allCols = {};
+          for (var k in DEFAULT_COLS) {
+            allCols[k] = true;
+          }
+          document.querySelectorAll('[data-col-toggle]').forEach(function (input) {
+            var key = input.getAttribute('data-col-toggle');
+            if (key) allCols[key] = true;
+          });
+          colState = allCols;
           applyColumnVisibility(colState);
           saveColState(colState);
         });
       }
       if (resetBtn) {
-              resetBtn.addEventListener('click', function () {
-                colState = Object.assign({}, DEFAULT_COLS);
-                applyColumnVisibility(colState);
-                saveColState(colState);
-                // Restore sticky pins to default (on)
-                var pinH = document.getElementById('pin-sticky-header');
-                var pinL = document.getElementById('pin-sticky-left');
-                if (pinH) pinH.checked = true;
-                if (pinL) pinL.checked = true;
-                applyStickyPins();
-                saveStickyPins();
-              });
-            }
-          }
+        resetBtn.addEventListener('click', function () {
+          colState = Object.assign({}, DEFAULT_COLS);
+          applyColumnVisibility(colState);
+          saveColState(colState);
+          // Restore sticky pins to default (on)
+          var pinH = document.getElementById('pin-sticky-header');
+          var pinL = document.getElementById('pin-sticky-left');
+          if (pinH) pinH.checked = true;
+          if (pinL) pinL.checked = true;
+          applyStickyPins();
+          saveStickyPins();
+        });
+      }
+    }
 
           /* ---- Sticky pin toggles (table-only) ---- */
           var STICKY_KEY = 'dashboard-sticky-pins-v1';

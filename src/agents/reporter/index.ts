@@ -23,6 +23,7 @@ export {
 export {
   archiveReport,
   saveLatestRun,
+  updateArchivedMetadata,
   loadArchivedReport,
   loadArchivedSummary,
   loadArchivedMetadata,

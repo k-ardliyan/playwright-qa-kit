@@ -24,4 +24,27 @@ test.describe('archive-cli parseArgs', () => {
   test('ignores non-flag args (command name)', () => {
     expect(parseArgs(['node', 'cli', 'save', '--yes'])).toEqual({ yes: true });
   });
+
+  test('parses --label, --series, --requirement-id, and --requirement-title', () => {
+    expect(
+      parseArgs([
+        'node',
+        'cli',
+        'save',
+        '--decision=APPROVE',
+        '--label=Login Staging RC1',
+        '--series=auth-login',
+        '--requirement-id=REQ-AUTH-001',
+        '--requirement-title=Authentication Flow',
+        '--yes',
+      ]),
+    ).toEqual({
+      decision: 'APPROVE',
+      label: 'Login Staging RC1',
+      series: 'auth-login',
+      'requirement-id': 'REQ-AUTH-001',
+      'requirement-title': 'Authentication Flow',
+      yes: true,
+    });
+  });
 });

@@ -25,24 +25,42 @@ async function withServer(fn: (base: string) => Promise<void>): Promise<void> {
 }
 
 /**
- * Raw GET with an explicit path (no URL normalization — http.request sends the
- * path verbatim, which is required to test ../ traversal guards that fetch
- * would resolve client-side).
+ * Raw HTTP request with explicit method and path (no URL normalization).
  */
+function requestRaw(
+  base: string,
+  path: string,
+  method = 'GET',
+  body?: string,
+): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(base);
+    const headers: http.OutgoingHttpHeaders = {};
+    if (body) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(body);
+    }
+    const req = http.request(
+      { hostname: u.hostname, port: u.port, path, method, headers },
+      (res) => {
+        let resBody = '';
+        res.on('data', (c) => (resBody += c));
+        res.on('end', () =>
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, body: resBody }),
+        );
+      },
+    );
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
 function getRaw(
   base: string,
   path: string,
 ): Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }> {
-  return new Promise((resolve, reject) => {
-    const u = new URL(base);
-    const req = http.request({ hostname: u.hostname, port: u.port, path, method: 'GET' }, (res) => {
-      let body = '';
-      res.on('data', (c) => (body += c));
-      res.on('end', () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body }));
-    });
-    req.on('error', reject);
-    req.end();
-  });
+  return requestRaw(base, path, 'GET');
 }
 
 test.describe('dashboard server routes', () => {
@@ -105,6 +123,49 @@ test.describe('dashboard server routes', () => {
     await withServer(async (base) => {
       const r = await getRaw(base, '/fragment/does-not-exist');
       expect(r.status).toBe(404);
+    });
+  });
+
+  test('OPTIONS preflight returns 204 with allowed methods including PATCH and PUT', async () => {
+    await withServer(async (base) => {
+      const res = await requestRaw(base, '/api/archive/run-1', 'OPTIONS');
+      expect(res.status).toBe(204);
+      expect(res.headers['access-control-allow-methods']).toContain('PATCH');
+      expect(res.headers['access-control-allow-methods']).toContain('PUT');
+    });
+  });
+
+  test('GET /api/runs alias returns JSON history', async () => {
+    await withServer(async (base) => {
+      const r = await getRaw(base, '/api/runs');
+      expect(r.status).toBe(200);
+      expect(r.headers['content-type']).toContain('application/json');
+      const parsed = JSON.parse(r.body);
+      expect(Array.isArray(parsed.history)).toBe(true);
+    });
+  });
+
+  test('PATCH /api/archive path traversal returns 400', async () => {
+    await withServer(async (base) => {
+      const res = await requestRaw(
+        base,
+        '/api/archive/../etc/passwd',
+        'PATCH',
+        JSON.stringify({ displayName: 'Test' }),
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  test('PATCH /api/archive nonexistent run returns 404', async () => {
+    await withServer(async (base) => {
+      const res = await requestRaw(
+        base,
+        '/api/archive/run-20000101-000000-000',
+        'PATCH',
+        JSON.stringify({ displayName: 'Updated Run Label' }),
+      );
+      expect(res.status).toBe(404);
     });
   });
 });

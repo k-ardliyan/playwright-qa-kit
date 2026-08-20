@@ -1,0 +1,153 @@
+@media (min-width: 1440px) {
+  .page {
+    padding: 24px 32px 56px;
+  }
+}
+
+@media (min-width: 1120px) {
+  .attachment-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .run-details__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1040px) {
+  .rail {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .hero-stat-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-stat {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .artifacts-card__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .artifacts-card__links {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .artifacts-card__links-label {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .test-card__summary-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .test-card__title {
+    width: 100%;
+  }
+
+  .test-card__duration {
+    margin-left: 0;
+  }
+
+  .test-card__meta-row {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 14px 12px 32px;
+  }
+
+  .hero {
+    padding: 14px;
+  }
+
+  .results-comparison {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 640px) {
+  .attachment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .run-details__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-stat-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .artifacts-card__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .artifacts-card__links {
+    grid-template-columns: 1fr;
+  }
+
+  .artifacts-bucket {
+    max-height: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .test-drawer {
+    width: 100vw;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .drawer-header {
+    padding: 0.5rem 0.625rem;
+    gap: 0.375rem;
+  }
+
+  .drawer-test-id {
+    font-size: 0.625rem;
+    padding: 0.0625rem 0.25rem;
+  }
+
+  .drawer-test-title {
+    font-size: 0.8125rem;
+  }
+
+  .drawer-meta-bar {
+    padding: 0.3125rem 0.625rem;
+    gap: 0.25rem;
+  }
+
+  .drawer-tabs {
+    padding: 0 0.375rem;
+  }
+
+  .drawer-tab {
+    padding: 0.4375rem 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .drawer-body {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .drawer-kv__k {
+    flex-basis: 4.5rem;
+  }
+}

@@ -985,7 +985,7 @@ export function renderDocumentShell(options: {
 }
 
 /** View toggle + filter/search + density + keyboard shortcuts. */
-function renderInteractiveScript(): string {
+export function renderInteractiveScript(): string {
   return `
   <script>
   (function () {

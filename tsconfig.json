@@ -10,6 +10,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@kitajs/html",
+    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],
     "types": ["node"],
     "paths": {
       "@/*": ["./src/*"],
@@ -21,7 +24,9 @@
     "playwright.config.ts",
     "example/erpku/playwright.config.ts",
     "src/**/*.ts",
-    "example/erpku/**/*.ts"
+    "src/**/*.tsx",
+    "example/erpku/**/*.ts",
+    "example/erpku/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

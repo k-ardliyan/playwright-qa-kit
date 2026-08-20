@@ -41,8 +41,8 @@
     "mcp:typecheck": "npx tsc -p mcp-server/tsconfig.json --noEmit",
     "mcp:config": "tsx scripts/generate-mcp-config.ts",
     "manifest:generate": "tsx scripts/generate-manifest.ts",
-    "validate:agents": "tsx scripts/validate-agents.ts",
-    "quality:check-code": "npm run format:check && npm run lint && npm run typecheck && npm run mcp:typecheck",
+    "xss:scan": "xss-scan",
+    "quality:check-code": "npm run format:check && npm run lint && npm run typecheck && npm run mcp:typecheck && npm run xss:scan",
     "quality:check-rules": "npm run validate && npm run validate:requirement -- requirements/auth/sample-login-empty-fields.md && npm run test:property && npm run test:unit && npm run test:file-content && npm run test:network-assert",
     "test:quality": "npm run setup:check && npm run quality:check-code && npm run quality:check-rules && npm run mcp:build && npm run health:check",
     "test:unit": "npx playwright test -c playwright.unit.config.ts",
@@ -72,6 +72,8 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^2.17.4",
     "@eslint/js": "^10.0.1",
+    "@kitajs/html": "^4.2.13",
+    "@kitajs/ts-html-plugin": "^4.1.4",
     "@playwright/mcp": "^0.0.78",
     "@playwright/test": "^1.62.0",
     "@types/node": "^20.19.43",
@@ -90,11 +92,11 @@
     "typescript-eslint": "^8.65.0"
   },
   "lint-staged": {
-    "*.ts": [
+    "*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,md,yml}": [
+    "*.{json,md,yml,css}": [
       "prettier --write"
     ]
   },

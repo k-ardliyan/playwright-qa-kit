@@ -1,0 +1,73 @@
+:root {
+  color-scheme: light;
+  --bg: #fdf8f3;
+  --bg-accent: #faf3eb;
+  --surface: #ffffff;
+  --surface-strong: #fffbf7;
+  --surface-muted: #f7efe6;
+  --surface-soft: rgba(247, 239, 230, 0.92);
+  --text: #1a1a2e;
+  --muted: #6b5b4f;
+  --border: rgba(196, 149, 106, 0.22);
+  --border-strong: rgba(180, 120, 70, 0.34);
+  --passed: #3d8b55;
+  --passed-bg: #e7f5ea;
+  --failed: #c45c5c;
+  --failed-bg: #fdeceb;
+  --skipped: #c48a2b;
+  --skipped-bg: #fdf3dc;
+  --accent: #c4956a;
+  --accent-strong: #a87648;
+  --accent-soft: #f3e4d4;
+  --info: #4f7cac;
+  --info-bg: #e6f0f8;
+  --success: #3d8b55;
+  --danger: #c45c5c;
+  --shadow: 0 1px 2px rgba(80, 50, 20, 0.04), 0 12px 28px rgba(180, 120, 70, 0.08);
+  --chart-center-text: #1a1a2e;
+  --chart-center-subtext: #6b5b4f;
+  --radius-lg: 10px;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+  --radius-pill: 999px;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Standardized Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #17110d;
+  --bg-accent: #1d1611;
+  --surface: #221a14;
+  --surface-strong: #2a2119;
+  --surface-muted: #32271e;
+  --surface-soft: rgba(50, 39, 30, 0.92);
+  --text: #f6efe7;
+  --muted: #b9a594;
+  --border: rgba(212, 165, 116, 0.2);
+  --border-strong: rgba(212, 165, 116, 0.34);
+  --passed: #7dcea0;
+  --passed-bg: rgba(125, 206, 160, 0.12);
+  --failed: #f0a3a0;
+  --failed-bg: rgba(196, 92, 92, 0.18);
+  --skipped: #f0c674;
+  --skipped-bg: rgba(196, 138, 43, 0.16);
+  --accent: #d4a574;
+  --accent-strong: #e0b98a;
+  --accent-soft: rgba(212, 165, 116, 0.16);
+  --info: #8fb8e0;
+  --info-bg: rgba(79, 124, 172, 0.18);
+  --success: #7dcea0;
+  --danger: #f0a3a0;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 32px rgba(0, 0, 0, 0.42);
+  --chart-center-text: #f6efe7;
+  --chart-center-subtext: #b9a594;
+}

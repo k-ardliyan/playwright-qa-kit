@@ -107,10 +107,21 @@ export interface ArchiveSaveResult {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const ARCHIVE_DIR = path.resolve('reports', 'archive');
-const REPORT_DIR = path.resolve('reports');
-const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
-const LATEST_RUN_PATH = path.join(REPORT_DIR, '.latest-run');
+// Lazy accessors: read env vars at call time so unit tests can inject a custom
+// archive path via QA_ARCHIVE_DIR / QA_REPORT_DIR without worrying about
+// module import order or caching.
+function archiveDir(): string {
+  return process.env['QA_ARCHIVE_DIR'] ?? path.resolve('reports', 'archive');
+}
+function reportDir(): string {
+  return process.env['QA_REPORT_DIR'] ?? path.resolve('reports');
+}
+function summaryPath(): string {
+  return path.join(reportDir(), 'test-summary.json');
+}
+function latestRunPath(): string {
+  return path.join(reportDir(), '.latest-run');
+}
 
 // ─── Run ID generation ──────────────────────────────────────────────────────
 
@@ -142,23 +153,23 @@ export function saveLatestRun(options: {
   const { qaDecision, qaNotes = '', triggerSource } = options;
 
   // 1. Validate test-summary.json exists
-  if (!fs.existsSync(SUMMARY_PATH)) {
+  if (!fs.existsSync(summaryPath())) {
     throw new Error('No test-summary.json found. Run tests first before saving.');
   }
 
   // 2. Read test-summary.json
   let summary: Record<string, unknown>;
   try {
-    summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+    summary = JSON.parse(fs.readFileSync(summaryPath(), 'utf-8'));
   } catch {
     throw new Error('Failed to parse test-summary.json. File may be corrupted.');
   }
 
   // 3. Read .latest-run marker for metadata
   let latestRun: Record<string, unknown> = {};
-  if (fs.existsSync(LATEST_RUN_PATH)) {
+  if (fs.existsSync(latestRunPath())) {
     try {
-      latestRun = JSON.parse(fs.readFileSync(LATEST_RUN_PATH, 'utf-8'));
+      latestRun = JSON.parse(fs.readFileSync(latestRunPath(), 'utf-8'));
     } catch {
       // Warn — corrupt marker means reportMode and appEnv fall back to defaults
       process.stderr.write(
@@ -175,7 +186,7 @@ export function saveLatestRun(options: {
   const runId = generateRunId(ranAt);
 
   // 5. Validate runId doesn't already exist
-  const runDir = path.join(ARCHIVE_DIR, runId);
+  const runDir = path.join(archiveDir(), runId);
   if (fs.existsSync(runDir)) {
     throw new Error(`Archive for run ${runId} already exists. Will not overwrite.`);
   }
@@ -226,12 +237,13 @@ export function saveLatestRun(options: {
 export function loadArchivedSummary(runId: string): Record<string, unknown> | null {
   // Security: reject invalid runId (path traversal guard)
   if (!isValidRunId(runId)) return null;
-  const resolved = path.resolve(path.join(ARCHIVE_DIR, runId));
-  if (!resolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
-  const summaryPath = path.join(ARCHIVE_DIR, runId, 'summary.json');
-  if (!fs.existsSync(summaryPath)) return null;
+  const ad = archiveDir();
+  const resolved = path.resolve(path.join(ad, runId));
+  if (!resolved.startsWith(path.resolve(ad) + path.sep)) return null;
+  const sp = path.join(ad, runId, 'summary.json');
+  if (!fs.existsSync(sp)) return null;
   try {
-    return JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+    return JSON.parse(fs.readFileSync(sp, 'utf-8'));
   } catch {
     return null;
   }
@@ -244,12 +256,13 @@ export function loadArchivedSummary(runId: string): Record<string, unknown> | nu
 export function loadArchivedMetadata(runId: string): ArchiveMetadata | null {
   // Security: reject invalid runId (path traversal guard)
   if (!isValidRunId(runId)) return null;
-  const resolved = path.resolve(path.join(ARCHIVE_DIR, runId));
-  if (!resolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
-  const metadataPath = path.join(ARCHIVE_DIR, runId, 'metadata.json');
-  if (!fs.existsSync(metadataPath)) return null;
+  const ad = archiveDir();
+  const resolved = path.resolve(path.join(ad, runId));
+  if (!resolved.startsWith(path.resolve(ad) + path.sep)) return null;
+  const mp = path.join(ad, runId, 'metadata.json');
+  if (!fs.existsSync(mp)) return null;
   try {
-    return JSON.parse(fs.readFileSync(metadataPath, 'utf-8')) as ArchiveMetadata;
+    return JSON.parse(fs.readFileSync(mp, 'utf-8')) as ArchiveMetadata;
   } catch {
     return null;
   }
@@ -302,10 +315,11 @@ export function loadArchivedReport(runId: string): ArchivedReportLegacy | null {
 
   // Security: reject invalid runId before legacy read
   if (!isValidRunId(runId)) return null;
-  const legacyResolved = path.resolve(path.join(ARCHIVE_DIR, runId));
-  if (!legacyResolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) return null;
+  const ad = archiveDir();
+  const legacyResolved = path.resolve(path.join(ad, runId));
+  if (!legacyResolved.startsWith(path.resolve(ad) + path.sep)) return null;
   // Fallback: legacy format (report.json)
-  const legacyPath = path.join(ARCHIVE_DIR, runId, 'report.json');
+  const legacyPath = path.join(ad, runId, 'report.json');
   if (!fs.existsSync(legacyPath)) return null;
   try {
     return JSON.parse(fs.readFileSync(legacyPath, 'utf-8')) as ArchivedReportLegacy;
@@ -323,10 +337,11 @@ export function deleteArchivedReport(runId: string): boolean {
   if (!isValidRunId(runId)) {
     throw new Error(`Invalid runId: "${runId}". RunId must match pattern run-YYYYMMDD-HHmmss-SSS.`);
   }
-  const runDir = path.join(ARCHIVE_DIR, runId);
-  // Verify the resolved path is inside ARCHIVE_DIR (defense-in-depth)
+  const ad = archiveDir();
+  const runDir = path.join(ad, runId);
+  // Verify the resolved path is inside archiveDir() (defense-in-depth)
   const resolved = path.resolve(runDir);
-  if (!resolved.startsWith(path.resolve(ARCHIVE_DIR) + path.sep)) {
+  if (!resolved.startsWith(path.resolve(ad) + path.sep)) {
     throw new Error(`Refusing to delete outside archive directory.`);
   }
   if (!fs.existsSync(runDir)) return false;
@@ -357,19 +372,20 @@ export function isValidRunId(runId: string): boolean {
  * Returns sorted newest-first (by directory mtime).
  */
 export function listArchivedRunIds(): string[] {
-  if (!fs.existsSync(ARCHIVE_DIR)) return [];
+  const ad = archiveDir();
+  if (!fs.existsSync(ad)) return [];
 
-  const entries = fs.readdirSync(ARCHIVE_DIR, { withFileTypes: true });
+  const entries = fs.readdirSync(ad, { withFileTypes: true });
   const runIds: Array<{ runId: string; mtime: number }> = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     // Accept directories with either summary.json or report.json
-    const hasSummary = fs.existsSync(path.join(ARCHIVE_DIR, entry.name, 'summary.json'));
-    const hasReport = fs.existsSync(path.join(ARCHIVE_DIR, entry.name, 'report.json'));
+    const hasSummary = fs.existsSync(path.join(ad, entry.name, 'summary.json'));
+    const hasReport = fs.existsSync(path.join(ad, entry.name, 'report.json'));
     if (!hasSummary && !hasReport) continue;
 
-    const stat = fs.statSync(path.join(ARCHIVE_DIR, entry.name));
+    const stat = fs.statSync(path.join(ad, entry.name));
     runIds.push({ runId: entry.name, mtime: stat.mtimeMs });
   }
 
@@ -399,7 +415,7 @@ export function listArchivedRunIds(): string[] {
  * Get the archive directory path.
  */
 export function getArchiveDir(): string {
-  return ARCHIVE_DIR;
+  return archiveDir();
 }
 
 /**
@@ -407,11 +423,11 @@ export function getArchiveDir(): string {
  * Compares timestamp from .latest-run against existing archives.
  */
 export function isLatestRunArchived(): boolean {
-  if (!fs.existsSync(LATEST_RUN_PATH)) return false;
+  if (!fs.existsSync(latestRunPath())) return false;
   try {
-    const latest = JSON.parse(fs.readFileSync(LATEST_RUN_PATH, 'utf-8'));
+    const latest = JSON.parse(fs.readFileSync(latestRunPath(), 'utf-8'));
     const runId = generateRunId(latest.timestamp as string);
-    return fs.existsSync(path.join(ARCHIVE_DIR, runId));
+    return fs.existsSync(path.join(archiveDir(), runId));
   } catch {
     return false;
   }
@@ -431,9 +447,9 @@ export function getLatestRunInfo(): {
   passRate: number;
   reportMode: string;
 } | null {
-  if (!fs.existsSync(LATEST_RUN_PATH)) return null;
+  if (!fs.existsSync(latestRunPath())) return null;
   try {
-    return JSON.parse(fs.readFileSync(LATEST_RUN_PATH, 'utf-8'));
+    return JSON.parse(fs.readFileSync(latestRunPath(), 'utf-8'));
   } catch {
     return null;
   }
@@ -450,7 +466,7 @@ export function getLatestRunInfo(): {
  * NOTE: Does NOT overwrite an existing archive for the same runId.
  */
 export function archiveReport(report: ArchivedReportLegacy): string {
-  const runDir = path.join(ARCHIVE_DIR, report.runId);
+  const runDir = path.join(archiveDir(), report.runId);
   if (!fs.existsSync(runDir)) {
     fs.mkdirSync(runDir, { recursive: true });
   }

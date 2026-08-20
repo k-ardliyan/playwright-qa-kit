@@ -1,7 +1,23 @@
-import { test, expect } from '@playwright/test';
+/**
+ * NOTE: QA_ARCHIVE_DIR must be set BEFORE this module is imported,
+ * because report-archive.ts resolves ARCHIVE_DIR at module load time.
+ * We set it here at the top of the file so it takes effect when
+ * compareReports (and transitively report-archive) is first imported.
+ */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+
+// Create a temp archive dir and set the env var BEFORE any imports from
+// report-archive (via report-compare), so the module-level constant picks it up.
+const TMP_ARCHIVE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-compare-'));
+const TMP_ARCHIVE_DIR = path.join(TMP_ARCHIVE_ROOT, 'reports', 'archive');
+fs.mkdirSync(TMP_ARCHIVE_DIR, { recursive: true });
+process.env['QA_ARCHIVE_DIR'] = TMP_ARCHIVE_DIR;
+process.env['QA_REPORT_DIR'] = path.join(TMP_ARCHIVE_ROOT, 'reports');
+
+// Now import modules that depend on ARCHIVE_DIR — they will pick up the env var.
+import { test, expect } from '@playwright/test';
 import { compareReports, classifyChange } from '../../agents/reporter/report-compare';
 import type { ArchivedScenario } from '../../agents/reporter/report-archive';
 
@@ -16,14 +32,8 @@ function scenario(status: string, errorMessage?: string): ArchivedScenario {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Write a minimal archive fixture that loadArchivedReport() can read. */
-function writeArchiveFixture(
-  archiveDir: string,
-  runId: string,
-  timestamp: string,
-  passRate: number,
-): void {
-  const runDir = path.join(archiveDir, runId);
+function writeArchiveFixture(runId: string, timestamp: string, passRate: number): void {
+  const runDir = path.join(TMP_ARCHIVE_DIR, runId);
   fs.mkdirSync(runDir, { recursive: true });
 
   const summary = {
@@ -118,29 +128,18 @@ test.describe('classifyChange — baseline transitions still correct', () => {
 });
 
 test.describe('report-compare error contract', () => {
-  // Tmp archive dir isolated per test-run so parallel workers don't clash.
-  let tmpDir: string;
-  let origCwd: string;
-
   const RUN_A = 'run-20260804-122732-610'; // earlier
   const RUN_B = 'run-20260804-132457-920'; // later
 
   test.beforeAll(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-compare-'));
-    // Place archive fixtures under <tmpDir>/reports/archive/<runId>/
-    const archiveDir = path.join(tmpDir, 'reports', 'archive');
-    writeArchiveFixture(archiveDir, RUN_A, '2026-08-04T12:27:32.610Z', 80);
-    writeArchiveFixture(archiveDir, RUN_B, '2026-08-04T13:24:57.920Z', 100);
-
-    // compareReports() resolves ARCHIVE_DIR via path.resolve('reports', 'archive'),
-    // which is relative to process.cwd(). Redirect cwd to tmpDir so it finds fixtures.
-    origCwd = process.cwd();
-    process.chdir(tmpDir);
+    writeArchiveFixture(RUN_A, '2026-08-04T12:27:32.610Z', 80);
+    writeArchiveFixture(RUN_B, '2026-08-04T13:24:57.920Z', 100);
   });
 
   test.afterAll(() => {
-    process.chdir(origCwd);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(TMP_ARCHIVE_ROOT, { recursive: true, force: true });
+    delete process.env['QA_ARCHIVE_DIR'];
+    delete process.env['QA_REPORT_DIR'];
   });
 
   test('compareReports with missing run returns { error } object (truthy!)', () => {

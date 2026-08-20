@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { compareReports, classifyChange } from '../../agents/reporter/report-compare';
 import type { ArchivedScenario } from '../../agents/reporter/report-archive';
 
@@ -10,6 +13,53 @@ function scenario(status: string, errorMessage?: string): ArchivedScenario {
     errorMessage,
   };
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Write a minimal archive fixture that loadArchivedReport() can read. */
+function writeArchiveFixture(
+  archiveDir: string,
+  runId: string,
+  timestamp: string,
+  passRate: number,
+): void {
+  const runDir = path.join(archiveDir, runId);
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const summary = {
+    total: 1,
+    passed: passRate === 100 ? 1 : 0,
+    failed: passRate === 100 ? 0 : 1,
+    skipped: 0,
+    passRate,
+    timestamp,
+    testCases: [
+      {
+        testId: 'TC-01',
+        title: 'sample',
+        status: passRate === 100 ? 'passed' : 'failed',
+        role: '',
+        module: 'demo',
+        feature: 'nav',
+      },
+    ],
+  };
+  fs.writeFileSync(path.join(runDir, 'summary.json'), JSON.stringify(summary, null, 2), 'utf-8');
+
+  const metadata = {
+    runId,
+    savedAt: timestamp,
+    ranAt: timestamp,
+    appEnv: 'local',
+    qaDecision: 'APPROVE',
+    qaNotes: '',
+    triggeredBy: 'manual',
+    triggerSource: 'cli',
+  };
+  fs.writeFileSync(path.join(runDir, 'metadata.json'), JSON.stringify(metadata, null, 2), 'utf-8');
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe('classifyChange — healed status transitions', () => {
   test('healed → passed is a FIX (healer succeeded, now green)', () => {
@@ -68,6 +118,31 @@ test.describe('classifyChange — baseline transitions still correct', () => {
 });
 
 test.describe('report-compare error contract', () => {
+  // Tmp archive dir isolated per test-run so parallel workers don't clash.
+  let tmpDir: string;
+  let origCwd: string;
+
+  const RUN_A = 'run-20260804-122732-610'; // earlier
+  const RUN_B = 'run-20260804-132457-920'; // later
+
+  test.beforeAll(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qa-compare-'));
+    // Place archive fixtures under <tmpDir>/reports/archive/<runId>/
+    const archiveDir = path.join(tmpDir, 'reports', 'archive');
+    writeArchiveFixture(archiveDir, RUN_A, '2026-08-04T12:27:32.610Z', 80);
+    writeArchiveFixture(archiveDir, RUN_B, '2026-08-04T13:24:57.920Z', 100);
+
+    // compareReports() resolves ARCHIVE_DIR via path.resolve('reports', 'archive'),
+    // which is relative to process.cwd(). Redirect cwd to tmpDir so it finds fixtures.
+    origCwd = process.cwd();
+    process.chdir(tmpDir);
+  });
+
+  test.afterAll(() => {
+    process.chdir(origCwd);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
   test('compareReports with missing run returns { error } object (truthy!)', () => {
     const result = compareReports('run-19990101-000000-000', 'run-19990102-000000-000');
     // This is the contract the server route relies on: an error result is a
@@ -81,24 +156,24 @@ test.describe('report-compare error contract', () => {
   });
 
   test('compareReports with valid runs returns ReportComparison (no error key)', () => {
-    const result = compareReports('run-20260804-122732-610', 'run-20260804-132457-920');
+    const result = compareReports(RUN_A, RUN_B);
     expect(result).toBeTruthy();
     expect('error' in result).toBe(false);
     if (!('error' in result)) {
-      expect(result.baselineRunId).toBe('run-20260804-122732-610');
-      expect(result.comparisonRunId).toBe('run-20260804-132457-920');
+      expect(result.baselineRunId).toBe(RUN_A);
+      expect(result.comparisonRunId).toBe(RUN_B);
       expect(typeof result.passRateDelta).toBe('number');
     }
   });
 
   test('compareReports swaps runs to chronological order', () => {
     // Reversed args — newer first.
-    const result = compareReports('run-20260804-132457-920', 'run-20260804-122732-610');
+    const result = compareReports(RUN_B, RUN_A);
     expect('error' in result).toBe(false);
     if (!('error' in result)) {
       // Older run becomes baseline, newer becomes comparison.
-      expect(result.baselineRunId).toBe('run-20260804-122732-610');
-      expect(result.comparisonRunId).toBe('run-20260804-132457-920');
+      expect(result.baselineRunId).toBe(RUN_A);
+      expect(result.comparisonRunId).toBe(RUN_B);
     }
   });
 });

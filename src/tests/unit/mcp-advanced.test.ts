@@ -9,14 +9,30 @@ import {
 
 test.describe('Advanced MCP Capabilities (Milestone 4: MCP-073 to MCP-095)', () => {
   test('validates auth-assist configuration and guards CI', () => {
-    const valid = validateAuthAssistConfig({
-      mode: 'interactive-headed',
-      environment: 'dev',
-      role: 'super-admin',
-      expectedOrigin: 'http://localhost:3000',
-      localOnly: true,
-    });
+    const valid = validateAuthAssistConfig(
+      {
+        mode: 'interactive-headed',
+        environment: 'dev',
+        role: 'super-admin',
+        expectedOrigin: 'http://localhost:3000',
+        localOnly: true,
+      },
+      { isCi: false },
+    );
     expect(valid.valid).toBe(true);
+
+    const ciGuarded = validateAuthAssistConfig(
+      {
+        mode: 'interactive-headed',
+        environment: 'dev',
+        role: 'super-admin',
+        expectedOrigin: 'http://localhost:3000',
+        localOnly: true,
+      },
+      { isCi: true },
+    );
+    expect(ciGuarded.valid).toBe(false);
+    expect(ciGuarded.errors).toContain('Interactive headed auth-assist mode cannot run under CI');
 
     const invalid = validateAuthAssistConfig({
       mode: 'cdp-connect',

@@ -15,10 +15,17 @@ export interface AuthAssistValidationResult {
   warnings: string[];
 }
 
+export interface ValidateAuthAssistOptions {
+  isCi?: boolean;
+}
+
 /**
  * Validate configuration for interactive auth assist mode.
  */
-export function validateAuthAssistConfig(config: AuthAssistConfig): AuthAssistValidationResult {
+export function validateAuthAssistConfig(
+  config: AuthAssistConfig,
+  options?: ValidateAuthAssistOptions,
+): AuthAssistValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -41,7 +48,8 @@ export function validateAuthAssistConfig(config: AuthAssistConfig): AuthAssistVa
     }
   }
 
-  if (process.env.CI && config.mode === 'interactive-headed') {
+  const isCi = options?.isCi ?? (process.env.CI === 'true' || Boolean(process.env.CI));
+  if (isCi && config.mode === 'interactive-headed') {
     errors.push('Interactive headed auth-assist mode cannot run under CI');
   }
 

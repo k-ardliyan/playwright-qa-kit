@@ -118,7 +118,20 @@ export class McpWorkspacePathRegistry {
   }
 
   public toRelative(targetPath: string): string {
-    const abs = path.resolve(this._rootDir, targetPath);
+    const rootNormalized = this._rootDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    const targetNormalized = targetPath.replace(/\\/g, '/');
+
+    if (targetNormalized === rootNormalized) {
+      return '';
+    }
+    if (targetNormalized.startsWith(rootNormalized + '/')) {
+      return targetNormalized.slice(rootNormalized.length + 1);
+    }
+    const abs = path.resolve(this._rootDir, targetNormalized);
+    const absNormalized = abs.replace(/\\/g, '/');
+    if (absNormalized.startsWith(rootNormalized + '/')) {
+      return absNormalized.slice(rootNormalized.length + 1);
+    }
     return path.relative(this._rootDir, abs).replace(/\\/g, '/');
   }
 

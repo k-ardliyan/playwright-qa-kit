@@ -57,9 +57,16 @@ test.describe('Workspace Path Closure & Cross-Platform Resolver Contract (Phase 
     const registry = new WorkspacePathRegistry();
     const posixPath = `${registry.rootDir}/artifacts/reports/custom.html`;
     const winPath = `${registry.rootDir}\\artifacts\\reports\\custom.html`;
+    const relWinPath = `artifacts\\reports\\custom.html`;
+    const relPosixPath = `artifacts/reports/custom.html`;
 
     expect(registry.toRelative(posixPath)).toBe('artifacts/reports/custom.html');
     expect(registry.toRelative(winPath)).toBe('artifacts/reports/custom.html');
+    expect(registry.toRelative(relWinPath)).toBe('artifacts/reports/custom.html');
+    expect(registry.toRelative(relPosixPath)).toBe('artifacts/reports/custom.html');
+
+    expect(mcpWorkspace.toRelative(posixPath)).toBe('artifacts/reports/custom.html');
+    expect(mcpWorkspace.toRelative(winPath)).toBe('artifacts/reports/custom.html');
   });
 
   test('handles fallback to default manifest if missing or invalid path provided', () => {

@@ -47,11 +47,12 @@ Also read metadata from the source requirement via `normalize_requirements` when
 
 ## MCP Dependencies
 
-| Server          | Tool                       | Purpose                                                       |
-| --- | --- | --- |
-| `playwright-qa` | `normalize_requirements`   | Read requirement metadata including role scope and auth state |
-| `playwright-qa` | `validate_generated_tests` | Validate generated spec files after generation                |
-| `playwright-qa` | `snapshot_page`            | Capture ARIA + selector catalog for a specific page           |
+| Server          | Tool                       | Purpose                                                            |
+| --------------- | -------------------------- | ------------------------------------------------------------------ |
+| `playwright-qa` | `compile_requirement`      | Read typed RequirementContractV1 metadata including roles and auth |
+| `playwright-qa` | `normalize_requirements`   | Read requirement metadata including role scope and auth state      |
+| `playwright-qa` | `validate_generated_tests` | Validate generated spec files after generation                     |
+| `playwright-qa` | `snapshot_page`            | Capture ARIA + selector catalog for a specific page                |
 
 ### POM Decision (Before Generating Spec)
 
@@ -102,7 +103,7 @@ Before committing generated test code:
 ## Metadata → Code Mapping
 
 | Source (requirement / test plan)              | Generated code                                                                                                                                   |
-| --- | --- |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `metadata.tags` or `#tags`                    | `test.describe('...', { tag: ['@auth', '@ui'] }, () => {`                                                                                        |
 | `metadata.authState: unauthenticated`         | `test.use({ storageState: { cookies: [], origins: [] } })`                                                                                       |
 | `metadata.authState: authenticated` (general) | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/user.json\` })`— mode general → role **user**, never invent role`general` |
@@ -117,7 +118,7 @@ Before committing generated test code:
 ## Special Scenario Type Flags
 
 | Flag in Test Plan / Requirement | Generator Action                                                                                                                                      |
-| --- | --- |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `(@manual)`                     | **DO NOT** generate executable browser code. Generate `test.skip(true, 'Scenario is marked @manual — <reason>')`. Add tag `@manual` to test title.    |
 | `(@access-restriction)`         | Assert the page redirects to login, shows 403, or hides the restricted UI. Verify error message appears.                                              |
 | `(@failure)`                    | Assert validation error, toast notification, or form boundary is visible and readable.                                                                |
@@ -136,7 +137,7 @@ Before committing generated test code:
 Spec path **mirrors the requirement path domain**. Strip `requirements/` prefix, replace `.md` with `.spec.ts`, add role suffix if role-specific.
 
 | Requirement path                             | Spec path                          |
-| --- | --- |
+| -------------------------------------------- | ---------------------------------- |
 | `requirements/login.md`                      | `tests/login.spec.ts`              |
 | `requirements/login.md` (role: finance)      | `tests/login-finance.spec.ts`      |
 | `requirements/auth/login.md`                 | `tests/auth/login.spec.ts`         |
@@ -344,7 +345,7 @@ import {
 ```
 
 | Capability (title tag / metadata tags)   | When                                                      | Generate                                                                                                                                                                                                                                    |
-| --- | --- | --- |
+| ---------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `(@network)` or `#network`               | Failure depends on HTTP status / offline / API error body | `mockJson` / `mockServerError` / `mockAbort` **before** the UI action; `unmockAll` in cleanup step                                                                                                                                          |
 | `(@network-assert)` or `#network-assert` | Live request payload + response after UI action           | Prefer **`waitAndAssertApi`** (one call) with **inline** `assert` from Input Data keys; optional `contract` path if listed. Fallback: `waitForApi` + `assertNetworkMatch`. Never invent endpoints — discover first if unknown (see recipe). |
 | `(@hybrid)` or `#hybrid`                 | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                                                            |

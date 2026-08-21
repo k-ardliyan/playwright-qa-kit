@@ -37,9 +37,9 @@ exports.archiveReport = archiveReport;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../utils/safety");
-const ARCHIVE_BASE = 'reports/archive';
+const workspace_paths_1 = require("../utils/workspace-paths");
 /**
- * Archive a pipeline report (Markdown + optional JSON) to reports/archive/<runId>/.
+ * Archive a pipeline report (Markdown + optional JSON) to artifacts/reports/archive/<runId>/.
  * Safe to call multiple times — overwrites if already exists.
  */
 function archiveReport(input) {
@@ -55,7 +55,7 @@ function archiveReport(input) {
         };
     }
     const repoRoot = (0, safety_1.getRepoRoot)();
-    const archiveDir = path.join(repoRoot, ARCHIVE_BASE, runId);
+    const archiveDir = path.join(workspace_paths_1.mcpWorkspace.reportsDir, 'archive', runId);
     // Resolve and validate report path — must be inside repo
     const absoluteReportPath = path.resolve(repoRoot, reportPath);
     if (!absoluteReportPath.startsWith(repoRoot)) {

@@ -8,11 +8,15 @@ type LoadEnvironmentFn = (options?: { adapterEnv?: { dir: string; name: string }
 
 function getLoadEnvironment(repoRoot: string): LoadEnvironmentFn {
   // env-loader lives in template core, outside the mcp-server package.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require(path.join(repoRoot, 'src/utils/env-loader')) as {
-    loadEnvironment: LoadEnvironmentFn;
-  };
-  return mod.loadEnvironment;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require(path.join(repoRoot, 'src/utils/env-loader')) as {
+      loadEnvironment: LoadEnvironmentFn;
+    };
+    return mod.loadEnvironment || (() => {});
+  } catch {
+    return () => {};
+  }
 }
 
 /**
@@ -26,14 +30,21 @@ export function bootstrapMcpEnvironment(startDir: string): string {
   const repoRoot = findRepoRoot(startDir);
   process.chdir(repoRoot);
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { resolveAppEnv } = require(path.join(repoRoot, 'src/utils/app-env')) as {
-    resolveAppEnv: (opts: { repoRoot: string }) => {
-      appEnv: string;
-      source: string;
+  let resolved = { appEnv: process.env.APP_ENV || 'local', source: 'default' };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require(path.join(repoRoot, 'src/utils/app-env')) as {
+      resolveAppEnv: (opts: { repoRoot: string }) => {
+        appEnv: string;
+        source: string;
+      };
     };
-  };
-  const resolved = resolveAppEnv({ repoRoot });
+    if (mod && typeof mod.resolveAppEnv === 'function') {
+      resolved = mod.resolveAppEnv({ repoRoot });
+    }
+  } catch {
+    // Fallback if not compiled to cjs yet
+  }
   process.stderr.write(
     `[playwright-qa-mcp] APP_ENV=${resolved.appEnv} (source=${resolved.source}) → environments/${resolved.appEnv}.env\n`,
   );

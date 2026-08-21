@@ -9,7 +9,7 @@
 ## 1. QA & Automation Workspace (Primary QA Layer)
 
 | Path                      | Peran                                               | Keterangan                                           |
-| --- | --- | --- |
+| ------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
 | `requirements/`           | Human/QA requirement input (Indonesian & English)   | `requirements/<feature>.md`, `_TEMPLATE.md`          |
 | `specs/`                  | Planner output: structured test plans               | `specs/<feature>-test-plan.md`                       |
 | `tests/`                  | Canonical Playwright test workspace                 | Primary testDir in `playwright.config.ts`            |
@@ -25,43 +25,44 @@
 
 ## 2. Framework Core Engine (`src/` — Protected Internal)
 
-| Path                            | Peran                                          | Entry Point                                                                       |
-| --- | --- | --- |
-| `src/public/`                   | Stable public API surface untuk `tests/`       | `index.ts`, `fixtures.ts`, `auth.ts`, `metadata.ts`, `workspace.ts`, `assertions.ts` |
-| `src/agents/generator/`         | Test code generator logic                      | `index.ts`                                                          |
-| `src/agents/healer/`            | Auto-heal failing tests                        | `index.ts`, `pattern-database.ts`                                   |
-| `src/agents/integration/`       | Universal agent integration layer              | `orchestrator.ts`, `state.ts`, `protocol.ts`                        |
-| `src/agents/planner/`           | Scenario clarification + feedback              | `index.ts`                                                          |
-| `src/agents/reporter/`          | Pipeline report builder + history + comparison | `index.ts`, `report-builder.ts`, `report-archive.ts`                |
-| `src/executor/`                 | Test runner wrapper (multi-browser, sharding)  | `index.ts`                                                          |
-| `src/fixtures/`                 | Playwright fixture chain internals             | `base.fixture.ts`, `framework.fixture.ts`, `project.fixture.ts`     |
-| `src/observability/`            | Tracing, logging, and evidence collectors      | `tracer.ts`, `logger.ts`                                            |
-| `src/setup/`                    | Setup wizard & bootstrap engine                | `index.ts`, `wizard.ts`                                             |
-| `src/shared/types/`             | Shared TypeScript schemas                      | `index.ts` ← always import from here                                |
-| `src/shared/workspace-paths.ts` | Canonical workspace path resolver              | `workspace` instance                                                |
-| `src/support/pw/`               | Playwright power helpers + network/file utils  | `index.ts` ← power helpers barrel                                   |
-| `src/support/custom-dashboard/` | KitaJS TSX report builder + components         | `build-dashboard-html.ts`, `pages/`, `components/`                  |
-| `src/utils/`                    | App environment & loader utilities             | `app-env.ts`, `env-loader.ts`, `logger.ts`                          |
-| `src/__tests__/unit/`           | Framework unit tests                           | `*.test.ts` (executed via `npm run test:unit`)                      |
-| `src/__tests__/property/`       | Fast-check property test suites                | `*.property.ts` (executed via `npm run test:property`)              |
+| Path                            | Peran                                          | Entry Point                                                                                                                                                         |
+| ------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/public/`                   | Stable public API surface untuk `tests/`       | `index.ts`, `fixtures.ts`, `auth.ts`, `metadata.ts`, `workspace.ts`, `assertions.ts`, `contracts.ts`                                                                |
+| `src/contracts/`                | Typed QA Kit JSON contracts & hashing          | `index.ts`, `versions.ts`, `diagnostics.ts`, `hashing.ts`, `requirement-contract.ts`, `test-plan-contract.ts`, `traceability-contract.ts`, `mcp-result-contract.ts` |
+| `src/agents/generator/`         | Test code generator logic                      | `index.ts`                                                                                                                                                          |
+| `src/agents/healer/`            | Auto-heal failing tests                        | `index.ts`, `pattern-database.ts`                                                                                                                                   |
+| `src/agents/integration/`       | Universal agent integration layer              | `orchestrator.ts`, `state.ts`, `protocol.ts`                                                                                                                        |
+| `src/agents/planner/`           | Scenario clarification + feedback              | `index.ts`                                                                                                                                                          |
+| `src/agents/reporter/`          | Pipeline report builder + history + comparison | `index.ts`, `report-builder.ts`, `report-archive.ts`                                                                                                                |
+| `src/executor/`                 | Test runner wrapper (multi-browser, sharding)  | `index.ts`                                                                                                                                                          |
+| `src/fixtures/`                 | Playwright fixture chain internals             | `base.fixture.ts`, `framework.fixture.ts`, `project.fixture.ts`                                                                                                     |
+| `src/observability/`            | Tracing, logging, and evidence collectors      | `tracer.ts`, `logger.ts`                                                                                                                                            |
+| `src/setup/`                    | Setup wizard & bootstrap engine                | `index.ts`, `wizard.ts`                                                                                                                                             |
+| `src/shared/types/`             | Shared TypeScript schemas                      | `index.ts` ← always import from here                                                                                                                                |
+| `src/shared/workspace-paths.ts` | Canonical workspace path resolver              | `workspace` instance                                                                                                                                                |
+| `src/support/pw/`               | Playwright power helpers + network/file utils  | `index.ts` ← power helpers barrel                                                                                                                                   |
+| `src/support/custom-dashboard/` | KitaJS TSX report builder + components         | `build-dashboard-html.ts`, `pages/`, `components/`                                                                                                                  |
+| `src/utils/`                    | App environment & loader utilities             | `app-env.ts`, `env-loader.ts`, `logger.ts`                                                                                                                          |
+| `src/__tests__/unit/`           | Framework unit tests                           | `*.test.ts` (executed via `npm run test:unit`)                                                                                                                      |
+| `src/__tests__/property/`       | Fast-check property test suites                | `*.property.ts` (executed via `npm run test:property`)                                                                                                              |
 
 ---
 
 ## 3. Tooling & Maintenance (`tools/`)
 
-| Path                       | Peran                                                | Entry Point                                      |
-| --- | --- | --- |
-| `tools/mcp/`               | Playwright QA MCP Server (@playwright-qa-mcp-server) | `package.json`, `dist/index-mcp.js`              |
-| `tools/scripts/`           | Operational CLI utilities                            | `qa-run.ts`, `health-check-cli.ts`, `env-*.ts`   |
-| `tools/scripts/__tests__/` | Scripts unit tests                                   | `qa-run.test.ts`, etc.                           |
-| `tools/validators/`        | Architecture and test validators                     | `architecture.ts`, `validate-generated-tests.ts` |
+| Path                       | Peran                                                | Entry Point                                                                |
+| -------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `tools/mcp/`               | Playwright QA MCP Server (@playwright-qa-mcp-server) | `package.json`, `dist/index-mcp.js`                                        |
+| `tools/scripts/`           | Operational CLI utilities                            | `qa-run.ts`, `health-check-cli.ts`, `env-*.ts`                             |
+| `tools/scripts/__tests__/` | Scripts unit tests                                   | `qa-run.test.ts`, etc.                                                     |
+| `tools/validators/`        | Architecture, ephemeral refs, and test validators    | `architecture.ts`, `ephemeral-ref-guard.ts`, `validate-generated-tests.ts` |
 
 ---
 
 ## 4. Configuration & Presets (`config/`)
 
 | Path                           | Peran                                                 | Keterangan                               |
-| --- | --- | --- |
+| ------------------------------ | ----------------------------------------------------- | ---------------------------------------- |
 | `config/environments/`         | Environment definitions & credentials                 | `.env`, `.env.example`, `.env.{APP_ENV}` |
 | `config/playwright/`           | Playwright config presets (base, cross-browser, etc.) | `base.ts`, `cross-browser.ts`, `unit.ts` |
 | `config/qa-kit.workspace.json` | Workspace layout manifest (single source of truth)    | Manifest used by path resolver           |
@@ -71,7 +72,7 @@
 ## 5. Consolidated Runtime Output (`artifacts/` — Gitignored)
 
 | Path                          | Isi                                                                  |
-| --- | --- |
+| ----------------------------- | -------------------------------------------------------------------- |
 | `artifacts/reports/`          | `pipeline-state.json`, `test-summary.json`, HTML reports, `archive/` |
 | `artifacts/test-results/`     | Playwright raw output: traces, videos, screenshots, `results.json`   |
 | `artifacts/selector-catalog/` | ARIA snapshots & semantic locators per page                          |
@@ -82,5 +83,5 @@
 ## 6. Examples & Reference Implementations (`examples/`)
 
 | Path              | Peran                                                  |
-| --- | --- |
+| ----------------- | ------------------------------------------------------ |
 | `examples/erpku/` | ERPku reference application integration & POM examples |

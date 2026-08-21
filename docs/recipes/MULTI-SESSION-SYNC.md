@@ -6,7 +6,7 @@ Not a first-class capability tag yet — use when a single scenario must prove d
 ## When to use
 
 | Use this recipe                                          | Prefer separate role specs instead                                             |
-| --- | --- |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Admin edits → user must see update in the **same** flow  | Independent checks per role (`invoice-admin.spec.ts` + `invoice-user.spec.ts`) |
 | Real-time / same-session consistency                     | Permission-only (`@access-restriction`)                                        |
 | Compare the **same data fields** (nominal, status, code) | Full-page visual equality (menus differ per role)                              |

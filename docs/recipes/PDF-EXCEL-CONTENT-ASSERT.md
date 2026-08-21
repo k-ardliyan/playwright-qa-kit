@@ -5,7 +5,7 @@ Scenario-driven content checks for downloaded or fixture files. **Needles and he
 ## Tags
 
 | Tag               | When                                                                                   |
-| --- | --- |
+| ----------------- | -------------------------------------------------------------------------------------- |
 | `(@file-content)` | Assert PDF plain text and/or Excel headers/structure                                   |
 | `(@download)`     | Often combined when the file is produced by export                                     |
 | `(@manual)`       | **Only** for PDF **layout** visual (spacing, alignment, typography) — not text content |
@@ -13,7 +13,7 @@ Scenario-driven content checks for downloaded or fixture files. **Needles and he
 ## Extract vs assert
 
 | Goal                                       | Use                                                                   | Layer              |
-| --- | --- | --- |
+| ------------------------------------------ | --------------------------------------------------------------------- | ------------------ |
 | Peek raw PDF text while planning           | MCP `extract_pdf_text`                                                | Inspect-time       |
 | Peek sheet names / headers / sample rows   | MCP `read_excel_summary`                                              | Inspect-time       |
 | Envelope (kind, size, magic)               | MCP `inspect_file` or `assertDownloadedEnvelope` / `inspectFileLocal` | Inspect or runtime |
@@ -87,7 +87,7 @@ Write expected content in the requirement. Generator and humans copy those strin
 ## Anti-patterns
 
 | Anti-pattern                                                                                    | Why bad                                       | Prefer                                                |
-| --- | --- | --- |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------- |
 | Hardcoded `assertPdfContains(path, ['Judul', 'Kode', 'Nama'])` in helpers or every product test | Patents a domain schema; wrong for other apps | Pass only tokens from **this** scenario’s Hasil       |
 | Copying demo tokens (`QA-KIT-SAMPLE-PDF`) into product asserts                                  | Kit self-test only                            | Product tokens from requirement                       |
 | Marking PDF **text** check as `(@manual)`                                                       | Text is automatable                           | `(@file-content)` + `assertPdfContains`               |
@@ -97,7 +97,7 @@ Write expected content in the requirement. Generator and humans copy those strin
 ## Manual vs automatable (PDF)
 
 | Check                                     | Tag               | How                            |
-| --- | --- | --- |
+| ----------------------------------------- | ----------------- | ------------------------------ |
 | Plain-text tokens in PDF                  | `(@file-content)` | `assertPdfContains`            |
 | Excel column headers named in requirement | `(@file-content)` | `assertExcelHeaders`           |
 | Visual layout of PDF page                 | `(@manual)`       | Human review — reason in Hasil |
@@ -105,7 +105,7 @@ Write expected content in the requirement. Generator and humans copy those strin
 ## MCP quick reference
 
 | Tool                 | Returns                               |
-| --- | --- |
+| -------------------- | ------------------------------------- |
 | `inspect_file`       | kind, size, magic (envelope only)     |
 | `extract_pdf_text`   | raw plain text (optional `maxChars`)  |
 | `read_excel_summary` | `sheetNames`, `headers`, `sampleRows` |

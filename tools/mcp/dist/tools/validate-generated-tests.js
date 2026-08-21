@@ -316,27 +316,39 @@ function validateSpecFile(filePath, relativePath) {
     violations.push(...validateCapabilityPowerRules(content, filePath, rel));
     violations.push(...validateNoEphemeralRefs(content, filePath, rel));
     violations.push(...validateNoHardcodedWaits(content, filePath, rel));
+    violations.push(...validateMetadataRule(content, filePath, rel));
+    return violations;
+}
+function validateMetadataRule(content, filePath, relativePath) {
+    if (isTraceabilityExempt(relativePath)) {
+        return [];
+    }
+    const violations = [];
+    if (!/\bsetTestMetadata\s*\(/.test(content)) {
+        violations.push({
+            filePath,
+            lineNumber: 1,
+            ruleName: 'Metadata rule: missing setTestMetadata({ module, feature }) — add inside test.beforeEach for reporting taxonomy',
+            severity: 'warning',
+        });
+    }
     return violations;
 }
 /**
- * Detect persisted MCP snapshot refs. Pattern derived from the ACTUAL installed
- * @playwright/mcp bundle, which serializes snapshot elements with a numeric ref
- * as `ref: <id>` (or `"ref": <id>` in JSON). No longer guesses at `node_id=`
- * (that is a CDP attribute that also legitimately appears in app URLs such as
- * `?node_id=5` and caused false positives).
+ * Detect persisted MCP snapshot refs or debug CLI handles.
  */
 function validateNoEphemeralRefs(content, filePath, relativePath) {
     if (isTraceabilityExempt(relativePath)) {
         return [];
     }
     const violations = [];
-    const refPattern = /(?:\bref\s*:\s*\d+|\bref_\d+|\bdata-mcp-ref)|"ref"\s*:\s*\d+/g;
+    const refPattern = /(?:\bref\s*:\s*\d+|\bref_\d+|\bdata-mcp-ref)|"ref"\s*:\s*\d+|\btw-[0-9a-fA-F]{4,}\b|\bplaywright-element-\d+\b/g;
     let match;
     while ((match = refPattern.exec(content)) !== null) {
         violations.push({
             filePath,
             lineNumber: getLineNumberFromIndex(content, match.index),
-            ruleName: `Ephemeral ref rule: ephemeral MCP ref detected ("${match[0]}"). Use semantic locators (getByRole, getByLabel, etc.) instead.`,
+            ruleName: `Ephemeral ref rule: ephemeral MCP ref or CLI handle detected ("${match[0]}"). Use semantic locators (getByRole, getByLabel, etc.) instead.`,
             severity: 'error',
         });
     }

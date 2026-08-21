@@ -73,7 +73,7 @@ Playwright Test Run
 #### **Table View** (Default)
 
 | Aspek              | Perilaku sekarang                                                                                                 |
-| --- | --- |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | Kolom              | Test ID, Description, Test Step, Input Data, Expected, Actual, Status, Priority, **SOURCE**, Notes                |
 | Steps / Input      | Multi-line blocks (`1. step…`, `key: value` per baris) — **bukan** join inline `·`, **tanpa** ellipsis truncate   |
 | SOURCE (gagal)     | Stack **Cause** (badge) → **Do** (decision: FILE BUG / FIX TEST / …) → **blurb** singkat; hover = tooltip lengkap |
@@ -197,7 +197,7 @@ interface CollectedTestCase {
 Untuk classify failure, lihat failure source di pesan error test (`result.errors`) — heuristic: app/test/env/requirement.
 
 | Kondisi Actual Result                                   | Decision                  | Action                                                 |
-| --- | --- | --- |
+| ------------------------------------------------------- | ------------------------- | ------------------------------------------------------ |
 | Error dari app (500, validation error, crash)           | 🐛 **FILE BUG**           | Buat defect ticket, keep test sebagai regression guard |
 | Error dari test code (selector broken, assertion salah) | 🔧 **FIX TEST**           | Fix test code atau generator input, rerun              |
 | Expected result tidak match requirement                 | 📝 **REVISE REQUIREMENT** | Update requirement, replan, regenerate                 |

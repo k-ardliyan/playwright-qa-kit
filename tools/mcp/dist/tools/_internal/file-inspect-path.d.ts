@@ -3,7 +3,7 @@
  * Allowed roots: test-fixtures/, test-results/ (read-only).
  */
 import { type ToolError } from '../../utils/safety';
-export type FileInspectKind = 'test-fixtures' | 'test-results';
+export type FileInspectKind = 'test-fixtures' | 'test-results' | 'test-data';
 export declare function resolveFileInspectPath(inputPath: string, options?: {
     mustExist?: boolean;
 }): {

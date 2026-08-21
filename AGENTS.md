@@ -8,7 +8,7 @@ Before writing or editing any file:
 2. Then use this table to find the specific reference you need.
 
 | Need                            | File                                                                       |
-| --- | --- |
+| ------------------------------- | -------------------------------------------------------------------------- |
 | Exact path of any `src/` module | [`docs/architecture/DIRECTORY-MAP.md`](docs/architecture/DIRECTORY-MAP.md) |
 | Auth pattern, fixture chain     | [`docs/AUTH-CONTEXT-CONVENTION.md`](docs/AUTH-CONTEXT-CONVENTION.md)       |
 | WHY behind each constraint      | [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md)         |
@@ -66,7 +66,7 @@ You must delegate tasks by consulting the corresponding sub-agent file for instr
 ## Orchestration Modes
 
 | Mode        | Behavior                                                         | When to use                                            |
-| --- | --- | --- |
+| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
 | `manual`    | Execute one phase at a time; wait for user prompt between phases | Debugging, exploratory testing, review-driven workflow |
 | `automatic` | Execute all phases sequentially without pausing                  | Daily run, CI, batch execution                         |
 
@@ -78,6 +78,9 @@ List every tool explicitly by server:
 
 - **playwright-qa**
   - `health_check` (run first)
+  - `compile_requirement` (preferred: compile requirement into typed `RequirementContractV1`)
+  - `validate_plan` (validate test plan contract against requirement contract)
+  - `trace_requirement` (build end-to-end `TraceabilityContractV1` graph and metrics)
   - `validate_requirement` (run after health_check, before Planner)
   - `normalize_requirements`
   - `parse_requirement_scenarios` (now returns `rolesInScope`, `accessExpectations`, `scenarioType` per scenario)
@@ -135,17 +138,18 @@ List every tool explicitly by server:
 - Call `health_check` on `playwright-qa`.
 - Abort with clear message if any check has `status: fail`.
 
-### Phase 0.5: Requirement Validation
+### Phase 0.5: Requirement Validation & Compilation
 
-- Call `validate_requirement` with `requirementPath`.
+- Call `compile_requirement` (preferred, returns `qa.requirement/v1`) or `validate_requirement` with `requirementPath`.
 - Abort if `status: error` (fix violations and retry once).
 - Continue with warnings logged in summary.
-- If `parse_requirement_scenarios` returns `rolesInScope`, store it in pipeline context for Plan and Report phases.
+- Store compiled `rolesInScope`, `accessMatrix`, and `module`/`feature` in pipeline context.
 
 ### Phase 1: Plan
 
 - Call Planner with `requirementPath`.
-- Planner uses `parse_requirement_scenarios` (reads `roleScope`, `scenarioType`, `authContext` per scenario) and/or `normalize_requirements`.
+- Planner compiles requirement via `compile_requirement` (or `parse_requirement_scenarios` / `normalize_requirements`).
+- Planner drafts test plan and verifies it using `validate_plan`.
 - If `roleFilter` is set, instruct Planner to only generate scenarios for those roles.
 - Expect Planner output as a Markdown test plan with columns per scenario:
   - `Scenario Name`, `Steps`, `Expected Result`, `Role`, `Auth Context`, `Type`
@@ -156,11 +160,11 @@ List every tool explicitly by server:
 
 - Pass Planner test plan to Generator.
 - Generator reads `Role` and `Auth Context` columns per scenario.
-- Generator reads `Module` and `Feature` from requirement metadata (via `parse_requirement_scenarios` output fields `module` and `feature`) and injects them into every `setTestMetadata()` call: `module: '<value>'` and `feature: '<value>'`. This ensures the dashboard grouping and export CSV/TSV columns are populated correctly. If module is `'-'`, use the requirement filename stem as fallback.
+- Generator reads `Module` and `Feature` from requirement metadata (via `compile_requirement` or `parse_requirement_scenarios` output fields `module` and `feature`) and injects them into every `setTestMetadata()` call: `module: '<value>'` and `feature: '<value>'`. This ensures the dashboard grouping and export CSV/TSV columns are populated correctly. If module is `'-'`, use the requirement filename stem as fallback.
 - If role-aware: Generator creates one file per role (`tests/<feature>-<role>.spec.ts`).
 - Generator uses `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` for role-specific files.
 - For blocked/unclear scenarios: Generator produces skeleton with `test.skip`.
-- Call `validate_generated_tests` before execution.
+- Call `validate_generated_tests` before execution to verify structural rules and ensure no ephemeral browser/CLI locators leaked.
 - Generator uses **playwright-cli** (preferred) or **playwright** MCP for live verification per scenario.
 
 ### Phase 3: Execute
@@ -179,10 +183,11 @@ List every tool explicitly by server:
 - Re-run `validate_generated_tests`, then `run_tests` for affected files.
 - Max **3 heal cycles** per file. After 3 cycles with the same root error, classify as `cannotFix`.
 
-### Phase 5: Report
+### Phase 5: Report & Traceability
 
 - Delegate to Reporter agent (`.github/agents/reporter.agent.md`).
 - Pass pipeline context: `runId`, `startedAt`, `requirementPath`, `scenarios`, `rolesInScope`, `healingResults`.
+- Reporter calls `trace_requirement` to build closed-loop `TraceabilityContractV1` graph and coverage metrics.
 - Reporter calls `get_test_summary` (reads `byRole` and `byModule` if available) and `get_test_failures`.
 - Reporter produces:
   - Structured JSON `PipelineReport` with summary metrics, per-scenario coverage, `summaryByRole`, `summaryByModule` (with nested `features` per module), `failureSource` per unresolved failure, and QA Decision section.
@@ -209,8 +214,8 @@ List every tool explicitly by server:
 After Report is produced, one of these decisions must be taken. See `AGENTS.md` exit-criteria and triage guide.
 
 | Decision                  | Condition                                    | Follow-up action                                    |
-| --- | --- | --- |
-| ✅ **APPROVE**            | All scenarios pass, no unresolved failures   | Call `archive_report`, mark as baseline             |
+| ------------------------- | -------------------------------------------- | --------------------------------------------------- |
+| ✅ **APPROVE**             | All scenarios pass, no unresolved failures   | Call `archive_report`, mark as baseline             |
 | 🐛 **FILE BUG**           | `failureSource: 'app'`                       | Create defect ticket, keep test as regression guard |
 | 📝 **REVISE REQUIREMENT** | `failureSource: 'requirement'`               | Update requirement → plan → generate → rerun        |
 | 🔧 **FIX TEST/GENERATOR** | `failureSource: 'test'` or `'ai_generation'` | Fix test code or generator input, rerun             |

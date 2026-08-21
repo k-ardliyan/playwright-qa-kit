@@ -8,6 +8,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createToolError, type ToolError, getRepoRoot } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 
 export interface GeneratePageObjectArgs {
   featureName?: unknown;
@@ -130,7 +131,7 @@ export async function generatePageObject(
   }
 
   const repoRoot = getRepoRoot();
-  const catalogPath = path.join(repoRoot, 'selector-catalog', featureName, `${pageName}.json`);
+  const catalogPath = path.join(mcpWorkspace.selectorCatalogDir, featureName, `${pageName}.json`);
 
   if (!fs.existsSync(catalogPath)) {
     const err = createToolError(
@@ -141,7 +142,7 @@ export async function generatePageObject(
   }
 
   const outputPathArg = readString(args.outputPath);
-  const defaultOutputPath = path.join(repoRoot, 'src', 'pages', `${className}.ts`);
+  const defaultOutputPath = path.join(mcpWorkspace.pagesDir, `${className}.ts`);
   const outputPath = outputPathArg
     ? (() => {
         const abs = path.isAbsolute(outputPathArg)
@@ -238,7 +239,7 @@ export async function generatePageObject(
  * AUTO-GENERATED POM SCAFFOLD — safe to edit.
  * Re-run will NOT overwrite unless force=true.
  *
- * Source: selector-catalog/${featureName}/${pageName}.json
+ * Source: ${mcpWorkspace.selectorCatalogRel}/${featureName}/${pageName}.json
  * Generated: ${timestamp}
  */
 
@@ -285,6 +286,6 @@ ${ctorLines.join('\n')}
     elementCount: filtered.length,
     fragileCount,
     warnings: warnings.length > 0 ? warnings : undefined,
-    message: `✅ POM scaffold created at ${outputPath}. Review TODOs and register in src/fixtures/project.fixture.ts.`,
+    message: `✅ POM scaffold created at ${outputPath}. Review TODOs and register in tests/fixtures.ts.`,
   };
 }

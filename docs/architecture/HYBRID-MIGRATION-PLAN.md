@@ -75,7 +75,7 @@ artifacts/
 Vocabulary resmi seluruh framework:
 
 | Concept     | Canonical Directory |
-| --- | --- |
+| ----------- | ------------------- |
 | Requirement | `requirements/`     |
 | Plan        | `specs/`            |
 | Test        | `tests/`            |
@@ -564,7 +564,7 @@ Do not silently patch internal implementation.
 No move:
 
 | Current                | Target                 |
-| --- | --- |
+| ---------------------- | ---------------------- |
 | `requirements/`        | `requirements/`        |
 | `specs/`               | `specs/`               |
 | `src/` engine code     | `src/`                 |
@@ -582,7 +582,7 @@ No move:
 ## 10.2 Playwright Workspace
 
 | Current                              | Target                | Notes                                   |
-| --- | --- | --- |
+| ------------------------------------ | --------------------- | --------------------------------------- |
 | `src/tests/seed.spec.ts`             | `tests/seed.spec.ts`  | preserve agent seed behavior            |
 | `src/tests/demo/**`                  | `tests/demo/**`       | preserve demo project                   |
 | generated `src/tests/*.spec.ts`      | `tests/**/*.spec.ts`  | first-class automation source           |
@@ -689,7 +689,7 @@ in this phase.
 ## 10.5 Tooling
 
 | Current                       | Target                                                                   |
-| --- | --- |
+| ----------------------------- | ------------------------------------------------------------------------ |
 | `mcp-server/`                 | `tools/mcp/`                                                             |
 | `scripts/**`                  | `tools/scripts/**`                                                       |
 | `setup-check.ts`              | `tools/validators/setup-check.ts` or canonical setup validation location |
@@ -724,7 +724,7 @@ No workspace conversion is required in this migration.
 ## 10.6 Environment Config
 
 | Current         | Target                 |
-| --- | --- |
+| --------------- | ---------------------- |
 | `environments/` | `config/environments/` |
 
 Preserve filenames such as:
@@ -761,7 +761,7 @@ at root.
 Move:
 
 | Current                              | Target                               |
-| --- | --- |
+| ------------------------------------ | ------------------------------------ |
 | `playwright.config.base.ts`          | `config/playwright/base.ts`          |
 | `playwright.cross-browser.config.ts` | `config/playwright/cross-browser.ts` |
 | `playwright.mobile.config.ts`        | `config/playwright/mobile.ts`        |
@@ -794,7 +794,7 @@ artifacts/
 Map:
 
 | Current logical output | Target                          |
-| --- | --- |
+| ---------------------- | ------------------------------- |
 | `test-results/**`      | `artifacts/test-results/**`     |
 | `reports/**`           | `artifacts/reports/**`          |
 | `blob-report/**`       | `artifacts/blob-report/**`      |

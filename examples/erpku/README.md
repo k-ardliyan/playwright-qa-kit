@@ -5,7 +5,7 @@ Runnable reference implementation for ERPKU on top of the generic template core.
 ## Contents
 
 | Path                             | Purpose                                                                                        |
-| --- | --- |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `support/auth.setup.ts`          | ERPKU auth setup (`LoginPage` POM + human-challenge OTP/CAPTCHA → `.auth/{APP_ENV}/user.json`) |
 | `fixtures/project.fixture.ts`    | ERPKU POM registration (`loginPage`, `dashboardPage`)                                          |
 | `pages/ui/`                      | Login and dashboard POMs                                                                       |

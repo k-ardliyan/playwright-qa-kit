@@ -37,10 +37,26 @@ exports.getTestSummary = getTestSummary;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../utils/safety");
+const workspace_paths_1 = require("../utils/workspace-paths");
 const file_reader_1 = require("../utils/file-reader");
 const json_parser_1 = require("../utils/json-parser");
-const SUMMARY_PATH = 'reports/test-summary.json';
-const RESULTS_DIR = 'test-results';
+function resolveSummaryPath(repoRoot) {
+    const canonicalPath = path.join(workspace_paths_1.mcpWorkspace.reportsDir, 'test-summary.json');
+    if (fs.existsSync(canonicalPath))
+        return canonicalPath;
+    const legacyPath = path.join(repoRoot, 'reports', 'test-summary.json');
+    if (fs.existsSync(legacyPath))
+        return legacyPath;
+    return canonicalPath;
+}
+function resolveResultsDir(repoRoot) {
+    if (fs.existsSync(workspace_paths_1.mcpWorkspace.testResultsDir))
+        return workspace_paths_1.mcpWorkspace.testResultsDir;
+    const legacyResultsDir = path.join(repoRoot, 'test-results');
+    if (fs.existsSync(legacyResultsDir))
+        return legacyResultsDir;
+    return workspace_paths_1.mcpWorkspace.testResultsDir;
+}
 /**
  * Derive role from a spec file name like "invoice-finance.spec.ts" → "finance"
  * or "login-super-admin.spec.ts" → "super-admin".
@@ -67,7 +83,7 @@ function buildBreakdowns(repoRoot) {
     const byRole = {};
     const byModule = {};
     // Primary: read from test-summary.json testCases (most accurate)
-    const summaryPath = path.join(repoRoot, SUMMARY_PATH);
+    const summaryPath = resolveSummaryPath(repoRoot);
     if (fs.existsSync(summaryPath)) {
         try {
             const raw = (0, file_reader_1.readTextFile)(summaryPath);
@@ -107,7 +123,7 @@ function buildBreakdowns(repoRoot) {
         }
     }
     // Legacy fallback: scan test-results/ for byRole only (no module data available)
-    const resultsDir = path.join(repoRoot, RESULTS_DIR);
+    const resultsDir = resolveResultsDir(repoRoot);
     if (!fs.existsSync(resultsDir))
         return { byRole, byModule };
     try {
@@ -144,11 +160,12 @@ function buildBreakdowns(repoRoot) {
 }
 function getTestSummary() {
     const repoRoot = (0, safety_1.getRepoRoot)();
-    const absolutePath = path.join(repoRoot, SUMMARY_PATH);
+    const absolutePath = resolveSummaryPath(repoRoot);
     if (!fs.existsSync(absolutePath)) {
+        const rel = path.relative(repoRoot, absolutePath).replace(/\\/g, '/');
         return {
             status: 'no_results',
-            message: `${SUMMARY_PATH} not found. Run tests first to generate the custom reporter summary.`,
+            message: `${rel} not found. Run tests first to generate the custom reporter summary.`,
         };
     }
     try {

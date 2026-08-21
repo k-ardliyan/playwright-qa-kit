@@ -6,6 +6,8 @@ import {
   isUnderAllowedTestRoot,
 } from './playwright-paths';
 
+import { mcpWorkspace, findRepoRoot as resolveRepoRoot } from './workspace-paths';
+
 export const MAX_REQUIREMENTS_TEXT_BYTES = 256 * 1024;
 
 export type AllowedPathKind =
@@ -15,21 +17,27 @@ export type AllowedPathKind =
   | 'reports'
   | 'test-results'
   | 'environments'
-  | 'selector-catalog';
+  | 'selector-catalog'
+  | 'pages'
+  | 'test-data';
 
 const READ_ONLY_KINDS = new Set<AllowedPathKind>(['environments', 'test-results', 'reports']);
 
-const ALLOWED_PREFIXES: Record<Exclude<AllowedPathKind, 'tests'>, string> = {
-  requirements: 'requirements',
-  specs: 'specs',
-  reports: 'reports',
-  'test-results': 'test-results',
-  environments: 'environments',
-  'selector-catalog': 'selector-catalog',
-};
+function getAllowedPrefixes(): Record<Exclude<AllowedPathKind, 'tests'>, string[]> {
+  return {
+    requirements: [mcpWorkspace.requirementsRel, 'requirements', 'tests/fixtures/requirements'],
+    specs: [mcpWorkspace.specsRel, 'specs'],
+    reports: [mcpWorkspace.reportsRel, 'reports'],
+    'test-results': [mcpWorkspace.testResultsRel, 'test-results'],
+    environments: [mcpWorkspace.environmentsRel, 'environments'],
+    'selector-catalog': [mcpWorkspace.selectorCatalogRel, 'selector-catalog'],
+    pages: [mcpWorkspace.pagesRel, 'tests/pages'],
+    'test-data': [mcpWorkspace.testDataRel, 'tests/data', 'test-fixtures'],
+  };
+}
 
 function getTestsPrefix(): string {
-  return getPlaywrightTestRoot();
+  return mcpWorkspace.testsRel || getPlaywrightTestRoot();
 }
 
 export interface ToolError {
@@ -44,24 +52,12 @@ export function createToolError(
   return { status: 'error', error: { code, message } };
 }
 
-const REPO_MARKERS = ['config/qa-kit.workspace.json', 'tools/mcp', 'mcp-server'];
-const MAX_HOPS = 12;
-
-export function findRepoRoot(start: string): string {
-  let dir = path.resolve(start);
-  for (let i = 0; i < MAX_HOPS; i += 1) {
-    if (REPO_MARKERS.some((marker) => fs.existsSync(path.join(dir, ...marker.split('/'))))) {
-      return dir;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return path.resolve(start);
+export function findRepoRoot(start: string = __dirname): string {
+  return resolveRepoRoot(start);
 }
 
 export function getRepoRoot(): string {
-  return findRepoRoot(__dirname);
+  return mcpWorkspace.rootDir;
 }
 
 /**
@@ -75,8 +71,10 @@ export function isValidRequirementRelativePath(
   opts: { blockExamples?: boolean } = {},
 ): boolean {
   const normalized = relativePath.replace(/\\/g, '/');
-  // Allow: requirements/<name>.md  OR  requirements/<domain>/<name>.md (nested)
-  const match = normalized.match(/^requirements\/([\w-]+(\/[\w-]+)*)\.md$/);
+  // Allow: requirements/<name>.md OR requirements/<domain>/<name>.md OR tests/fixtures/requirements/<name>.md
+  const match = normalized.match(
+    /^(?:requirements|tests\/fixtures\/requirements)\/([\w-]+(\/[\w-]+)*)\.md$/,
+  );
   if (!match) {
     return false;
   }
@@ -118,10 +116,10 @@ export function resolveAllowedPath(
   options: { mustExist?: boolean; readOnly?: boolean } = {},
 ): { ok: true; absolutePath: string; relativePath: string } | { ok: false; error: ToolError } {
   const repoRoot = getRepoRoot();
-  const prefix =
+  const prefixes =
     kind === 'tests'
-      ? getTestsPrefix()
-      : ALLOWED_PREFIXES[kind as Exclude<AllowedPathKind, 'tests'>];
+      ? [getTestsPrefix()]
+      : getAllowedPrefixes()[kind as Exclude<AllowedPathKind, 'tests'>] || [];
   const normalizedInput = inputPath.replace(/\\/g, '/').trim();
 
   if (!normalizedInput || normalizedInput.includes('\0')) {
@@ -155,25 +153,27 @@ export function resolveAllowedPath(
     };
   }
 
-  const allowedPrefix = prefix.replace(/\\/g, '/');
   if (kind === 'tests') {
     if (!isUnderAllowedTestRoot(relative)) {
       return {
         ok: false,
         error: {
           code: 'PATH_NOT_ALLOWED',
-          message: `Path must be under '${allowedPrefix}/' or '${getAdapterTestRoot()}/'. Received: '${relative}'.`,
+          message: `Path must be under '${getTestsPrefix()}/' or '${getAdapterTestRoot()}/'. Received: '${relative}'.`,
         },
       };
     }
-  } else if (relative !== allowedPrefix && !relative.startsWith(`${allowedPrefix}/`)) {
-    return {
-      ok: false,
-      error: {
-        code: 'PATH_NOT_ALLOWED',
-        message: `Path must be under '${allowedPrefix}/'. Received: '${relative}'.`,
-      },
-    };
+  } else {
+    const matchesPrefix = prefixes.some((p) => relative === p || relative.startsWith(`${p}/`));
+    if (!matchesPrefix) {
+      return {
+        ok: false,
+        error: {
+          code: 'PATH_NOT_ALLOWED',
+          message: `Path must be under '${prefixes[0]}/'. Received: '${relative}'.`,
+        },
+      };
+    }
   }
 
   const readOnly = options.readOnly ?? READ_ONLY_KINDS.has(kind);

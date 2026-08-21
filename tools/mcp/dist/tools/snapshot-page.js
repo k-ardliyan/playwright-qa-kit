@@ -91,7 +91,7 @@ async function snapshotPage(args) {
             skipped: result.skipped,
             skipReason: result.skipReason,
             message: result.skipped
-                ? `Catalog already fresh for "${result.pageName}". Reuse selector-catalog/${result.featureName}/${result.pageName}.json.`
+                ? `Catalog already fresh for "${result.pageName}". Reuse ${result.selectorsJsonRelativePath}.`
                 : `Captured ${result.elementCount} element(s) → ${result.selectorsJsonRelativePath}`,
         };
     }

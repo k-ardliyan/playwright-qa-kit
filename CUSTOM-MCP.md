@@ -27,7 +27,7 @@ Register and use these **three** servers. **Project source of truth:** [`.mcp.js
 The framework automatically manages MCP capabilities based on scenario intent. QA does not need to manually configure flags:
 
 | Profile    | Capabilities Enabled                                | Default State       | Purpose                                                              |
-| --- | --- | --- | --- |
+| ---------- | --------------------------------------------------- | ------------------- | -------------------------------------------------------------------- |
 | `author`   | `core, testing, storage, config`                    | Headless, Isolated  | Requirement exploration and live semantic locator generation         |
 | `debug`    | `core, testing, storage, network, devtools, config` | Headless, Isolated  | Reproducing failures with network logs, console, and on-demand trace |
 | `auth`     | `core, storage, config`                             | Headed, Interactive | Interactive SSO / 2FA credential setup                               |
@@ -236,7 +236,7 @@ Notable warn rules: `observable_result`, `precondition_recommended`, `manual_rea
 Optional variables in `environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
 
 | Variable                            | Default                              | Purpose                                                                                                   |
-| --- | --- | --- |
+| ----------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
 | `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
 | `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
@@ -729,7 +729,7 @@ Structure dump for xlsx under `tests/data/` or `artifacts/test-results/`: sheet 
 ## CI tool matrix
 
 | Tool / script                                   | `quality.yml` (PR)   | `e2e.yml` (main/manual) | Agent pre-flight |
-| --- | --- | --- | --- |
+| ----------------------------------------------- | -------------------- | ----------------------- | ---------------- |
 | `npm run health:check` / `health_check`         | yes                  | optional                | yes              |
 | `validate_requirement`                          | example file via CLI | no                      | yes              |
 | `validate_generated_tests` / `npm run validate` | yes                  | no                      | yes              |

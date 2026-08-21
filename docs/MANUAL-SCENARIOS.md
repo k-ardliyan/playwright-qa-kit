@@ -19,7 +19,7 @@ Skenario yang ditandai `(@manual)` di judul `### SC-XX: ...` berarti tidak bisa 
 `(@manual)` adalah salah satu dari empat tipe skenario resmi:
 
 | Tag                     | Artinya                                     | Di-generate sebagai              |
-| --- | --- | --- |
+| ----------------------- | ------------------------------------------- | -------------------------------- |
 | `(@success)`            | Happy path — alur normal berhasil           | Test penuh                       |
 | `(@failure)`            | Negative path — input salah, validasi gagal | Test dengan assertion error      |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak            | Test yang assert penolakan akses |
@@ -34,7 +34,7 @@ Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 Tandai `(@manual)` kalau skenario membutuhkan salah satu dari ini:
 
 | Situasi                | Contoh                              | Kenapa Manual                              |
-| --- | --- | --- |
+| ---------------------- | ----------------------------------- | ------------------------------------------ |
 | CAPTCHA / reCAPTCHA    | Login form pakai reCAPTCHA          | Tidak bisa diotomasi tanpa bypass (ilegal) |
 | OTP / SMS verification | Login dengan SMS OTP                | Butuh akses ke HP asli                     |
 | Email verification     | Konfirmasi signup via email link    | Butuh inbox asli                           |
@@ -61,7 +61,7 @@ Jangan pakai `(@manual)` hanya karena "ribet" — biasanya bisa diotomasi dengan
 ### File / PDF / Excel — manual vs automatable
 
 | Kebutuhan                                           | Tag                 | Manual?          | Cara otomasi                                                 |
-| --- | --- | --- | --- |
+| --------------------------------------------------- | ------------------- | ---------------- | ------------------------------------------------------------ |
 | Upload lampiran / import                            | `(@upload)`         | **Tidak**        | Fixture di `tests/data/` + `uploadFixture` / `setInputFiles` |
 | Download export                                     | `(@download)`       | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`               |
 | Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)`   | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`               |

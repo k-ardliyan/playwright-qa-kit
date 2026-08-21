@@ -5,7 +5,7 @@ Local-first automation for file chooser / export flows. **No OS file-picker paus
 ## Tags
 
 | Tag               | When                                                                                                              |
-| --- | --- |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `(@upload)`       | Scenario uploads a file into the app                                                                              |
 | `(@download)`     | Scenario triggers a browser download                                                                              |
 | `(@file-content)` | Also assert PDF/Excel **content** after download (see [PDF-EXCEL-CONTENT-ASSERT.md](PDF-EXCEL-CONTENT-ASSERT.md)) |
@@ -17,7 +17,7 @@ Metadata alternative: `#upload #download`.
 Committed samples live under `tests/data/` (or `test-fixtures/` aliases):
 
 | Path                                   | Use                         |
-| --- | --- |
+| -------------------------------------- | --------------------------- |
 | `tests/data/images/sample.png`         | Image upload UI             |
 | `tests/data/pdf/sample-text.pdf`       | PDF upload / content demo   |
 | `tests/data/excel/sample-headers.xlsx` | Excel upload / headers demo |
@@ -119,7 +119,7 @@ Combine with content tags when Hasil names specific tokens: `(@success @download
 ## MCP vs committed tests
 
 | Layer                    | Tools / API                                                                        | When                                                      |
-| --- | --- | --- |
+| ------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Inspect-time (agent)     | `list_test_fixtures`, `inspect_file`                                               | Pick fixture paths, check envelope before writing asserts |
 | Runtime (committed spec) | `uploadFixture`, `uploadViaChooser`, `downloadAndSave`, `assertDownloadedEnvelope` | Always — never call MCP from a test                       |
 
@@ -127,12 +127,12 @@ After adding MCP tools: `npm run mcp:build` then **restart `playwright-qa`**.
 
 ## Anti-patterns
 
-| Avoid                                      | Prefer                                              |
-| --- | --- |
-| `(@manual)` for upload because “OS dialog” | Fixture + `setInputFiles` / `uploadViaChooser`      |
-| Headed pause / human picks a file          | Path under `tests/data/` in Input Data              |
+| Avoid                                      | Prefer                                               |
+| ------------------------------------------ | ---------------------------------------------------- |
+| `(@manual)` for upload because “OS dialog” | Fixture + `setInputFiles` / `uploadViaChooser`       |
+| Headed pause / human picks a file          | Path under `tests/data/` in Input Data               |
 | Absolute machine-only paths in specs       | `fixturePath(...)` or repo-relative `tests/data/...` |
-| Assert product domain schema in helpers    | Scenario-owned tokens in Hasil (content recipe)     |
+| Assert product domain schema in helpers    | Scenario-owned tokens in Hasil (content recipe)      |
 
 ## Demo
 

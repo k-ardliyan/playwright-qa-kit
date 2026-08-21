@@ -43,10 +43,12 @@ export interface CatalogElement {
     fragile: boolean;
 }
 export interface CatalogIndex {
+    schemaVersion?: 'qa.selector-catalog/v1';
     featureName: string;
     pageName: string;
     url: string;
     hash: string;
+    catalogHash?: string;
     capturedAt: string;
     truncated: boolean;
     elementCount: number;

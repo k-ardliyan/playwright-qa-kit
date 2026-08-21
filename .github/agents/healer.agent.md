@@ -41,7 +41,7 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 ## MCP Dependencies
 
 | MCP Server        | Tool Name                                            |
-| --- | --- |
+| ----------------- | ---------------------------------------------------- |
 | `playwright-qa`   | `get_test_failures`                                  |
 | `playwright-qa`   | `validate_generated_tests`                           |
 | `playwright-qa`   | `snapshot_page` (refresh catalog after locator heal) |
@@ -51,7 +51,7 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 ## Browser Interaction Tools (`playwright` MCP)
 
 | Category    | Tools                                                                                             |
-| --- | --- |
+| ----------- | ------------------------------------------------------------------------------------------------- |
 | Navigation  | `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`                                 |
 | Interaction | `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_wait_for` |
 | Diagnostics | `browser_console_messages`, `browser_network_requests`                                            |
@@ -253,7 +253,7 @@ Pattern storage behavior:
 ## File / PDF / Excel failure patterns
 
 | Symptom                                                                           | Likely cause                                                                             | Fix                                                                                                                                                                                                                                         |
-| --- | --- | --- |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Timeout waiting for download / no Download event                                  | Listener registered after click, or missing entirely                                     | Add `waitForEvent('download')` **before** trigger, or switch to `downloadAndSave` / `downloadFile` from `@/support/pw` / BasePage                                                                                                           |
 | `ENOENT` / cannot find fixture path                                               | Wrong relative path, missing bank file, or product test using demo-only path incorrectly | Point to committed `tests/data/...` path from plan Input Data; list fixtures via MCP `list_test_fixtures` if available                                                                                                                      |
 | Upload never attaches / OS dialog                                                 | Generated headed pause or human picker                                                   | Replace with `setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile` — **never** `page.pause()` for file choose                                                                                                               |

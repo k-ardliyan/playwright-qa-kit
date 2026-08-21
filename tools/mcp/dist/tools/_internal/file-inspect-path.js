@@ -42,6 +42,7 @@ exports.toolErrorPayload = toolErrorPayload;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../../utils/safety");
+const workspace_paths_1 = require("../../utils/workspace-paths");
 function resolveFileInspectPath(inputPath, options = {}) {
     const repoRoot = (0, safety_1.getRepoRoot)();
     const normalizedInput = (inputPath ?? '').replace(/\\/g, '/').trim();
@@ -62,10 +63,18 @@ function resolveFileInspectPath(inputPath, options = {}) {
         };
     }
     let kind = null;
-    if (relative === 'test-fixtures' || relative.startsWith('test-fixtures/')) {
+    const testDataRel = workspace_paths_1.mcpWorkspace.testDataRel;
+    const testResultsRel = workspace_paths_1.mcpWorkspace.testResultsRel;
+    if (relative === testDataRel ||
+        relative.startsWith(`${testDataRel}/`) ||
+        relative === 'test-fixtures' ||
+        relative.startsWith('test-fixtures/')) {
         kind = 'test-fixtures';
     }
-    else if (relative === 'test-results' || relative.startsWith('test-results/')) {
+    else if (relative === testResultsRel ||
+        relative.startsWith(`${testResultsRel}/`) ||
+        relative === 'test-results' ||
+        relative.startsWith('test-results/')) {
         kind = 'test-results';
     }
     if (!kind) {
@@ -73,7 +82,7 @@ function resolveFileInspectPath(inputPath, options = {}) {
             ok: false,
             error: {
                 code: 'PATH_NOT_ALLOWED',
-                message: `Path must be under 'test-fixtures/' or 'test-results/'. Received: '${relative}'.`,
+                message: `Path must be under '${testDataRel}/' or '${testResultsRel}/'. Received: '${relative}'.`,
             },
         };
     }

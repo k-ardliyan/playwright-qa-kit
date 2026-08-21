@@ -6,8 +6,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createToolError, getRepoRoot, type ToolError } from '../../utils/safety';
+import { mcpWorkspace } from '../../utils/workspace-paths';
 
-export type FileInspectKind = 'test-fixtures' | 'test-results';
+export type FileInspectKind = 'test-fixtures' | 'test-results' | 'test-data';
 
 export function resolveFileInspectPath(
   inputPath: string,
@@ -37,9 +38,22 @@ export function resolveFileInspectPath(
   }
 
   let kind: FileInspectKind | null = null;
-  if (relative === 'test-fixtures' || relative.startsWith('test-fixtures/')) {
+  const testDataRel = mcpWorkspace.testDataRel;
+  const testResultsRel = mcpWorkspace.testResultsRel;
+
+  if (
+    relative === testDataRel ||
+    relative.startsWith(`${testDataRel}/`) ||
+    relative === 'test-fixtures' ||
+    relative.startsWith('test-fixtures/')
+  ) {
     kind = 'test-fixtures';
-  } else if (relative === 'test-results' || relative.startsWith('test-results/')) {
+  } else if (
+    relative === testResultsRel ||
+    relative.startsWith(`${testResultsRel}/`) ||
+    relative === 'test-results' ||
+    relative.startsWith('test-results/')
+  ) {
     kind = 'test-results';
   }
 
@@ -48,7 +62,7 @@ export function resolveFileInspectPath(
       ok: false,
       error: {
         code: 'PATH_NOT_ALLOWED',
-        message: `Path must be under 'test-fixtures/' or 'test-results/'. Received: '${relative}'.`,
+        message: `Path must be under '${testDataRel}/' or '${testResultsRel}/'. Received: '${relative}'.`,
       },
     };
   }

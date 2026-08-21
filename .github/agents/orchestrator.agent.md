@@ -7,7 +7,7 @@ Canonical pipeline instructions live in the repository root:
 Sub-agents in this folder (read and delegate per root AGENTS.md):
 
 | Phase    | File                 |
-| --- | --- |
+| -------- | -------------------- |
 | Plan     | `planner.agent.md`   |
 | Generate | `generator.agent.md` |
 | Heal     | `healer.agent.md`    |

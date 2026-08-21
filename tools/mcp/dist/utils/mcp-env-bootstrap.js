@@ -40,9 +40,14 @@ const safety_1 = require("./safety");
 const ERPKU_ADAPTER_OVERLAY = { dir: 'example/erpku/environments', name: 'erpku' };
 function getLoadEnvironment(repoRoot) {
     // env-loader lives in template core, outside the mcp-server package.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require(path.join(repoRoot, 'src/utils/env-loader'));
-    return mod.loadEnvironment;
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require(path.join(repoRoot, 'src/utils/env-loader'));
+        return mod.loadEnvironment || (() => { });
+    }
+    catch {
+        return () => { };
+    }
 }
 /**
  * Anchor MCP processes at repo root and load the same env contract as Playwright configs.
@@ -53,9 +58,17 @@ function bootstrapMcpEnvironment(startDir) {
     process.env.MCP_STDIO = '1';
     const repoRoot = (0, safety_1.findRepoRoot)(startDir);
     process.chdir(repoRoot);
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { resolveAppEnv } = require(path.join(repoRoot, 'src/utils/app-env'));
-    const resolved = resolveAppEnv({ repoRoot });
+    let resolved = { appEnv: process.env.APP_ENV || 'local', source: 'default' };
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require(path.join(repoRoot, 'src/utils/app-env'));
+        if (mod && typeof mod.resolveAppEnv === 'function') {
+            resolved = mod.resolveAppEnv({ repoRoot });
+        }
+    }
+    catch {
+        // Fallback if not compiled to cjs yet
+    }
     process.stderr.write(`[playwright-qa-mcp] APP_ENV=${resolved.appEnv} (source=${resolved.source}) → environments/${resolved.appEnv}.env\n`);
     const loadEnvironment = getLoadEnvironment(repoRoot);
     loadEnvironment();

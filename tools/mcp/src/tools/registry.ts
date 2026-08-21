@@ -23,6 +23,9 @@ import { extractPdfTextTool } from './extract-pdf-text';
 import { readExcelSummaryTool } from './read-excel-summary';
 import { listTestFixtures } from './list-test-fixtures';
 import { listRequirementStatus } from './list-requirement-status';
+import { compileRequirement } from './compile-requirement';
+import { validatePlan } from './validate-plan';
+import { traceRequirement } from './trace-requirement';
 import { resolveAllowedPath } from '../utils/safety';
 
 export interface JsonSchemaObject {
@@ -115,6 +118,19 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     handler: () => listRequirementStatus(),
   },
   {
+    name: 'compile_requirement',
+    description:
+      'Compile requirement markdown into canonical RequirementContractV1 (qa.requirement/v1) with typed diagnostics, deterministic sourceHash, acceptance criteria, scenarios, actor and access matrix.',
+    inputSchema: REQUIREMENTS_TEXT_OR_PATH,
+    handler: (args) => {
+      const requirementsText =
+        typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
+      const requirementPath =
+        typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
+      return compileRequirement({ requirementsText, requirementPath });
+    },
+  },
+  {
     name: 'normalize_requirements',
     description:
       'Parse requirement markdown into structured contract with acceptance criteria and optional test scenarios.',
@@ -171,6 +187,48 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
       return validateRequirement({ requirementsText, requirementPath });
     },
+  },
+  {
+    name: 'validate_plan',
+    description:
+      'Validate a TestPlanContractV1 (qa.test-plan/v1) against its source requirement contract. Checks scenario coverage, AC coverage, role/auth drift, assertion provenance, and ephemeral browser references.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testPlan: { type: 'object', description: 'TestPlanContractV1 JSON payload.' },
+        testPlanPath: { type: 'string', description: 'Path to test plan file under specs/.' },
+        requirement: { type: 'object', description: 'Optional RequirementContractV1 payload.' },
+        requirementPath: { type: 'string', description: 'Optional path under requirements/.' },
+      },
+    },
+    handler: (args) => validatePlan(args),
+  },
+  {
+    name: 'trace_requirement',
+    description:
+      'Build end-to-end TraceabilityContractV1 (qa.traceability/v1) graph linking Requirement -> Acceptance Criteria -> Scenarios -> Test Specs -> Execution Evidence.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        requirementPath: {
+          type: 'string',
+          description: 'Repo-relative path to requirement file.',
+        },
+        requirementsText: {
+          type: 'string',
+          description: 'Optional raw markdown requirement content.',
+        },
+        resultsDir: {
+          type: 'string',
+          description: 'Optional path to test-results directory.',
+        },
+        summaryPath: {
+          type: 'string',
+          description: 'Optional path to test-summary.json.',
+        },
+      },
+    },
+    handler: (args) => traceRequirement(args),
   },
   {
     name: 'snapshot_page',

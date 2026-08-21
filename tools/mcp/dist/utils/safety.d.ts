@@ -1,5 +1,5 @@
 export declare const MAX_REQUIREMENTS_TEXT_BYTES: number;
-export type AllowedPathKind = 'requirements' | 'specs' | 'tests' | 'reports' | 'test-results' | 'environments' | 'selector-catalog';
+export type AllowedPathKind = 'requirements' | 'specs' | 'tests' | 'reports' | 'test-results' | 'environments' | 'selector-catalog' | 'pages' | 'test-data';
 export interface ToolError {
     code: string;
     message: string;
@@ -8,7 +8,7 @@ export declare function createToolError(code: string, message: string): {
     status: 'error';
     error: ToolError;
 };
-export declare function findRepoRoot(start: string): string;
+export declare function findRepoRoot(start?: string): string;
 export declare function getRepoRoot(): string;
 /**
  * Valid target for a requirement file under `requirements/`.

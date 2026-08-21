@@ -49,7 +49,7 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 Tambahkan tag di judul `### SC-XX:` untuk membedakan tipe:
 
 | Tag                     | Artinya                                        |
-| --- | --- |
+| ----------------------- | ---------------------------------------------- |
 | `(@success)`            | Happy path — alur normal berhasil              |
 | `(@failure)`            | Negative path — input salah, validasi gagal    |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak               |
@@ -58,7 +58,7 @@ Tambahkan tag di judul `### SC-XX:` untuk membedakan tipe:
 Capability tags (opsional, digabung di judul SC):
 
 | Tag                     | Artinya                                                                    |
-| --- | --- |
+| ----------------------- | -------------------------------------------------------------------------- |
 | `(@download)`           | Download file — `downloadAndSave`                                          |
 | `(@upload)`             | Upload fixture-first — `uploadFixture` / `setInputFiles` (bukan OS picker) |
 | `(@file-content)`       | Assert isi PDF/Excel — needles dari **Hasil** skenario                     |
@@ -102,7 +102,7 @@ Lihat panduan lengkap: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)
 ## Contoh & Referensi
 
 | File                                                                                                  | Untuk apa                                           |
-| --- | --- |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md)                                           | Template utama yang Anda salin                      |
 | [`requirements/_GOOD_EXAMPLE.md`](../requirements/_GOOD_EXAMPLE.md)                                   | Contoh requirement BAIK — target kualitas           |
 | [`requirements/_BAD_EXAMPLE.md`](../requirements/_BAD_EXAMPLE.md)                                     | Contoh requirement BURUK — apa yang harus dihindari |
@@ -113,7 +113,7 @@ Lihat panduan lengkap: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md)
 ## Format label (parser)
 
 | Indonesia         | Alias Inggris (opsional)                                |
-| --- | --- |
+| ----------------- | ------------------------------------------------------- |
 | `**Langkah:**`    | `**Steps:**`, `**Step:**`                               |
 | `**Hasil:**`      | `**Expected Result:**`, `**Expected:**`, `**Outcome:**` |
 | `**Prekondisi:**` | `**Precondition:**`, `**Given:**`                       |
@@ -182,7 +182,7 @@ CATATAN SAYA:
 ## Troubleshooting validasi
 
 | Rule                           | Perbaikan                                                        |
-| --- | --- |
+| ------------------------------ | ---------------------------------------------------------------- |
 | `title_required`               | Tambah `# REQ-01: Judul`                                         |
 | `scenario_structure`           | Cek bold `**Langkah:**` dan `**Hasil:**` per skenario `###`      |
 | `observable_result`            | Hasil harus URL/teks/visibility, bukan "berjalan baik"           |
@@ -191,3 +191,51 @@ CATATAN SAYA:
 | `failure_scenario_recommended` | Tambah skenario `(@failure)` jika ada kata error/gagal/ditolak   |
 
 Detail: [GUIDE — troubleshooting validate_requirement](GUIDE.md#troubleshooting-validate-requirement)
+
+---
+
+## Standar Penulisan Tabel Markdown
+
+Untuk menjaga konsistensi dan kemudahan baca baik oleh manusia, GitHub preview, maupun AI Agent, gunakan panduan standar berikut:
+
+### 1. Struktur Dasar Wajib
+Gunakan pipe (`|`) di awal dan akhir setiap baris serta baris separator (`---`):
+
+```md
+| Header 1 | Header 2 | Header 3 |
+| -------- | -------- | -------- |
+| Data 1   | Data 2   | Data 3   |
+```
+
+### 2. Alignment Kolom
+Gunakan titik dua (`:`) pada baris separator untuk mengatur perataan:
+
+```md
+| Field    | Jumlah   | Status   | Keterangan |
+| :------- | -------: | :------: | ---------- |
+| `testId` | 25       | Passed   | Rata kiri  |
+| `auth`   | 10       | Failed   | Rata kanan |
+```
+- `:---` → Rata kiri (default)
+- `---:` → Rata kanan (angka / metrik)
+- `:---:` → Rata tengah (status / boolean / tag)
+
+### 3. Escape Karakter Pipe (`|`)
+Jika isi sel mengandung karakter pipe, wajib di-escape dengan backslash:
+```md
+| Input | Expected |
+| ----- | -------- |
+| User  | Admin \| Operator |
+```
+
+### 4. Line Break dalam Satu Sel
+Gunakan tag `<br>` untuk baris baru di dalam sel yang sama:
+```md
+| Skenario | Langkah |
+| -------- | ------- |
+| SC-01    | 1. Buka halaman<br>2. Isi form<br>3. Klik submit |
+```
+
+### 5. Hindari Colspan / Rowspan
+Markdown/GFM standar **tidak mendukung** `colspan` atau `rowspan`. Jika butuh struktur bertingkat kompleks, gunakan HTML `<table>` murni atau pecah menjadi sub-tabel/prose.
+

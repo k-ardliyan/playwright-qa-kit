@@ -5,29 +5,38 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 
-function walk(dir: string, base: string, out: string[]): void {
+function walk(dir: string, base: string, prefix: string, out: string[]): void {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name.startsWith('.')) continue;
     const abs = path.join(dir, entry.name);
     const rel = path.relative(base, abs).replace(/\\/g, '/');
     if (entry.isDirectory()) {
-      walk(abs, base, out);
+      walk(abs, base, prefix, out);
     } else {
-      out.push(`test-fixtures/${rel}`.replace(/\\/g, '/'));
+      out.push(`${prefix}/${rel}`.replace(/\\/g, '/'));
     }
   }
 }
 
 export function listTestFixtures(args: Record<string, unknown> | undefined): unknown {
   const repoRoot = getRepoRoot();
-  const fixturesRoot = path.join(repoRoot, 'test-fixtures');
+  const primaryRoot = mcpWorkspace.testDataDir;
+  const legacyRoot = path.join(repoRoot, 'test-fixtures');
+  const fixturesRoot = fs.existsSync(primaryRoot)
+    ? primaryRoot
+    : fs.existsSync(legacyRoot)
+      ? legacyRoot
+      : primaryRoot;
+  const prefix = fixturesRoot === primaryRoot ? mcpWorkspace.testDataRel : 'test-fixtures';
+
   if (!fs.existsSync(fixturesRoot)) {
     return {
       status: 'success',
       fixtures: [] as string[],
-      message: 'test-fixtures/ does not exist yet.',
+      message: `${prefix}/ does not exist yet.`,
     };
   }
 
@@ -38,7 +47,7 @@ export function listTestFixtures(args: Record<string, unknown> | undefined): unk
       status: 'error',
       error: {
         code: 'INVALID_PATH',
-        message: 'subdir must be a relative path under test-fixtures/.',
+        message: `subdir must be a relative path under ${prefix}/.`,
       },
     };
   }
@@ -47,12 +56,12 @@ export function listTestFixtures(args: Record<string, unknown> | undefined): unk
   if (!fs.existsSync(start)) {
     return {
       status: 'error',
-      error: { code: 'NOT_FOUND', message: `subdir not found: test-fixtures/${subdir}` },
+      error: { code: 'NOT_FOUND', message: `subdir not found: ${prefix}/${subdir}` },
     };
   }
 
   const fixtures: string[] = [];
-  walk(start, fixturesRoot, fixtures);
+  walk(start, fixturesRoot, prefix, fixtures);
   fixtures.sort((a, b) => a.localeCompare(b));
 
   return {

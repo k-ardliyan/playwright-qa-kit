@@ -37,7 +37,7 @@ exports.listArtifacts = listArtifacts;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../utils/safety");
-const playwright_paths_1 = require("../utils/playwright-paths");
+const workspace_paths_1 = require("../utils/workspace-paths");
 function listFilesRecursive(dirPath, extension) {
     if (!fs.existsSync(dirPath)) {
         return [];
@@ -58,17 +58,18 @@ function listFilesRecursive(dirPath, extension) {
     return files.sort((a, b) => a.localeCompare(b));
 }
 function listRequirementFeatures() {
-    const repoRoot = (0, safety_1.getRepoRoot)();
-    const requirementsDir = path.join(repoRoot, 'requirements');
+    const requirementsDir = workspace_paths_1.mcpWorkspace.requirementsDir;
     // Reuse the recursive walker — supports both flat and nested domain subfolders
     const all = listFilesRecursive(requirementsDir, '.md');
     return all.filter((relative) => (0, safety_1.isPipelineRequirementRelativePath)(relative));
 }
 function listArtifacts() {
     const requirements = listRequirementFeatures();
-    const specs = listFilesRecursive(path.join((0, safety_1.getRepoRoot)(), 'specs'), '.md');
-    const tests = listFilesRecursive(path.join((0, safety_1.getRepoRoot)(), ...(0, playwright_paths_1.getPlaywrightTestRoot)().split('/')), '.spec.ts');
-    const fixturesRoot = path.join((0, safety_1.getRepoRoot)(), 'test-fixtures');
+    const specs = listFilesRecursive(workspace_paths_1.mcpWorkspace.specsDir, '.md');
+    const tests = listFilesRecursive(workspace_paths_1.mcpWorkspace.testsDir, '.spec.ts');
+    const fixturesRoot = fs.existsSync(workspace_paths_1.mcpWorkspace.testDataDir)
+        ? workspace_paths_1.mcpWorkspace.testDataDir
+        : path.join((0, safety_1.getRepoRoot)(), 'test-fixtures');
     const fixtures = listAllFixtureFiles(fixturesRoot);
     return {
         status: 'success',

@@ -5,7 +5,7 @@ Copy-paste references for post-fork integration scenarios. These files are **not
 See [FORK-ONBOARDING.md → Integration into an existing frontend repo](../../FORK-ONBOARDING.md#10-integration-into-an-existing-frontend-repo).
 
 | Recipe                                                                             | Use when                                                                                  |
-| --- | --- |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [`playwright.config.nextjs-e2e.recipe.ts`](playwright.config.nextjs-e2e.recipe.ts) | Integrating the kit into a Next.js app under `/e2e` with auth setup project + `webServer` |
 | [`playwright.role-projects.recipe.ts`](playwright.role-projects.recipe.ts)         | Multi-role projects via `buildRoleProjects` + `.auth/<role>.json`                         |
 | [`FILE-UPLOAD-DOWNLOAD.md`](FILE-UPLOAD-DOWNLOAD.md)                               | Fixture-first `@upload` / `@download` — no OS picker pause                                |

@@ -6,6 +6,7 @@ export interface WorkspaceManifestPaths {
   specs: string;
   tests: string;
   testData: string;
+  pages: string;
   artifacts: string;
   reports: string;
   testResults: string;
@@ -34,6 +35,7 @@ export const DEFAULT_WORKSPACE_MANIFEST: WorkspaceManifest = {
     specs: 'specs',
     tests: 'tests',
     testData: 'tests/data',
+    pages: 'tests/pages',
     artifacts: 'artifacts',
     reports: 'artifacts/reports',
     testResults: 'artifacts/test-results',
@@ -143,6 +145,10 @@ export class WorkspacePathRegistry {
     return this.manifest.paths.testData.replace(/\\/g, '/');
   }
 
+  public get pagesRel(): string {
+    return (this.manifest.paths.pages || 'tests/pages').replace(/\\/g, '/');
+  }
+
   public get artifactsRel(): string {
     return this.manifest.paths.artifacts.replace(/\\/g, '/');
   }
@@ -182,6 +188,10 @@ export class WorkspacePathRegistry {
 
   public get testDataDir(): string {
     return path.resolve(this._rootDir, this.manifest.paths.testData);
+  }
+
+  public get pagesDir(): string {
+    return path.resolve(this._rootDir, this.manifest.paths.pages || 'tests/pages');
   }
 
   public get artifactsDir(): string {

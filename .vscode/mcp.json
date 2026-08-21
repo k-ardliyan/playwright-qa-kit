@@ -8,12 +8,12 @@
     {
       "name": "playwright-test",
       "command": "npx",
-      "args": ["tsx", "scripts/playwright-test-mcp-launch.ts"]
+      "args": ["tsx", "tools/scripts/playwright-test-mcp-launch.ts"]
     },
     {
       "name": "playwright-qa",
       "command": "node",
-      "args": ["mcp-server/dist/index-mcp.js"]
+      "args": ["tools/mcp/dist/index-mcp.js"]
     }
   ]
 }

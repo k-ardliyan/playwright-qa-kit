@@ -5,6 +5,7 @@
     "specs": "specs",
     "tests": "tests",
     "testData": "tests/data",
+    "pages": "tests/pages",
     "artifacts": "artifacts",
     "reports": "artifacts/reports",
     "testResults": "artifacts/test-results",

@@ -52,6 +52,7 @@ const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const playwright_1 = require("playwright");
 const safety_1 = require("../utils/safety");
+const workspace_paths_1 = require("../utils/workspace-paths");
 const logger_1 = require("../utils/logger");
 const snapshot_core_1 = require("./_internal/snapshot-core");
 const BLOCKED_EXTENSIONS = new Set([
@@ -295,7 +296,7 @@ async function runDiscover(input) {
     }
     // Resolve the feature directory up front for checkpoint + page-map writes.
     const { resolveAllowedPath } = await Promise.resolve().then(() => __importStar(require('../utils/safety')));
-    const dirResolved = resolveAllowedPath(`selector-catalog/${input.featureName}`, 'selector-catalog', { mustExist: false, readOnly: false });
+    const dirResolved = resolveAllowedPath(`${workspace_paths_1.mcpWorkspace.selectorCatalogRel}/${input.featureName}`, 'selector-catalog', { mustExist: false, readOnly: false });
     if (!dirResolved.ok) {
         return {
             status: 'error',

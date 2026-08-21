@@ -14,7 +14,7 @@ git --version     # Harus ada (versi berapa saja)
 ```
 
 | Prasyarat        | Versi Minimum  | Cara Cek                                                            | Cara Install                      |
-| --- | --- | --- | --- |
+| ---------------- | -------------- | ------------------------------------------------------------------- | --------------------------------- |
 | Node.js          | **>= 20.19.0** | `node --version`                                                    | <https://nodejs.org/> (pilih LTS) |
 | Git              | Apa saja       | `git --version`                                                     | <https://git-scm.com/>            |
 | **Hermes Agent** | Latest         | Lihat [panduan install](https://hermes-agent.nousresearch.com/docs) | Sama seperti di atas              |
@@ -61,7 +61,7 @@ npm run setup:wizard
 Wizard akan memandu Anda melalui **7 fase**:
 
 | Fase                         | Apa yang terjadi                                                                                                                           |
-| --- | --- |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | **0. Welcome**               | Cek prasyarat, cek Node.js version                                                                                                         |
 | **1. Project + Environment** | Pilih **APP_ENV** dulu (`local`/`dev`/`staging`/…), lalu **BASE_URL untuk env itu** (URL beda per env). File: `environments/{APP_ENV}.env` |
 | **2. Kredensial**            | Masukkan akun test ke file env aktif. Nilai dienkripsi otomatis.                                                                           |
@@ -110,7 +110,7 @@ Setelah wizard Phase 7 selesai, **framework sudah generate `requirements/login.m
 untuk **website kamu** (BASE_URL, path login, roles dari wizard) — **bukan** file sample.
 
 | Langkah    | Yang terjadi                                                                   |
-| --- | --- |
+| ---------- | ------------------------------------------------------------------------------ |
 | **Lihat**  | Buka `requirements/login.md` — requirement REAL project                        |
 | **Paste**  | Prompt Phase 7 ke Hermes (wajib `snapshot_page` dulu — locator beda tiap site) |
 | **Tunggu** | Plan → Generate → Execute → Heal → Report                                      |
@@ -156,7 +156,7 @@ Hermes akan otomatis:
 ## 📚 Langkah Selanjutnya
 
 | Setelah Setup                   | Baca                                                     |
-| --- | --- |
+| ------------------------------- | -------------------------------------------------------- |
 | Ganti password / multi-role     | [CREDENTIALS.md](CREDENTIALS.md)                         |
 | Ingin tulis requirement pertama | [WRITING-REQUIREMENTS.md](WRITING-REQUIREMENTS.md)       |
 | Ingin lihat command penting     | [CHEATSHEET.md](CHEATSHEET.md)                           |

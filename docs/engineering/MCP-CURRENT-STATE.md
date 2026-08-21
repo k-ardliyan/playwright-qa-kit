@@ -10,7 +10,7 @@
 Currently, the `@playwright/mcp` version is specified in several disparate places:
 
 | Location            | Configured Version / Specifier             | Role / Context                             |
-| --- | --- | --- |
+| ------------------- | ------------------------------------------ | ------------------------------------------ |
 | `.mcp.json`         | `0.0.78` (`npx -y @playwright/mcp@0.0.78`) | Project-level MCP config (source of truth) |
 | `.vscode/mcp.json`  | `0.0.78` (`npx -y @playwright/mcp@0.0.78`) | Editor-level MCP compatibility config      |
 | `package.json`      | `^0.0.78`                                  | DevDependency                              |

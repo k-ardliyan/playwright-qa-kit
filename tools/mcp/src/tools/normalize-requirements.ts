@@ -336,6 +336,9 @@ export function normalizeRequirements(
     contract.scenarios = scenarios;
   }
 
+  logger.info(
+    '[playwright-qa] normalize_requirements is in maintenance mode; prefer compile_requirement (qa.requirement/v1).',
+  );
   logger.info('Requirements normalized successfully.', {
     id: contract.id,
     criteriaCount: contract.acceptanceCriteria.length,

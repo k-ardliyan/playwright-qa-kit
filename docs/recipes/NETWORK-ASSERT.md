@@ -5,7 +5,7 @@ Scenario-driven **live** request payload + response checks after a UI action. He
 ## Tags
 
 | Tag                 | When                                                               | Helpers                                                                                                           |
-| --- | --- | --- |
+| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `(@network-assert)` | Assert payload FE→BE and/or response BE→FE after click/submit/open | `waitAndAssertApi` (prefer), `waitForApi`, `assertNetworkMatch` / `assertNetworkContract`, `startNetworkRecorder` |
 | `(@network)`        | Mock/intercept HTTP for failure UX                                 | `mockJson`, `mockServerError`, `mockAbort`, `unmockAll`                                                           |
 | `(@hybrid)`         | Seed/cleanup via API + UI assert                                   | `apiSeed`, `apiCleanup`                                                                                           |
@@ -16,7 +16,7 @@ Scenario-driven **live** request payload + response checks after a UI action. He
 ## Observe vs mock vs hybrid
 
 | Goal                                         | Tag                              | Tool                                            |
-| --- | --- | --- |
+| -------------------------------------------- | -------------------------------- | ----------------------------------------------- |
 | Submit sends correct JSON + backend shape OK | `@network-assert`                | `waitAndAssertApi` + partial contract           |
 | UI shows error when API 500                  | `@network`                       | `mockServerError`                               |
 | Seed data then assert UI                     | `@hybrid`                        | `apiSeed`                                       |
@@ -101,7 +101,7 @@ Write expected network facts in the requirement. Generator copies them into matc
 ## Storage
 
 | Path                                              | Git   | Role                       |
-| --- | --- | --- |
+| ------------------------------------------------- | ----- | -------------------------- |
 | `tests/data/network/contracts/**`                 | Yes   | Partial expected contracts |
 | `artifacts/test-results/**/network-capture*.json` | No    | Runtime attach (redacted)  |
 | Full unfiltered browser HAR                       | Never | Diagnostic only            |
@@ -111,7 +111,7 @@ Secrets (`authorization`, `cookie`, `token`, …) are redacted by helpers before
 ## Anti-patterns
 
 | Anti-pattern                                     | Prefer                                 |
-| --- | --- |
+| ------------------------------------------------ | -------------------------------------- |
 | Using `@network` for live payload assert         | `@network-assert` + `waitAndAssertApi` |
 | Full response `toEqual` with timestamps/ids      | Partial `matchObject` / requiredKeys   |
 | Assert every page-load asset/XHR                 | Filter `urlIncludes` API only          |

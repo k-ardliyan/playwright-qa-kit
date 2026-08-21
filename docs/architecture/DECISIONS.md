@@ -124,3 +124,20 @@ import type { PipelineReport } from '@/shared/types';
 1. Memisahkan test workspace aplikasi dari implementasi framework Playwright QA Kit.
 2. Mencegah AI Healer/Generator mengubah implementasi framework core engine saat melakukan healing skenario.
 3. Selaras dengan standar dokumentasi dan konvensi resmi Playwright (`playwright.config.ts`, `tests/seed.spec.ts`, `tests/auth.setup.ts`).
+
+---
+
+## D-09: Contract-first Pre-Prompt-Studio Stabilization (v2.2)
+
+**Keputusan:**
+1. Pertahankan arsitektur hybrid (`src/`, `tests/`, `tools/`, `config/`, `artifacts/`).
+2. `config/qa-kit.workspace.json` adalah canonical single source of truth untuk semua path workspace.
+3. Requirement Markdown adalah human authoring format; machine contract versioned (`qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, `qa.selector-catalog/v1`, `qa.mcp-result/v1`) adalah machine state truth.
+4. Validasi requirement (`compile_requirement`) dan test plan (`validate_test_plan`) wajib berjalan sebagai quality gate sebelum Generator/Execution.
+5. Prompt Studio dibangun di atas compiler dan schema yang sama setelah seluruh readiness gate lulus.
+
+**Kenapa:**
+1. Mencegah path drift dan semantic loss antar tahapan pipeline AI (Planner → Generator → Healer → Reporter).
+2. Memastikan setiap assertion memiliki provenance yang jelas (`requirement`, `live-verification`, `framework-derived`, `planner-assumption`).
+3. Menjamin keterlacakan penuh: Requirement → AC → Scenario → Test ID → Spec → Execution Status → Artifact Evidence.
+

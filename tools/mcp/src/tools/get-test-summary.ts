@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 import { readTextFile } from '../utils/file-reader';
 import { safeJsonParse } from '../utils/json-parser';
 
@@ -90,8 +91,20 @@ export interface GetTestSummaryOutput {
   message: string;
 }
 
-const SUMMARY_PATH = 'reports/test-summary.json';
-const RESULTS_DIR = 'test-results';
+function resolveSummaryPath(repoRoot: string): string {
+  const canonicalPath = path.join(mcpWorkspace.reportsDir, 'test-summary.json');
+  if (fs.existsSync(canonicalPath)) return canonicalPath;
+  const legacyPath = path.join(repoRoot, 'reports', 'test-summary.json');
+  if (fs.existsSync(legacyPath)) return legacyPath;
+  return canonicalPath;
+}
+
+function resolveResultsDir(repoRoot: string): string {
+  if (fs.existsSync(mcpWorkspace.testResultsDir)) return mcpWorkspace.testResultsDir;
+  const legacyResultsDir = path.join(repoRoot, 'test-results');
+  if (fs.existsSync(legacyResultsDir)) return legacyResultsDir;
+  return mcpWorkspace.testResultsDir;
+}
 
 /**
  * Derive role from a spec file name like "invoice-finance.spec.ts" → "finance"
@@ -123,7 +136,7 @@ function buildBreakdowns(repoRoot: string): {
   const byModule: Record<string, ModuleSummary> = {};
 
   // Primary: read from test-summary.json testCases (most accurate)
-  const summaryPath = path.join(repoRoot, SUMMARY_PATH);
+  const summaryPath = resolveSummaryPath(repoRoot);
   if (fs.existsSync(summaryPath)) {
     try {
       const raw = readTextFile(summaryPath);
@@ -170,7 +183,7 @@ function buildBreakdowns(repoRoot: string): {
   }
 
   // Legacy fallback: scan test-results/ for byRole only (no module data available)
-  const resultsDir = path.join(repoRoot, RESULTS_DIR);
+  const resultsDir = resolveResultsDir(repoRoot);
   if (!fs.existsSync(resultsDir)) return { byRole, byModule };
 
   try {
@@ -210,12 +223,13 @@ function buildBreakdowns(repoRoot: string): {
 
 export function getTestSummary(): GetTestSummaryOutput {
   const repoRoot = getRepoRoot();
-  const absolutePath = path.join(repoRoot, SUMMARY_PATH);
+  const absolutePath = resolveSummaryPath(repoRoot);
 
   if (!fs.existsSync(absolutePath)) {
+    const rel = path.relative(repoRoot, absolutePath).replace(/\\/g, '/');
     return {
       status: 'no_results',
-      message: `${SUMMARY_PATH} not found. Run tests first to generate the custom reporter summary.`,
+      message: `${rel} not found. Run tests first to generate the custom reporter summary.`,
     };
   }
 

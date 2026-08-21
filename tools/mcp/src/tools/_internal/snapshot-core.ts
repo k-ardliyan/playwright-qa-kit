@@ -20,6 +20,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { resolveAllowedPath, getRepoRoot } from '../../utils/safety';
+import { mcpWorkspace } from '../../utils/workspace-paths';
 import { logger } from '../../utils/logger';
 
 export const SELECTOR_CATALOG_MAX_FILES = Number.parseInt(
@@ -59,10 +60,12 @@ export interface CatalogElement {
 }
 
 export interface CatalogIndex {
+  schemaVersion?: 'qa.selector-catalog/v1';
   featureName: string;
   pageName: string;
   url: string;
   hash: string;
+  catalogHash?: string;
   capturedAt: string;
   truncated: boolean;
   elementCount: number;
@@ -323,10 +326,14 @@ function ensureFeatureDir(featureName: string): {
   absoluteDir: string;
   relativeDir: string;
 } {
-  const resolved = resolveAllowedPath(`selector-catalog/${featureName}`, 'selector-catalog', {
-    mustExist: false,
-    readOnly: false,
-  });
+  const resolved = resolveAllowedPath(
+    `${mcpWorkspace.selectorCatalogRel}/${featureName}`,
+    'selector-catalog',
+    {
+      mustExist: false,
+      readOnly: false,
+    },
+  );
   if (!resolved.ok) {
     throw new SnapshotCoreError(
       `Cannot resolve feature directory: ${resolved.error.message}`,
@@ -427,10 +434,12 @@ export async function snapshotPageCore(options: SnapshotOptions): Promise<Snapsh
 
     fs.writeFileSync(ariaAbsPath, ariaYaml, 'utf8');
     const index: CatalogIndex = {
+      schemaVersion: 'qa.selector-catalog/v1',
       featureName,
       pageName,
       url: options.url,
       hash,
+      catalogHash: hash,
       capturedAt: new Date().toISOString(),
       truncated,
       elementCount: elements.length,

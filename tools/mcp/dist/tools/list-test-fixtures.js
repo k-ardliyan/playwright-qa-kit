@@ -40,7 +40,8 @@ exports.listTestFixtures = listTestFixtures;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../utils/safety");
-function walk(dir, base, out) {
+const workspace_paths_1 = require("../utils/workspace-paths");
+function walk(dir, base, prefix, out) {
     if (!fs.existsSync(dir))
         return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -49,21 +50,28 @@ function walk(dir, base, out) {
         const abs = path.join(dir, entry.name);
         const rel = path.relative(base, abs).replace(/\\/g, '/');
         if (entry.isDirectory()) {
-            walk(abs, base, out);
+            walk(abs, base, prefix, out);
         }
         else {
-            out.push(`test-fixtures/${rel}`.replace(/\\/g, '/'));
+            out.push(`${prefix}/${rel}`.replace(/\\/g, '/'));
         }
     }
 }
 function listTestFixtures(args) {
     const repoRoot = (0, safety_1.getRepoRoot)();
-    const fixturesRoot = path.join(repoRoot, 'test-fixtures');
+    const primaryRoot = workspace_paths_1.mcpWorkspace.testDataDir;
+    const legacyRoot = path.join(repoRoot, 'test-fixtures');
+    const fixturesRoot = fs.existsSync(primaryRoot)
+        ? primaryRoot
+        : fs.existsSync(legacyRoot)
+            ? legacyRoot
+            : primaryRoot;
+    const prefix = fixturesRoot === primaryRoot ? workspace_paths_1.mcpWorkspace.testDataRel : 'test-fixtures';
     if (!fs.existsSync(fixturesRoot)) {
         return {
             status: 'success',
             fixtures: [],
-            message: 'test-fixtures/ does not exist yet.',
+            message: `${prefix}/ does not exist yet.`,
         };
     }
     const subdir = typeof args?.subdir === 'string' ? args.subdir.replace(/\\/g, '/').replace(/^\//, '') : '';
@@ -72,7 +80,7 @@ function listTestFixtures(args) {
             status: 'error',
             error: {
                 code: 'INVALID_PATH',
-                message: 'subdir must be a relative path under test-fixtures/.',
+                message: `subdir must be a relative path under ${prefix}/.`,
             },
         };
     }
@@ -80,11 +88,11 @@ function listTestFixtures(args) {
     if (!fs.existsSync(start)) {
         return {
             status: 'error',
-            error: { code: 'NOT_FOUND', message: `subdir not found: test-fixtures/${subdir}` },
+            error: { code: 'NOT_FOUND', message: `subdir not found: ${prefix}/${subdir}` },
         };
     }
     const fixtures = [];
-    walk(start, fixturesRoot, fixtures);
+    walk(start, fixturesRoot, prefix, fixtures);
     fixtures.sort((a, b) => a.localeCompare(b));
     return {
         status: 'success',

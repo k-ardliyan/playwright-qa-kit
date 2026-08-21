@@ -39,7 +39,7 @@ Update `package.json` `name` and `description` to match your project. This is co
 Your fork should have two remotes:
 
 | Remote     | Purpose                                             |
-| --- | --- |
+| ---------- | --------------------------------------------------- |
 | `origin`   | Your project repository (push/pull daily work here) |
 | `upstream` | Template core repository (pull framework updates)   |
 
@@ -69,7 +69,7 @@ Prefer merging `upstream/main` on a schedule (e.g. monthly) rather than letting 
 ### Conflict-prone files
 
 | File / folder                                | Owner                                         | Merge strategy                                                                            |
-| --- | --- | --- |
+| -------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `tests/fixtures.ts`                          | **Fork** — your POM registrations             | Keep yours; rarely accept upstream wholesale                                              |
 | `config/playwright/base.ts`                  | **Upstream** — shared execution policy        | Accept upstream wholesale (retries, workers, timeout, `use`)                              |
 | `playwright.config.ts`                       | **Fork** — project-specific projects/timeouts | Merge carefully; take upstream base + defaults, re-apply your `projects` / reporter paths |
@@ -176,7 +176,7 @@ The template core (`src/`) remains generic without the example folder.
 ## 9. Daily workflow reminder
 
 | Task                    | Where                                        |
-| --- | --- |
+| ----------------------- | -------------------------------------------- |
 | Write requirements      | `requirements/`                              |
 | Run Planner → test plan | `specs/`                                     |
 | Generator output        | `tests/*.spec.ts`                            |

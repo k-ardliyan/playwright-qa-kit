@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 
 export interface ArchiveReportInput {
   runId: string;
@@ -15,10 +16,8 @@ export interface ArchiveReportOutput {
   message: string;
 }
 
-const ARCHIVE_BASE = 'reports/archive';
-
 /**
- * Archive a pipeline report (Markdown + optional JSON) to reports/archive/<runId>/.
+ * Archive a pipeline report (Markdown + optional JSON) to artifacts/reports/archive/<runId>/.
  * Safe to call multiple times — overwrites if already exists.
  */
 export function archiveReport(input: ArchiveReportInput): ArchiveReportOutput {
@@ -37,7 +36,7 @@ export function archiveReport(input: ArchiveReportInput): ArchiveReportOutput {
   }
 
   const repoRoot = getRepoRoot();
-  const archiveDir = path.join(repoRoot, ARCHIVE_BASE, runId);
+  const archiveDir = path.join(mcpWorkspace.reportsDir, 'archive', runId);
 
   // Resolve and validate report path — must be inside repo
   const absoluteReportPath = path.resolve(repoRoot, reportPath);

@@ -46,7 +46,7 @@ File berisi Playwright storage state (cookies + localStorage).
 ## Naming Convention
 
 | Role bisnis   | Storage state path                 | Keterangan                                    |
-| --- | --- | --- |
+| ------------- | ---------------------------------- | --------------------------------------------- |
 | `user`        | `.auth/{APP_ENV}/user.json`        | Default authenticated user (mode **general**) |
 | `super-admin` | `.auth/{APP_ENV}/super-admin.json` | Super admin                                   |
 | `finance`     | `.auth/{APP_ENV}/finance.json`     | Finance                                       |
@@ -84,7 +84,7 @@ Regenerate template multi-role (opsional): `npm run env:edit` → _Regenerasi au
 Session bootstrap boleh **dibantu manusia** (local only) lewat env:
 
 | Mode              | Arti                                                       | Headless   | Terminal               |
-| --- | --- | --- | --- |
+| ----------------- | ---------------------------------------------------------- | ---------- | ---------------------- |
 | `none` (default)  | Tidak ada assist                                           | ya         | —                      |
 | `otp-browser`     | **OTP di browser** (disarankan)                            | **tidak**  | tidak untuk isi OTP UI |
 | `otp-stdin`       | OTP diketik di terminal                                    | boleh      | **wajib TTY**          |
@@ -123,7 +123,7 @@ Lihat [CREDENTIALS.md](CREDENTIALS.md) — skema seragam per role; multi N=1 mir
 ## Related
 
 | Dokumen                                            | Isi                                 |
-| --- | --- |
+| -------------------------------------------------- | ----------------------------------- |
 | [CREDENTIALS.md](CREDENTIALS.md)                   | Keys, identifier opsional, env:edit |
 | [GUIDE.md](GUIDE.md)                               | APP_ENV control plane               |
 | [WRITING-REQUIREMENTS.md](WRITING-REQUIREMENTS.md) | Mode general vs role-aware          |

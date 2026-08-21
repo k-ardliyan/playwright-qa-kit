@@ -3,3 +3,4 @@ export * from './auth';
 export * from './metadata';
 export * from './workspace';
 export * from './assertions';
+export * from './contracts';

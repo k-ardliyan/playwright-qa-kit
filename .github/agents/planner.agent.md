@@ -41,16 +41,18 @@ Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/s
 
 ## MCP Dependencies
 
-| Server          | Tool                          | Purpose                                                       |
-| --- | --- | --- |
-| `playwright-qa` | `validate_requirement`        | Validate requirement format before planning                   |
-| `playwright-qa` | `parse_requirement_scenarios` | Parse scenarios including role scope and scenario type        |
-| `playwright-qa` | `normalize_requirements`      | Normalize requirement text before planning                    |
-| `playwright-qa` | `list_requirement_status`     | Optional coverage map (existing plans/tests for related reqs) |
-| `playwright-qa` | `snapshot_page`               | Capture ARIA + selector catalog for authenticated pages       |
-| `playwright-qa` | `discover_pages`              | BFS auto-crawl public pages, write per-page catalog           |
-| `playwright`    | `browser_navigate`            | Navigate to pages for snapshot fallback                       |
-| `playwright`    | `browser_snapshot`            | Fallback snapshot when catalog is stale or page is auth-only  |
+| Server          | Tool                          | Purpose                                                          |
+| --------------- | ----------------------------- | ---------------------------------------------------------------- |
+| `playwright-qa` | `compile_requirement`         | Compile requirement into typed RequirementContractV1 (preferred) |
+| `playwright-qa` | `validate_plan`               | Validate test plan contract against requirement contract         |
+| `playwright-qa` | `validate_requirement`        | Validate requirement format before planning                      |
+| `playwright-qa` | `parse_requirement_scenarios` | Parse scenarios including role scope and scenario type           |
+| `playwright-qa` | `normalize_requirements`      | Normalize requirement text before planning                       |
+| `playwright-qa` | `list_requirement_status`     | Optional coverage map (existing plans/tests for related reqs)    |
+| `playwright-qa` | `snapshot_page`               | Capture ARIA + selector catalog for authenticated pages          |
+| `playwright-qa` | `discover_pages`              | BFS auto-crawl public pages, write per-page catalog              |
+| `playwright`    | `browser_navigate`            | Navigate to pages for snapshot fallback                          |
+| `playwright`    | `browser_snapshot`            | Fallback snapshot when catalog is stale or page is auth-only     |
 
 ### Optional Pre-Crawl (Token-Efficient Discovery)
 
@@ -65,7 +67,7 @@ For public sites without authentication, prefer **`discover_pages`** over manual
 ## Seed and auth context
 
 | Context                    | Seed                                                                  | Auth                                                                                                                                                                                                                                                                                | POM fixtures                                                                                     |
-| --- | --- | --- | --- |
+| -------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Template core (`npm test`) | `tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `tests/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it          |
 | ERPKU reference adapter    | Same seed for Generator traceability                                  | `npm run test:erpku-example` — setup project + `.auth/{APP_ENV}/user.json`                                                                                                                                                                                                          | [`examples/erpku/fixtures/project.fixture.ts`](../../examples/erpku/fixtures/project.fixture.ts) |
 
@@ -189,7 +191,7 @@ After `snapshot_page` / `discover_pages`:
 When the requirement mentions download, upload, or PDF/Excel **content** checks, set the matching capability tags:
 
 | Signal in requirement                                           | Tag                        | Plan fields to populate                                                                                                                 |
-| --- | --- | --- |
+| --------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Download / export / unduh file                                  | `(@download)`              | Steps name the trigger control; Expected Result may include filename/ext/size/magic                                                     |
 | Upload / pilih file / lampiran                                  | `(@upload)`                | **Input Data** lists fixture path under `test-fixtures/` (e.g. `fixture: test-fixtures/pdf/sample-text.pdf`)                            |
 | PDF/Excel text, headers, cells, or file magic/envelope          | `(@file-content)`          | **Expected Result** / **Input Data** list **expected tokens or headers copied from Hasil yang Diharapkan** — never invent domain fields |
@@ -233,7 +235,7 @@ Populate plan **Capabilities** from title tags and metadata `#network #network-a
 > List scenarios that **should** exist based on the requirement but could not be planned because of missing information.
 
 | Gap                  | Reason                    | Suggested Action                    |
-| --- | --- | --- |
+| -------------------- | ------------------------- | ----------------------------------- |
 | SC-XX: <description> | <why it can't be planned> | <what QA should clarify or provide> |
 
 If there are no gaps, write: `No coverage gaps identified.`
@@ -245,7 +247,7 @@ If there are no gaps, write: `No coverage gaps identified.`
 > List scenarios marked `(@manual)` with the reason they cannot be automated.
 
 | Scenario   | Reason                                    |
-| --- | --- |
+| ---------- | ----------------------------------------- |
 | SC-XX: ... | CAPTCHA / OTP / biometric / visual review |
 
 If there are no manual scenarios, write: `No manual scenarios.`

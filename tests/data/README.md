@@ -12,7 +12,7 @@ Small, committed files for upload/download/content self-tests and generated spec
 ## Layout
 
 | Path                                         | Purpose                                                          |
-| --- | --- |
+| -------------------------------------------- | ---------------------------------------------------------------- |
 | `pdf/sample-text.pdf`                        | Minimal PDF; text includes `QA-KIT-SAMPLE-PDF` and `TOKEN-ALPHA` |
 | `excel/sample-headers.xlsx`                  | Sheet1 headers `ColA`, `ColB`, `ColC`                            |
 | `images/sample.png`                          | Tiny PNG for image upload UI checks                              |

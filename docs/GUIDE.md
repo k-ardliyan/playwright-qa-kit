@@ -15,7 +15,7 @@ Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-
 ## Mulai di Sini
 
 | Langkah                           | Dokumen                                                                                                                  |
-| --- | --- |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Tulis requirement                 | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
 | Rapikan catatan (ChatGPT/Gemini)  | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
 | Pipeline AI                       | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
@@ -42,7 +42,7 @@ npm run setup:check         # verify setup setelah selesai
 ## Konfigurasi MCP di IDE
 
 | Server            | Fungsi                                                                                                                                                    |
-| --- | --- |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `playwright`      | Eksplorasi UI (`browser_navigate`, `browser_snapshot`)                                                                                                    |
 | `playwright-test` | Menjalankan tes (`run_tests`)                                                                                                                             |
 | `playwright-qa`   | Requirement, validasi, coverage map (`list_requirement_status`), kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
@@ -69,7 +69,7 @@ Instal CLI: `npx playwright-cli --help` (pastikan command tersedia sebelum gener
 Helper tipis di `src/support/pw/` membungkus API resmi (bukan abstraksi berat):
 
 | Kebutuhan                     | Tag skenario                            | Helper / API                                                                                                      |
-| --- | --- | --- |
+| ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Mock HTTP / error API         | `(@network)` / `#network`               | `mockJson`, `mockServerError`, `unmockAll` → `page.route`                                                         |
 | Live payload + response       | `(@network-assert)` / `#network-assert` | `waitAndAssertApi` (prefer), `waitForApi`, `assertNetworkMatch` / `assertNetworkContract`, `startNetworkRecorder` |
 | Seed data via API + assert UI | `(@hybrid)` / `#hybrid`                 | `apiSeed`, `apiCleanup` + fixture `request`                                                                       |
@@ -153,7 +153,7 @@ npm run validate:requirement -- requirements/nama-fitur.md
 Warning baru yang mungkin muncul setelah upgrade:
 
 | Warning                        | Artinya                                                                  |
-| --- | --- |
+| ------------------------------ | ------------------------------------------------------------------------ |
 | `role_scope_recommended`       | Auth authenticated tapi tidak ada Role scope — pertimbangkan isi         |
 | `access_expectation_missing`   | Role scope diisi tapi Access expectation belum ada                       |
 | `failure_scenario_recommended` | Ada kata gagal/error di requirement tapi tidak ada `(@failure)` scenario |
@@ -313,7 +313,7 @@ Buat POM scaffold dari halaman https://staging.app/login:
 ## Kamus Istilah
 
 | Untuk QA (Bahasa Indonesia) | Nama di framework                                       |
-| --- | --- |
+| --------------------------- | ------------------------------------------------------- |
 | Dokumen kebutuhan           | `requirements/*.md`                                     |
 | Test plan                   | `specs/*-test-plan.md`                                  |
 | Kode tes                    | `tests/**/*.spec.ts`                                    |
@@ -339,7 +339,7 @@ Buat POM scaffold dari halaman https://staging.app/login:
 ## Troubleshooting `validate_requirement`
 
 | Rule                           | Severity | Perbaikan                                                                           |
-| --- | --- | --- |
+| ------------------------------ | -------- | ----------------------------------------------------------------------------------- |
 | `title_required`               | error    | Tambah baris `# REQ-01: Judul Fitur`                                                |
 | `content_required`             | error    | Tambah bullet di `## Kriteria Penerimaan` atau skenario `###`                       |
 | `scenario_structure`           | error    | Setiap `###` wajib punya `**Langkah:**` dan `**Hasil:**`                            |
@@ -358,7 +358,7 @@ Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 ## Troubleshooting `health_check`
 
 | Check             | Status    | Perbaikan                                        |
-| --- | --- | --- |
+| ----------------- | --------- | ------------------------------------------------ |
 | `node`            | fail      | Install Node.js >= 20.19.0                       |
 | `mcp_build`       | fail      | `npm run mcp:build`                              |
 | `playwright_mcp`  | fail      | `npm install`                                    |
@@ -373,7 +373,7 @@ Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 ## Troubleshooting `validate_generated_tests`
 
 | Rule              | Perbaikan                                                                 |
-| --- | --- |
+| ----------------- | ------------------------------------------------------------------------- |
 | Import rule       | Pakai `import { test } from '@/fixtures/base.fixture'`                    |
 | Describe rule     | Bungkus tes dalam `test.describe(...)`                                    |
 | Step rule         | Gunakan `test.step(...)` per aksi                                         |
@@ -395,7 +395,7 @@ Tes legacy (login, smoke, seed, demo) exempt — lihat [MAINTENANCE.md](../MAINT
 ## Environment: Active target (`APP_ENV`)
 
 | Variable                   | Fungsi                                                                                                                |
-| --- | --- |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | **`APP_ENV`**              | **Satu-satunya nama paten** — selector file `environments/{name}.env` (`local` \| `dev` \| `staging` \| `production`) |
 | `BASE_URL`                 | URL aplikasi                                                                                                          |
 | `TEST_USER_*` / `{ROLE}_*` | Kredensial                                                                                                            |

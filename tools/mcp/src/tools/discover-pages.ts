@@ -17,6 +17,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { chromium, type Browser } from 'playwright';
 import { createToolError, getRepoRoot, type ToolError } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 import { logger } from '../utils/logger';
 import {
   snapshotPageCore,
@@ -369,7 +370,7 @@ async function runDiscover(input: RunDiscoverInput): Promise<DiscoverPagesOutput
   // Resolve the feature directory up front for checkpoint + page-map writes.
   const { resolveAllowedPath } = await import('../utils/safety');
   const dirResolved = resolveAllowedPath(
-    `selector-catalog/${input.featureName}`,
+    `${mcpWorkspace.selectorCatalogRel}/${input.featureName}`,
     'selector-catalog',
     { mustExist: false, readOnly: false },
   );

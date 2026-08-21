@@ -44,7 +44,7 @@ cp requirements/_TEMPLATE.md requirements/fitur-saya.md
 ## Command Paling Sering
 
 | Command                             | Kapan                                                         |
-| --- | --- |
+| ----------------------------------- | ------------------------------------------------------------- |
 | `npm run qa:run -- X`               | Preflight + cetak prompt Hermes (dinamis per req) + dashboard |
 | `npm run validate:requirement -- X` | Cek requirement saja                                          |
 | `npm run env:edit`                  | Ganti password / role / browser / OTP-CAPTCHA                 |
@@ -80,7 +80,7 @@ generate_page_object (playwright-qa) — featureName, pageName
 ## Tipe Skenario
 
 | Tag                     | Artinya                                                 |
-| --- | --- |
+| ----------------------- | ------------------------------------------------------- |
 | `(@success)`            | Happy path — alur normal                                |
 | `(@failure)`            | Negative path — validasi, input salah                   |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak                        |
@@ -98,7 +98,7 @@ generate_page_object (playwright-qa) — featureName, pageName
 ## File fixtures (local-first)
 
 | Path                  | Isi                                                                                                                                    |
-| --- | --- |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/data/pdf/`     | Sample PDF untuk upload / content assert                                                                                               |
 | `tests/data/excel/`   | Sample xlsx                                                                                                                            |
 | `tests/data/images/`  | Sample image upload                                                                                                                    |
@@ -115,7 +115,7 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 ## Kalau Gagal — Cek Ini Dulu
 
 | Gejala                       | Pertama Cek                                                                       |
-| --- | --- |
+| ---------------------------- | --------------------------------------------------------------------------------- |
 | `health_check` fail          | `npm run mcp:build` lalu **restart `playwright-qa`** / IDE                        |
 | Tool MCP baru tidak muncul   | `npm run mcp:build` → restart `playwright-qa`                                     |
 | `validate_requirement` error | Baca hint di output → perbaiki → coba lagi                                        |
@@ -128,21 +128,21 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 
 ## Keputusan Setelah Report
 
-| Kondisi                    | Keputusan                             |
-| --- | --- |
+| Kondisi                    | Keputusan                            |
+| -------------------------- | ------------------------------------ |
 | Semua pass                 | ✅ APPROVE — archive sebagai baseline |
-| Failure: app salah         | 🐛 FILE BUG — buat defect ticket      |
-| Failure: requirement kabur | 📝 REVISE REQUIREMENT                 |
-| Failure: test/AI salah     | 🔧 FIX TEST/GENERATOR                 |
-| Failure: auth/env/data     | 🔧 FIX ENVIRONMENT                    |
-| Tidak bisa diselesaikan    | 🚫 MARK BLOCKED                       |
+| Failure: app salah         | 🐛 FILE BUG — buat defect ticket     |
+| Failure: requirement kabur | 📝 REVISE REQUIREMENT                |
+| Failure: test/AI salah     | 🔧 FIX TEST/GENERATOR                |
+| Failure: auth/env/data     | 🔧 FIX ENVIRONMENT                   |
+| Tidak bisa diselesaikan    | 🚫 MARK BLOCKED                      |
 
 ---
 
 ## Referensi Cepat
 
 | Dokumen                 | Link                                                              |
-| --- | --- |
+| ----------------------- | ----------------------------------------------------------------- |
 | Panduan lengkap         | [docs/GUIDE.md](GUIDE.md)                                         |
 | Template requirement    | [requirements/_TEMPLATE.md](../requirements/_TEMPLATE.md)         |
 | Contoh requirement baik | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |

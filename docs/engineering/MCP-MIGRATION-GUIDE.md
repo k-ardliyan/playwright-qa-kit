@@ -8,7 +8,7 @@
 ## 1. Summary of Changes
 
 | Area                  | Before (Legacy)                               | After (Modernized)                                                         |
-| --- | --- | --- |
+| --------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
 | **Server Invocation** | `npx -y @playwright/mcp@0.0.78 --headless`    | `npx tsx scripts/playwright-mcp-launch.ts`                                 |
 | **Capability Config** | Manual `--caps=network` in `.vscode/mcp.json` | Automatic intent routing (`author`, `debug`, `auth`, `visual`, `artifact`) |
 | **Session Isolation** | Default persistent browser session            | Default isolated session per scenario                                      |

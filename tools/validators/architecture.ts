@@ -333,6 +333,115 @@ for (const testDir of testDirs) {
   });
 }
 
+// ─── Rule 12: Workspace Path Drift Detection (ARCH-012) ─────────────────────
+const workspacePathDriftPatterns = [
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*\([^)]*['"]src['"],\s*['"]pages['"]/,
+    message:
+      'Forbidden path literal "src/pages" — Page Objects must resolve to tests/pages from workspace manifest',
+  },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*\([^)]*['"]src\/pages['"]/,
+    message:
+      'Forbidden path literal "src/pages" — Page Objects must resolve to tests/pages from workspace manifest',
+  },
+];
+
+function scanForWorkspacePathDrift(dir: string, ext: string[]): void {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== 'node_modules' && entry.name !== '.git' && entry.name !== 'dist') {
+        scanForWorkspacePathDrift(fullPath, ext);
+      }
+    } else if (entry.isFile()) {
+      if (ext.some((e) => entry.name.endsWith(e))) {
+        if (isAllowlistedFile(fullPath)) return;
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#'))
+            continue;
+          for (const { pattern, message } of workspacePathDriftPatterns) {
+            if (pattern.test(line)) {
+              violations.push({
+                rule: 'ARCH-012: WORKSPACE_PATH_DRIFT',
+                file: path.relative(ROOT, fullPath).replace(/\\/g, '/'),
+                message: `Line ${i + 1}: ${message} (${line.trim().slice(0, 120)})`,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+scanForWorkspacePathDrift(path.join(ROOT, 'src'), ['.ts', '.tsx']);
+scanForWorkspacePathDrift(path.join(ROOT, 'tools'), ['.ts', '.tsx']);
+
+// ─── Rule 13: Ephemeral Browser Ref Leak Prevention (ARCH-013) ───────────────
+const ephemeralPatterns = [
+  {
+    pattern: /(?:\bref\s*:\s*\d+|\bref_\d+|\bdata-mcp-ref)|"ref"\s*:\s*\d+/,
+    message: 'Ephemeral browser MCP element ref detected in test/spec code',
+  },
+  {
+    pattern: /\btw-[0-9a-fA-F]{4,}\b/,
+    message: 'Ephemeral Playwright CLI trace/debug session handle detected in test/spec code',
+  },
+  {
+    pattern: /\bplaywright-element-\d+\b/,
+    message: 'Ephemeral internal Playwright DOM locator detected in test/spec code',
+  },
+];
+
+function scanForEphemeralRefLeaks(dir: string, ext: string[]): void {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (
+        entry.name !== 'node_modules' &&
+        entry.name !== '.git' &&
+        entry.name !== 'dist' &&
+        entry.name !== '__tests__'
+      ) {
+        scanForEphemeralRefLeaks(fullPath, ext);
+      }
+    } else if (entry.isFile()) {
+      if (ext.some((e) => entry.name.endsWith(e))) {
+        if (isAllowlistedFile(fullPath)) return;
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#'))
+            continue;
+          for (const { pattern, message } of ephemeralPatterns) {
+            if (pattern.test(line)) {
+              violations.push({
+                rule: 'ARCH-013: EPHEMERAL_REF_LEAK',
+                file: path.relative(ROOT, fullPath).replace(/\\/g, '/'),
+                message: `Line ${i + 1}: ${message} (${line.trim().slice(0, 120)}) — Use semantic locators (getByRole, getByLabel) instead.`,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+scanForEphemeralRefLeaks(path.join(ROOT, 'tests'), ['.ts', '.tsx']);
+scanForEphemeralRefLeaks(path.join(ROOT, 'specs'), ['.md', '.json']);
+
 // ─── Reporting ──────────────────────────────────────────────────────────────
 if (violations.length > 0) {
   console.error(`  ❌ Architecture violations found (${violations.length}):\n`);

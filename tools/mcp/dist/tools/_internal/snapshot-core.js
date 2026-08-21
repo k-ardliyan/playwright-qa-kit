@@ -56,6 +56,7 @@ const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const playwright_1 = require("playwright");
 const safety_1 = require("../../utils/safety");
+const workspace_paths_1 = require("../../utils/workspace-paths");
 const logger_1 = require("../../utils/logger");
 exports.SELECTOR_CATALOG_MAX_FILES = Number.parseInt(process.env.SELECTOR_CATALOG_MAX_FILES ?? '100', 10);
 exports.DEFAULT_MAX_ELEMENTS = 500;
@@ -261,7 +262,7 @@ function sanitizeFeatureName(name) {
     return cleaned.slice(0, 64);
 }
 function ensureFeatureDir(featureName) {
-    const resolved = (0, safety_1.resolveAllowedPath)(`selector-catalog/${featureName}`, 'selector-catalog', {
+    const resolved = (0, safety_1.resolveAllowedPath)(`${workspace_paths_1.mcpWorkspace.selectorCatalogRel}/${featureName}`, 'selector-catalog', {
         mustExist: false,
         readOnly: false,
     });
@@ -338,10 +339,12 @@ async function snapshotPageCore(options) {
         const hash = crypto.createHash('sha256').update(ariaYaml).digest('hex');
         fs.writeFileSync(ariaAbsPath, ariaYaml, 'utf8');
         const index = {
+            schemaVersion: 'qa.selector-catalog/v1',
             featureName,
             pageName,
             url: options.url,
             hash,
+            catalogHash: hash,
             capturedAt: new Date().toISOString(),
             truncated,
             elementCount: elements.length,

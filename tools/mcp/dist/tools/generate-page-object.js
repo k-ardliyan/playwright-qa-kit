@@ -43,6 +43,7 @@ exports.generatePageObject = generatePageObject;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const safety_1 = require("../utils/safety");
+const workspace_paths_1 = require("../utils/workspace-paths");
 function readString(value) {
     if (typeof value !== 'string')
         return null;
@@ -118,13 +119,13 @@ async function generatePageObject(args) {
         return { status: 'error', message: err.error.message, error: err.error };
     }
     const repoRoot = (0, safety_1.getRepoRoot)();
-    const catalogPath = path.join(repoRoot, 'selector-catalog', featureName, `${pageName}.json`);
+    const catalogPath = path.join(workspace_paths_1.mcpWorkspace.selectorCatalogDir, featureName, `${pageName}.json`);
     if (!fs.existsSync(catalogPath)) {
         const err = (0, safety_1.createToolError)('CATALOG_NOT_FOUND', `Catalog not found at ${catalogPath}. Run snapshot_page first.`);
         return { status: 'error', message: err.error.message, error: err.error };
     }
     const outputPathArg = readString(args.outputPath);
-    const defaultOutputPath = path.join(repoRoot, 'src', 'pages', `${className}.ts`);
+    const defaultOutputPath = path.join(workspace_paths_1.mcpWorkspace.pagesDir, `${className}.ts`);
     const outputPath = outputPathArg
         ? (() => {
             const abs = path.isAbsolute(outputPathArg)
@@ -208,7 +209,7 @@ async function generatePageObject(args) {
  * AUTO-GENERATED POM SCAFFOLD — safe to edit.
  * Re-run will NOT overwrite unless force=true.
  *
- * Source: selector-catalog/${featureName}/${pageName}.json
+ * Source: ${workspace_paths_1.mcpWorkspace.selectorCatalogRel}/${featureName}/${pageName}.json
  * Generated: ${timestamp}
  */
 
@@ -253,7 +254,7 @@ ${ctorLines.join('\n')}
         elementCount: filtered.length,
         fragileCount,
         warnings: warnings.length > 0 ? warnings : undefined,
-        message: `✅ POM scaffold created at ${outputPath}. Review TODOs and register in src/fixtures/project.fixture.ts.`,
+        message: `✅ POM scaffold created at ${outputPath}. Review TODOs and register in tests/fixtures.ts.`,
     };
 }
 //# sourceMappingURL=generate-page-object.js.map

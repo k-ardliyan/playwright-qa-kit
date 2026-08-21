@@ -7,7 +7,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getRepoRoot, isPipelineRequirementRelativePath } from '../utils/safety';
-import { getPlaywrightTestRoot } from '../utils/playwright-paths';
+import { mcpWorkspace } from '../utils/workspace-paths';
 
 export interface RequirementStatusRow {
   requirementPath: string;
@@ -137,7 +137,10 @@ function countManualScenarios(markdown: string): number {
 
 function loadLastStatusByFile(): Map<string, string> {
   const map = new Map<string, string>();
-  const summaryPath = path.join(getRepoRoot(), 'reports', 'test-summary.json');
+  const canonicalPath = path.join(mcpWorkspace.reportsDir, 'test-summary.json');
+  const summaryPath = fs.existsSync(canonicalPath)
+    ? canonicalPath
+    : path.join(getRepoRoot(), 'reports', 'test-summary.json');
   if (!fs.existsSync(summaryPath)) return map;
   try {
     const raw = JSON.parse(fs.readFileSync(summaryPath, 'utf-8')) as {
@@ -171,14 +174,11 @@ function lastStatusForTests(testPaths: string[], statusByFile: Map<string, strin
 }
 
 export function listRequirementStatus(): ListRequirementStatusOutput {
-  const repoRoot = getRepoRoot();
-  const reqDir = path.join(repoRoot, 'requirements');
-  const allReq = listFilesRecursive(reqDir, '.md').filter((r) =>
+  const allReq = listFilesRecursive(mcpWorkspace.requirementsDir, '.md').filter((r) =>
     isPipelineRequirementRelativePath(r),
   );
-  const allSpecs = new Set(listFilesRecursive(path.join(repoRoot, 'specs'), '.md'));
-  const testRoot = path.join(repoRoot, ...getPlaywrightTestRoot().split('/'));
-  const allTests = listFilesRecursive(testRoot, '.spec.ts');
+  const allSpecs = new Set(listFilesRecursive(mcpWorkspace.specsDir, '.md'));
+  const allTests = listFilesRecursive(mcpWorkspace.testsDir, '.spec.ts');
   const statusByFile = loadLastStatusByFile();
 
   const rows: RequirementStatusRow[] = allReq.map((requirementPath) => {
@@ -193,8 +193,8 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
     const baseName = path.posix.basename(stem);
     const dir = path.posix.dirname(stem);
     const testPaths = allTests.filter((t) => {
-      const rel = t.replace(/^src\/tests\//, '').replace(/\.spec\.ts$/, '');
-      // Mirror: requirements/auth/foo → src/tests/auth/foo*.spec.ts
+      const rel = t.replace(/^(tests|src\/tests)\//, '').replace(/\.spec\.ts$/, '');
+      // Mirror: requirements/auth/foo → tests/auth/foo*.spec.ts
       if (dir === '.') {
         return rel === baseName || rel.startsWith(`${baseName}-`);
       }
@@ -209,7 +209,7 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
 
     let manualCount = 0;
     try {
-      const md = fs.readFileSync(path.join(repoRoot, requirementPath), 'utf-8');
+      const md = fs.readFileSync(path.join(mcpWorkspace.rootDir, requirementPath), 'utf-8');
       manualCount = countManualScenarios(md);
     } catch {
       // ignore

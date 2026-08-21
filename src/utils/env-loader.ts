@@ -182,15 +182,20 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
       const hasKeys = fs.existsSync(secureKeysPath) || Boolean(hasEnvKey);
 
       if (!hasKeys) {
-        const fallbackPath = path.resolve(cwd, `environments/${appEnv}.env.example`);
-        if (fs.existsSync(fallbackPath)) {
-          dotenvx.config({ path: fallbackPath });
+        // Check canonical config/environments/ path first, then legacy environments/ fallback
+        const fallbackPaths = [
+          path.resolve(cwd, `config/environments/${appEnv}.env.example`),
+          path.resolve(cwd, `environments/${appEnv}.env.example`),
+        ];
+        const existingFallback = fallbackPaths.find((p) => fs.existsSync(p));
+        if (existingFallback) {
+          dotenvx.config({ path: existingFallback });
           // Re-assert after dotenv — file must not hijack APP_ENV
           process.env.APP_ENV = appEnv;
           process.env.APP_ENV_SOURCE = resolved.source;
           logger.warn(
-            `[SECURITY] Decryption keys missing for encrypted environments/${appEnv}.env. ` +
-              `Falling back to dummy template: environments/${appEnv}.env.example`,
+            `[SECURITY] Decryption keys missing for encrypted ${appEnv}.env. ` +
+              `Falling back to dummy template: ${path.relative(cwd, existingFallback)}`,
           );
           if (options?.adapterEnv) {
             loadAdapterEnvOverlay(options.adapterEnv, cwd);
@@ -199,9 +204,11 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
         }
         throw new Error(
           `Encrypted environments/${appEnv}.env found but no dotenvx private key is available, ` +
-            `and environments/${appEnv}.env.example is missing.\n` +
-            `Fix: restore ~/.dotenvx-keys/<project>/.env.keys, or recreate a plaintext ` +
-            `environments/${appEnv}.env (CI materialize / npm run env:edit).`,
+            `and no .env.example fallback was found.\n` +
+            `Tried:\n` +
+            fallbackPaths.map((p) => `  - ${path.relative(cwd, p)}`).join('\n') +
+            `\n\nFix: restore ~/.dotenvx-keys/<project>/.env.keys, or recreate a plaintext ` +
+            `config/environments/${appEnv}.env (CI materialize / npm run env:edit).`,
         );
       }
     }

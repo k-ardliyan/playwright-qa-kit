@@ -60,6 +60,13 @@ jobs:
       - name: Build MCP server
         run: npm run mcp:build
 
+      - name: Materialize plaintext local.env for CI
+        run: |
+          if [ ! -f config/environments/local.env ] || grep -q 'encrypted:' config/environments/local.env 2>/dev/null; then
+            cp config/environments/local.env.example config/environments/local.env
+            echo "[CI] Materialized plaintext config/environments/local.env from template"
+          fi
+
       - name: Run MCP Compatibility Check
         run: npm run mcp:check
 

@@ -27,7 +27,7 @@ Register and use these **three** servers. **Project source of truth:** [`.mcp.js
 The framework automatically manages MCP capabilities based on scenario intent. QA does not need to manually configure flags:
 
 | Profile    | Capabilities Enabled                                | Default State       | Purpose                                                              |
-| ---------- | --------------------------------------------------- | ------------------- | -------------------------------------------------------------------- |
+| --- | --- | --- | --- |
 | `author`   | `core, testing, storage, config`                    | Headless, Isolated  | Requirement exploration and live semantic locator generation         |
 | `debug`    | `core, testing, storage, network, devtools, config` | Headless, Isolated  | Reproducing failures with network logs, console, and on-demand trace |
 | `auth`     | `core, storage, config`                             | Headed, Interactive | Interactive SSO / 2FA credential setup                               |
@@ -236,7 +236,7 @@ Notable warn rules: `observable_result`, `precondition_recommended`, `manual_rea
 Optional variables in `environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
 
 | Variable                            | Default                              | Purpose                                                                                                   |
-| ----------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
 | `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
 | `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
@@ -264,7 +264,7 @@ Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT
 
 ## Tool: `list_artifacts`
 
-Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated tests under `PLAYWRIGHT_TEST_ROOT` (default `src/tests/`), and fixture files under `test-fixtures/` (excluding README).
+Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated tests under `PLAYWRIGHT_TEST_ROOT` (default `tests/`), and fixture files under `tests/data/` (excluding README).
 
 ### Input
 
@@ -279,8 +279,8 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated te
   "status": "success",
   "requirements": ["requirements/auth/sample-login-empty-fields.md"],
   "specs": ["specs/..."],
-  "tests": ["src/tests/..."],
-  "fixtures": ["test-fixtures/pdf/sample-text.pdf"],
+  "tests": ["tests/..."],
+  "fixtures": ["tests/data/pdf/sample-text.pdf"],
   "message": "Found N requirement(s), …, M fixture file(s)."
 }
 ```
@@ -615,7 +615,7 @@ A URL is rejected (and recorded in `skipped[]`) when any of the following holds:
 
 ## Tool: `list_test_fixtures`
 
-List committed files under `test-fixtures/` for fixture-first upload paths (no headed OS file picker).
+List committed files under `tests/data/` for fixture-first upload paths (no headed OS file picker).
 
 ### Input
 
@@ -623,14 +623,14 @@ List committed files under `test-fixtures/` for fixture-first upload paths (no h
 { "subdir": "pdf" }
 ```
 
-`subdir` optional relative path under `test-fixtures/`.
+`subdir` optional relative path under `tests/data/`.
 
 ### Output
 
 ```json
 {
   "status": "success",
-  "fixtures": ["test-fixtures/pdf/sample-text.pdf"],
+  "fixtures": ["tests/data/pdf/sample-text.pdf"],
   "count": 1
 }
 ```
@@ -639,12 +639,12 @@ List committed files under `test-fixtures/` for fixture-first upload paths (no h
 
 ## Tool: `inspect_file`
 
-Envelope metadata for a file under `test-fixtures/` or `test-results/` (kind, size, magic). **No domain field schema.**
+Envelope metadata for a file under `tests/data/` or `artifacts/test-results/` (kind, size, magic). **No domain field schema.**
 
 ### Input
 
 ```json
-{ "filePath": "test-fixtures/pdf/sample-text.pdf" }
+{ "filePath": "tests/data/pdf/sample-text.pdf" }
 ```
 
 ### Output
@@ -652,7 +652,7 @@ Envelope metadata for a file under `test-fixtures/` or `test-results/` (kind, si
 ```json
 {
   "status": "success",
-  "filePath": "test-fixtures/pdf/sample-text.pdf",
+  "filePath": "tests/data/pdf/sample-text.pdf",
   "filename": "sample-text.pdf",
   "size": 600,
   "kind": "pdf",
@@ -665,14 +665,14 @@ Envelope metadata for a file under `test-fixtures/` or `test-results/` (kind, si
 
 ## Tool: `extract_pdf_text`
 
-Extract **plain text** from a PDF under `test-fixtures/` or `test-results/`.
+Extract **plain text** from a PDF under `tests/data/` or `artifacts/test-results/`.
 
 Returns raw text only. Agents and tests must match **scenario expected tokens** from the requirement — this tool does **not** define business fields (no title/code/name schema).
 
 ### Input
 
 ```json
-{ "filePath": "test-results/downloads/export.pdf", "maxChars": 50000 }
+{ "filePath": "artifacts/test-results/downloads/export.pdf", "maxChars": 50000 }
 ```
 
 ### Output
@@ -680,7 +680,7 @@ Returns raw text only. Agents and tests must match **scenario expected tokens** 
 ```json
 {
   "status": "success",
-  "filePath": "test-results/downloads/export.pdf",
+  "filePath": "artifacts/test-results/downloads/export.pdf",
   "kind": "pdf",
   "size": 14200,
   "text": "...",
@@ -693,12 +693,12 @@ Returns raw text only. Agents and tests must match **scenario expected tokens** 
 
 ## Tool: `read_excel_summary`
 
-Structure dump for xlsx under `test-fixtures/` or `test-results/`: sheet names, header row, sample rows. Expected headers come from the **scenario**, not a fixed domain schema.
+Structure dump for xlsx under `tests/data/` or `artifacts/test-results/`: sheet names, header row, sample rows. Expected headers come from the **scenario**, not a fixed domain schema.
 
 ### Input
 
 ```json
-{ "filePath": "test-fixtures/excel/sample-headers.xlsx", "maxRows": 20 }
+{ "filePath": "tests/data/excel/sample-headers.xlsx", "maxRows": 20 }
 ```
 
 ### Output
@@ -706,7 +706,7 @@ Structure dump for xlsx under `test-fixtures/` or `test-results/`: sheet names, 
 ```json
 {
   "status": "success",
-  "filePath": "test-fixtures/excel/sample-headers.xlsx",
+  "filePath": "tests/data/excel/sample-headers.xlsx",
   "sheetNames": ["Sheet1"],
   "headers": ["ColA", "ColB", "ColC"],
   "sampleRows": [["a1", "b1", "c1"]],
@@ -721,15 +721,15 @@ Structure dump for xlsx under `test-fixtures/` or `test-results/`: sheet names, 
 1. `health_check` (playwright-qa)
 2. `validate_requirement` — fix errors before planning
 3. `parse_requirement_scenarios` + `normalize_requirements` (Planner)
-4. Generate specs under `src/tests/` + `validate_generated_tests`
-5. `run_tests` (playwright-test) — writes JSON reporter output at the active config-mapped path (`getJsonResultsPath()`; default `test-results/results.json`)
+4. Generate specs under `tests/` + `validate_generated_tests`
+5. `run_tests` (playwright-test) — writes JSON reporter output at the active config-mapped path (`getJsonResultsPath()`; default `artifacts/test-results/results.json`)
 6. `get_test_failures` → Healer → `validate_generated_tests` → `run_tests` (scoped)
 7. `get_test_summary` (Report)
 
 ## CI tool matrix
 
 | Tool / script                                   | `quality.yml` (PR)   | `e2e.yml` (main/manual) | Agent pre-flight |
-| ----------------------------------------------- | -------------------- | ----------------------- | ---------------- |
+| --- | --- | --- | --- |
 | `npm run health:check` / `health_check`         | yes                  | optional                | yes              |
 | `validate_requirement`                          | example file via CLI | no                      | yes              |
 | `validate_generated_tests` / `npm run validate` | yes                  | no                      | yes              |

@@ -44,7 +44,7 @@
 - status: 200 or 201
 - name: QA-KIT-NETWORK-OK
 - qty: 2
-- contract: test-fixtures/network/contracts/demo/submit-success.json
+- contract: tests/data/network/contracts/demo/submit-success.json
 - request requiredKeys: name, qty
 - response requiredKeys: ok, id
 

@@ -20,7 +20,7 @@ Manual (tanpa wizard):
 ```bash
 npx playwright install --with-deps chromium
 npm run mcp:build
-cp environments/local.env.example environments/local.env   # isi BASE_URL + kredensial
+cp config/environments/local.env.example config/environments/local.env   # isi BASE_URL + kredensial
 npm run setup:check && npm run health:check
 ```
 
@@ -44,7 +44,7 @@ cp requirements/_TEMPLATE.md requirements/fitur-saya.md
 ## Command Paling Sering
 
 | Command                             | Kapan                                                         |
-| ----------------------------------- | ------------------------------------------------------------- |
+| --- | --- |
 | `npm run qa:run -- X`               | Preflight + cetak prompt Hermes (dinamis per req) + dashboard |
 | `npm run validate:requirement -- X` | Cek requirement saja                                          |
 | `npm run env:edit`                  | Ganti password / role / browser / OTP-CAPTCHA                 |
@@ -66,9 +66,9 @@ snapshot_page (playwright-qa) — url, featureName, pageName
 
 # 2. Generate scaffold dari catalog
 generate_page_object (playwright-qa) — featureName, pageName
-→ src/pages/<ClassName>.ts (skip jika sudah ada)
+→ tests/pages/<ClassName>.ts (skip jika sudah ada)
 
-# 3. Edit scaffold + register di src/fixtures/project.fixture.ts
+# 3. Edit scaffold + register di tests/fixtures.ts
 
 # 4. Pipeline berjalan normal — Generator auto-import POM
 ```
@@ -80,7 +80,7 @@ generate_page_object (playwright-qa) — featureName, pageName
 ## Tipe Skenario
 
 | Tag                     | Artinya                                                 |
-| ----------------------- | ------------------------------------------------------- |
+| --- | --- |
 | `(@success)`            | Happy path — alur normal                                |
 | `(@failure)`            | Negative path — validasi, input salah                   |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak                        |
@@ -97,14 +97,14 @@ generate_page_object (playwright-qa) — featureName, pageName
 
 ## File fixtures (local-first)
 
-| Path                     | Isi                                                                                                                                    |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `test-fixtures/pdf/`     | Sample PDF untuk upload / content assert                                                                                               |
-| `test-fixtures/excel/`   | Sample xlsx                                                                                                                            |
-| `test-fixtures/images/`  | Sample image upload                                                                                                                    |
-| `test-fixtures/invalid/` | Negative (empty / spoofed)                                                                                                             |
-| `test-fixtures/network/` | Contract partial untuk `@network-assert` (demo only)                                                                                   |
-| Helpers                  | `@/support/pw` — `waitAndAssertApi`, `waitForApi`, `assertNetworkContract`, `uploadFixture`, `downloadAndSave`, `assertPdfContains`, … |
+| Path                  | Isi                                                                                                                                    |
+| --- | --- |
+| `tests/data/pdf/`     | Sample PDF untuk upload / content assert                                                                                               |
+| `tests/data/excel/`   | Sample xlsx                                                                                                                            |
+| `tests/data/images/`  | Sample image upload                                                                                                                    |
+| `tests/data/invalid/` | Negative (empty / spoofed)                                                                                                             |
+| `tests/data/network/` | Contract partial untuk `@network-assert` (demo only)                                                                                   |
+| Helpers               | `@/support/pw` — `waitAndAssertApi`, `waitForApi`, `assertNetworkContract`, `uploadFixture`, `downloadAndSave`, `assertPdfContains`, … |
 
 Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`. Live payload/response = `@network-assert` (bukan overload `@network` mock).
 
@@ -115,7 +115,7 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 ## Kalau Gagal — Cek Ini Dulu
 
 | Gejala                       | Pertama Cek                                                                       |
-| ---------------------------- | --------------------------------------------------------------------------------- |
+| --- | --- |
 | `health_check` fail          | `npm run mcp:build` lalu **restart `playwright-qa`** / IDE                        |
 | Tool MCP baru tidak muncul   | `npm run mcp:build` → restart `playwright-qa`                                     |
 | `validate_requirement` error | Baca hint di output → perbaiki → coba lagi                                        |
@@ -129,7 +129,7 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 ## Keputusan Setelah Report
 
 | Kondisi                    | Keputusan                             |
-| -------------------------- | ------------------------------------- |
+| --- | --- |
 | Semua pass                 | ✅ APPROVE — archive sebagai baseline |
 | Failure: app salah         | 🐛 FILE BUG — buat defect ticket      |
 | Failure: requirement kabur | 📝 REVISE REQUIREMENT                 |
@@ -142,7 +142,7 @@ Setelah tool MCP baru / `npm run mcp:build` → **restart server `playwright-qa`
 ## Referensi Cepat
 
 | Dokumen                 | Link                                                              |
-| ----------------------- | ----------------------------------------------------------------- |
+| --- | --- |
 | Panduan lengkap         | [docs/GUIDE.md](GUIDE.md)                                         |
 | Template requirement    | [requirements/_TEMPLATE.md](../requirements/_TEMPLATE.md)         |
 | Contoh requirement baik | [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md) |

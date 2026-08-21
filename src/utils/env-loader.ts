@@ -126,6 +126,16 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
   // Requirement 5.4: try candidates in order — primary first, then template fallback
   const candidates = [
     {
+      resolvedPath: path.resolve(cwd, `config/environments/${appEnv}.env`),
+      label: `config/environments/${appEnv}.env`,
+      isTemplate: false,
+    },
+    {
+      resolvedPath: path.resolve(cwd, `config/environments/${appEnv}.env.example`),
+      label: `config/environments/${appEnv}.env.example`,
+      isTemplate: true,
+    },
+    {
       resolvedPath: path.resolve(cwd, `environments/${appEnv}.env`),
       label: `environments/${appEnv}.env`,
       isTemplate: false,
@@ -144,14 +154,14 @@ export function loadEnvironment(options?: LoadEnvironmentOptions): void {
       `Environment file not found for '${appEnv}'.\n` +
         `Tried:\n` +
         candidates.map((c) => `  - ${c.label}`).join('\n') +
-        `\n\nCreate environments/${appEnv}.env with your credentials.`,
+        `\n\nCreate config/environments/${appEnv}.env with your credentials.`,
     );
   }
 
   if (loaded.isTemplate) {
     logger.warn(
-      `environments/${appEnv}.env not found — loading template '${loaded.label}'. ` +
-        `Create environments/${appEnv}.env and replace placeholder values before running tests.`,
+      `config/environments/${appEnv}.env not found — loading template '${loaded.label}'. ` +
+        `Create config/environments/${appEnv}.env and replace placeholder values before running tests.`,
     );
   } else {
     // [SECURITY GUARD] Only when the primary file is encrypted (contains `encrypted:`)

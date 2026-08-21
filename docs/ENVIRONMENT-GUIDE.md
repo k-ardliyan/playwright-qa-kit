@@ -9,7 +9,7 @@
 ## 🌍 Environment Comparison Matrix
 
 | Aspect              | Local (default)                  | Staging (`APP_ENV=staging`)   | Production (`APP_ENV=production`) |
-| ------------------- | -------------------------------- | ----------------------------- | --------------------------------- |
+| --- | --- | --- | --- |
 | **BASE_URL**        | `http://localhost:3000`          | `https://staging.example.com` | `https://app.example.com`         |
 | **Node Env**        | Not used for routing             | Not used for routing          | Not used for routing              |
 | **Auth Flow**       | OTP via browser (recommended)    | Same + possible rate limits   | Same + stricter timeouts          |
@@ -90,7 +90,7 @@ AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.
 ### Local Environment
 
 | Error Pattern                         | Root Cause              | Solution                                    |
-| ------------------------------------- | ----------------------- | ------------------------------------------- |
+| --- | --- | --- |
 | `FileNotFound: .auth/local/user.json` | No auth setup run       | Run `npx playwright auth.setup --env=local` |
 | `ECONNREFUSED localhost:3000`         | Backend not running     | Start backend: `npm run dev:backend`        |
 | `NET::ERR_CERT_COMMON_NAME_INVALID`   | Self-signed cert (rare) | Add `--ignore-https-errors` in config       |
@@ -98,7 +98,7 @@ AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.
 ### Staging Environment
 
 | Error Pattern             | Root Cause                            | Solution                                          |
-| ------------------------- | ------------------------------------- | ------------------------------------------------- |
+| --- | --- | --- |
 | `Timeout waiting for OTP` | OTP SMS/email delayed                 | Increase `AUTH_CHALLENGE_TIMEOUT_MS=180000`       |
 | `ERR_TOO_MANY_REQUESTS`   | Rate limiting from third-party API    | Use `@network` mock pattern instead of real calls |
 | `ERR_CERT_DATE_INVALID`   | Staging cert misconfigured (uncommon) | Report to DevOps; add exception in test if urgent |
@@ -108,7 +108,7 @@ AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.
 ### Production Environment
 
 | Error Pattern                   | Root Cause                    | Solution                                                      |
-| ------------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `403 Forbidden (WAF)`           | Automation signature detected | Add `navigator.webdriver = false` in fixture                  |
 | `Session expired before action` | Shorter timeout than expected | Increase page timeouts: `page.setDefaultTimeout(60000)`       |
 | `CORS policy violation`         | Cross-origin API call blocked | Ensure API is on same subdomain or CORS headers set correctly |

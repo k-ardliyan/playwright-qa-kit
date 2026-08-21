@@ -20,12 +20,12 @@ Before opening or merging a PR that upgrades `@playwright/mcp`:
   - Run `npm install` to update `package-lock.json`.
 - [ ] **4. Compatibility Smoke Suite**
   - Run `npm run mcp:check` and ensure exit code `0`.
-  - Run `npx playwright test src/tests/unit/mcp-*.test.ts -c playwright.unit.config.ts`.
+  - Run `npx playwright test src/__tests__/unit/mcp-*.test.ts -c config/playwright/unit.ts`.
 - [ ] **5. Session & Auth Determinism Smoke**
-  - Verify isolated context launch via `npx tsx scripts/playwright-mcp-launch.ts --profile=author --role=user`.
+  - Verify isolated context launch via `npx tsx tools/scripts/playwright-mcp-launch.ts --profile=author --role=user`.
   - Verify credentials and storage state are not leaked in logs.
 - [ ] **6. Live Verification & Locators**
-  - Run generator unit tests: `npx playwright test src/tests/unit/generator-*.test.ts -c playwright.unit.config.ts`.
+  - Run generator unit tests: `npx playwright test src/__tests__/unit/generator-*.test.ts -c config/playwright/unit.ts`.
   - Ensure static test validation passes: `npm run validate`.
 - [ ] **7. Quality Gate**
   - Run full quality suite: `npm run test:quality`.

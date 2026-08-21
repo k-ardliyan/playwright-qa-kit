@@ -121,11 +121,18 @@ jobs:
             printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
             # CI uses plaintext secrets — never encrypt this ephemeral file
             printf 'AUTH_CHALLENGE_MODE=none\n'
-          } > "environments/${TARGET_ENV}.env"
+          } > "config/environments/${TARGET_ENV}.env"
+          # Also write fallback
+          mkdir -p environments
+          cp "config/environments/${TARGET_ENV}.env" "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
-          echo "Materialized environments/${TARGET_ENV}.env (plaintext CI profile)"
+          echo "Materialized config/environments/${TARGET_ENV}.env (plaintext CI profile)"
 
-      - name: Build playwright-qa json
+      - name: Install MCP server dependencies
+        if: steps.shard.outputs.skip != 'true'
+        run: npm run install:mcp-server
+
+      - name: Build playwright-qa MCP server
         if: steps.shard.outputs.skip != 'true'
         run: npm run mcp:build
 
@@ -150,8 +157,10 @@ jobs:
       - name: Auto-archive if all tests pass
         if: success() && steps.shard.outputs.skip != 'true'
         run: |
-          if [ -f reports/test-summary.json ]; then
-            PASS_RATE=$(node -e "const s=require('./reports/test-summary.json'); console.log(s.passRate||0)")
+          SUMMARY_FILE="artifacts/reports/test-summary.json"
+          [ -f "reports/test-summary.json" ] && SUMMARY_FILE="reports/test-summary.json"
+          if [ -f "$SUMMARY_FILE" ]; then
+            PASS_RATE=$(node -e "const s=require('./$SUMMARY_FILE'); console.log(s.passRate||0)")
             if [ "$PASS_RATE" = "100" ]; then
               echo "All tests passed (100%). Auto-archiving..."
               npm run archive:save -- --decision=APPROVE --notes="CI auto-pass (100%)" --yes || true
@@ -167,7 +176,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-shard-${{ matrix.shardIndex }}
-          path: blob-report/
+          path: |
+            artifacts/blob-report/
+            blob-report/
           retention-days: 7
 
       - name: Upload Playwright HTML Report
@@ -175,7 +186,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-shard-${{ matrix.shardIndex }}
-          path: reports/html/
+          path: |
+            artifacts/reports/html/
+            reports/html/
+            playwright-report/
           retention-days: 30
 
       - name: Upload test results
@@ -184,12 +198,10 @@ jobs:
         with:
           name: test-results-shard-${{ matrix.shardIndex }}
           path: |
+            artifacts/test-results/
+            artifacts/reports/
             test-results/
-            reports/test-summary.json
-            reports/custom-dashboard.html
-            reports/html/
-            reports/archive/
-            reports/pipeline-report-*.md
+            reports/
           retention-days: 30
 
   merge-blob-reports:

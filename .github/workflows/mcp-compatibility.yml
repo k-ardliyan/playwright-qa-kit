@@ -8,13 +8,13 @@ on:
       - 'src/shared/evidence/**'
       - 'src/shared/utils/**'
       - 'src/support/pw/**'
-      - 'src/tests/unit/**'
-      - 'mcp-server/**'
-      - 'scripts/mcp*/**'
-      - 'scripts/mcp-compat-check.ts'
-      - 'scripts/playwright-mcp-launch.ts'
-      - 'scripts/playwright-test-mcp-launch.ts'
-      - 'scripts/playwright-mcp*'
+      - 'src/__tests__/unit/**'
+      - 'tools/mcp/**'
+      - 'tools/scripts/mcp*/**'
+      - 'tools/scripts/mcp-compat-check.ts'
+      - 'tools/scripts/playwright-mcp-launch.ts'
+      - 'tools/scripts/playwright-test-mcp-launch.ts'
+      - 'tools/scripts/playwright-mcp*'
       - 'package.json'
       - 'package-lock.json'
       - '.mcp.json'
@@ -25,13 +25,13 @@ on:
       - 'src/shared/evidence/**'
       - 'src/shared/utils/**'
       - 'src/support/pw/**'
-      - 'src/tests/unit/**'
-      - 'mcp-server/**'
-      - 'scripts/mcp*/**'
-      - 'scripts/mcp-compat-check.ts'
-      - 'scripts/playwright-mcp-launch.ts'
-      - 'scripts/playwright-test-mcp-launch.ts'
-      - 'scripts/playwright-mcp*'
+      - 'src/__tests__/unit/**'
+      - 'tools/mcp/**'
+      - 'tools/scripts/mcp*/**'
+      - 'tools/scripts/mcp-compat-check.ts'
+      - 'tools/scripts/playwright-mcp-launch.ts'
+      - 'tools/scripts/playwright-test-mcp-launch.ts'
+      - 'tools/scripts/playwright-mcp*'
       - 'package.json'
       - 'package-lock.json'
       - '.mcp.json'
@@ -53,6 +53,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install MCP server dependencies
+        run: npm run install:mcp-server
+
+      - name: Build MCP server
+        run: npm run mcp:build
 
       - name: Run MCP Compatibility Check
         run: npm run mcp:check

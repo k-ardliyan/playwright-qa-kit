@@ -3861,7 +3861,8 @@ td.col-actions {
   padding: 32px 16px;
 }
 
-.compare-placeholder {
+.compare-placeholder,
+.history-placeholder {
   text-align: center;
   padding: 48px 24px;
   background: var(--surface);
@@ -3870,24 +3871,45 @@ td.col-actions {
   margin-top: 16px;
 }
 
-.compare-placeholder__icon {
-  font-size: 2.2rem;
+.compare-placeholder__inner,
+.history-placeholder__inner {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.compare-placeholder__icon,
+.history-placeholder__icon {
+  font-size: 2.4rem;
   margin-bottom: 12px;
   line-height: 1;
 }
 
-.compare-placeholder__title {
-  font-size: 1.05rem;
+.compare-placeholder__title,
+.history-placeholder__title {
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text);
   margin: 0 0 6px;
 }
 
-.compare-placeholder__desc {
-  font-size: 0.84rem;
-  max-width: 500px;
+.compare-placeholder__desc,
+.history-placeholder__desc {
+  font-size: 0.85rem;
+  max-width: 480px;
   margin: 0 auto;
-  line-height: 1.5;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.history-placeholder__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .compare-results-container {

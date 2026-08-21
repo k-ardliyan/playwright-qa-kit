@@ -6,184 +6,49 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.0-alpha.1] - 2026-08-21
+
 ### Added
 
-- **P0 QA friction fixes (Hermes-friendly)**
-  - `list_requirement_status` MCP tool — coverage map requirement → plan → tests → manual count → lastStatus
-  - Dynamic Hermes prompt for `npm run qa:run` (`scripts/qa-run-prompt.ts`) — login / authenticated / unauthenticated branches; resume only if `pipeline-state.json` matches requirementPath
-  - `explainFailure()` + SOURCE blurb/tooltip in dashboard — short Indonesian explanations for common Playwright/env errors (strict mode, timeout, ECONNREFUSED, auth, etc.)
-  - Unit coverage: `scripts/__tests__/qa-run.test.ts` prompt builder; `failure-source` explainFailure tests
-  - `health_check` **`auth_storage`** warn when `.auth/{APP_ENV}/` missing/empty
-  - `validate_requirement` **`layer_recommended`** warn when scenario missing `Layer terdampak` / `Affected Layer`
-  - Healer: after locator heal → `snapshot_page`; post-heal `storePattern` / `recordPatternOutcome` / `saveDatabase` flow in agent instructions
-  - `manual:check` recursive nested `requirements/**` (skip `_*.md` and `README.md`)
-  - Manifest sync: `list_requirement_status` on plan/report; `snapshot_page` on heal; property EXPECTED tools updated
+- **Hybrid Architecture**
+  - Clean separation of concerns: `tests/` (workspace for test specs, POMs, test data, and fixtures), `src/` (protected framework core), `tools/` (maintainer tooling & MCP servers), `config/` (environments and Playwright configurations), and `artifacts/` (test results, reports, and selector catalogs).
+  - Explicit Public Testing API boundary at `src/public/` (`fixtures`, `auth`, `metadata`, `workspace`).
+  - Architecture and boundary validator (`tools/validators/architecture.ts`) with zero-tolerance enforcement for cross-boundary imports.
+- **3-Server MCP Architecture & 19 Custom Tools**
+  - Dedicated custom MCP server `playwright-qa` under `tools/mcp/` exposing 19 tools across Preflight, Requirements, Selectors, Test Generation, Fixtures, Execution, and Reporting.
+  - Profile-based launcher for Playwright MCP (`tools/scripts/playwright-mcp-launch.ts`) and Playwright Test MCP (`tools/scripts/playwright-test-mcp-launch.ts`).
+  - 19 custom tools: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_requirement_status`, `snapshot_page`, `discover_pages`, `validate_generated_tests`, `generate_page_object`, `list_test_fixtures`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `get_test_failures`, `list_artifacts`, `get_test_summary`, and `archive_report`.
+- **Capability Helpers & Assertions**
+  - Network live assertion (`@network-assert`): `src/support/pw/network-assert-core.ts` and `network-assert.ts`.
+  - Document & file content validation (`@file-content`, `@upload`, `@download`): `src/support/pw/file-content-core.ts` and `files.ts` (PDF text & Excel header assertions).
+  - Assisted human challenge solver for session bootstrap (OTP / CAPTCHA): `src/support/human-challenge.ts`.
+- **Interactive Triage Dashboard v3**
+  - Full-width modern layout with Table View and Accordion View.
+  - Multi-line Test Step / Input Data, SOURCE root-cause explanation tooltips, dynamic column filtering, Confluence/TSV/CSV exports, and deep evidence inspection.
+- **Documentation & Agent Governance**
+  - Standardized all documentation files to UPPERCASE naming in `docs/` and `docs/recipes/`.
+  - Standardized all markdown table delimiters to 3 hyphens (`| --- | --- |`).
+  - Updated agent governance files (`AGENTS.md`, `.github/AGENTS.md`, `.github/agents/*.agent.md`) for canonical paths and tool contracts.
 
-- **Custom dashboard v2 → v3 triage board (Monitor/Operate)**
-  - Full-width layout (no 1360px); sticky global command bar; **view toolbars sibling of `.report-layout`**
-  - Table: multi-line Test Step / Input Data; full wrap (no ellipsis clamp); **SOURCE** Cause/Do/blurb + tooltip; Notes stack (time/ss/video/trace/badges)
-  - Filter columns + pin sticky header / pin Test ID; export CTAs in incident alert; export follows **visible rows and columns**
-  - Accordion: all cards **collapsed by default** (including failed); Filter steps; **Copy failure packet** only
-  - **Evidence & reports** single collapsible card (default closed): per-kind file inventory + Related deep links
-  - Fixed **dense** density (no Comfortable/Dense picker)
-  - Preview: `scripts/preview-dashboard.ts` writes `reports/test-summary.json`; preview deep-links prefix `../`
-  - Modules: `failure-source.ts` (blurb + tooltip), `filter-attrs.ts`, `export-helpers` dynamic columns; docs `REPORT-GUIDE.md` v0.3
-  - MCP: `get_test_summary` exposes `runMeta` + `testCases[].failureSource`; `get_test_failures` enriches `failureSource`
-  - Quality: `npm run test:unit` wired into `quality:check-rules`
+### Changed
+
+- **Dependency Upgrades**
+  - `@dotenvx/dotenvx` ^2.17.4 → **^2.21.0**
+  - `@playwright/test` ^1.62.0 → **^1.62.1**
+  - `playwright` ^1.62.0 → **^1.62.1** & `playwright-core` ^1.62.0 → **^1.62.1**
+  - `@modelcontextprotocol/sdk` ^1.29.0 → **^1.30.0**
+  - `tsx` ^4.23.1 → **^4.23.12**
+  - `eslint` ^10.8.0 → **^10.8.1**
+  - `eslint-plugin-playwright` ^2.10.5 → **^2.11.0**
+  - `typescript-eslint` ^8.65.0 → **^8.67.0**
+  - `lint-staged` ^16.4.0 → **^17.3.0**
+  - Pinned `@types/node` at `^20.19.43` and `typescript` at `^5.9.3` / `^6.0.3` to ensure compiler and plugin stability.
+- Relocated historical migration plan from root to `docs/architecture/HYBRID-MIGRATION-PLAN.md`.
 
 ### Removed
 
-- **Jira integration** — `JIRA_CONSTANTS`, Create JIRA button, placeholder domain warn, `configuration.property` Jira checks
-- **Dashboard poster panels** — Chart.js donut / Status distribution, Scan guide legend, Ops summary Mode/Unhealthy (duplikat hero)
-
-### Changed
-
-- **Safe dependency bumps (non-major, compatibility-preserving)**
-  - Root: `@dotenvx/dotenvx` 2.14 → **2.17.2**, `prettier` 3.9.5 → **3.9.6**, `typescript-eslint` 8.64 → **8.65.0**
-  - mcp-server: `@dotenvx/dotenvx` **2.17.2**; override `hono` 4.12.25 → **4.12.31** (security headers/jsx fixes via MCP SDK transitive)
-  - Verified: typecheck, mcp:build, validate, validate:agents, network-assert unit/demo
-  - **Not bumped (major / risk):** TypeScript 7, lint-staged 17, `@types/node` 26; exceljs uuid advisory (fix would force exceljs 3.x break); `@hono/node-server` moderate (force would downgrade MCP SDK)
-
-### Added
-
-- **Network live assert capability** (`@network-assert`)
-  - `src/support/pw/network-assert-core.ts` + `network-assert.ts` — pure redact/partial match/contract load; Playwright `waitForApi`, `assertNetworkContract`, `assertNetworkMatch`, `startNetworkRecorder`, `attachNetworkCapture`, optional `useHar`
-  - Tag split: `@network` = mock only; `@network-assert` = live observe only (validator uses `@network(?!-assert)` so tags do not cross-match)
-  - Fixtures: `test-fixtures/network/contracts/demo/submit-success.json` (demo token `QA-KIT-NETWORK-OK`)
-  - Unit tests `npm run test:network-assert`; demo `src/tests/demo/demo-network-assert.spec.ts`
-  - Validator capability rule + planner/generator/**healer** docs + recipe `docs/recipes/network-assert.md`
-  - Sample requirement `requirements/auth/sample-network-assert.md`
-  - Scenario-owned keys only — no domain schema patent; secrets redacted on capture
-  - Prefer `waitAndAssertApi` one-shot with inline `assert` keys from Input Data; use `contract` file only when path is listed
-  - Health check `network_assert`; validator accepts `waitAndAssertApi`
-  - Recipe documents discover-then-freeze when QA does not know API path yet
-
-- **File / PDF / Excel capability helpers** (scenario-driven content, fixture-first upload)
-  - `src/support/pw/file-content-core.ts` + `files.ts` — magic bytes, `fixturePath`, `extractPdfText`, `readExcelSummary`, `downloadAndSave`, `uploadFixture`, `uploadViaChooser`, envelope/content asserts (`assertPdfContains`, `assertPdfMatches`)
-  - `test-fixtures/` bank (demo tokens only: `QA-KIT-SAMPLE-PDF`, `ColA/B/C`)
-  - Capability tags `@download` `@upload` `@file-content` + validator rules
-  - MCP tools: `inspect_file`, `extract_pdf_text` (raw text only), `read_excel_summary`, `list_test_fixtures`
-  - Demo `src/tests/demo/demo-file-capabilities.spec.ts`
-  - `npm run sync:file-core` / auto-sync inside `mcp:build` (single source of truth for pure core)
-  - Recipe `docs/recipes/multi-session-sync.md` for dual-context admin↔user
-  - Content needles/headers always from the scenario — no patented business field schema
-  - Docs/recipes: MANUAL-SCENARIOS, GUIDE, CHEATSHEET, `_TEMPLATE`, file-upload-download, pdf-excel-content-assert, multi-session-sync
-  - Health check `file_content`; setup-check fixture bank; healer seeds for download/upload
-
-- **Assisted human challenge (OTP / CAPTCHA) for auth session bootstrap**
-  - `src/support/human-challenge.ts` — modes: `none` | `otp-browser` (primary) | `otp-stdin` | `captcha-browser` | `auto`
-  - Wired into `src/support/auth.setup.ts` + generated `wizard-auth-template`
-  - Setup wizard Phase 5 + `env:edit` for challenge mode (not raw-env-only)
-  - Scripts: `npm run auth:setup`, `npm run auth:setup:headed`
-  - Health check warns/fails on interactive mode under CI
-  - CAPTCHA is browser-only (terminal rejected); CI forbids interactive modes
-  - Scenario OTP/CAPTCHA remain `(@manual)` in pipeline (v1 = session assist only)
-- **Playwright power helpers** (`src/support/pw/`):
-  - `network-mock.ts` — `mockJson`, `mockServerError`, `mockAbort`, `unmockAll` (official `page.route`)
-  - `api-seed.ts` — `apiJson`, `apiSeed`, `apiCleanup` (official `request` / `APIRequestContext`)
-  - `aria-snapshot.ts` — `expectAriaMatchesCatalog`, `expectAriaSnapshot` (`toMatchAriaSnapshot`)
-  - `soft-forms.ts` — `expectAllVisible`, `expectSoftFieldErrors` (`expect.soft`)
-  - `visual.ts` — `expectVisual` / `expectPageVisual` (`toHaveScreenshot`)
-  - `clock.ts` — `freezeTime` / `advanceTime` (`page.clock`)
-  - `role-projects.ts` — `buildRoleProject` / `buildRoleProjects` for multi-role project matrix
-- **`src/support/auth.setup.ts`** — template-core auth setup (safe empty state without credentials)
-- **`playwright.cross-browser.config.ts`** — chromium + firefox + webkit via `buildMultiBrowserProjects`
-- **`playwright.mobile.config.ts`** — Pixel 5 + iPhone 13 device projects
-- **Demo** `demo-pw-power.spec.ts` + `demo-pw-power-extended.spec.ts` (`@demo @pw-power`)
-- **Requirement** `requirements/sample-network-hybrid.md` (`@network` `@hybrid` `@aria`)
-- **Capability tags** in requirements/planner/generator + **validator capability rules**
-- **Healer** `ensurePowerSeedPatterns()` for network / hybrid / auth failures
-- **Optional blob reporter** — `createFrameworkReporters({ includeBlob })` when `CI=true` and `PW_BLOB=1`
-- **Nightly** `merge-blob-reports` + `cross-browser` job; **PR e2e** optional `shardCount` 1–4 + blob merge
-- **Recipe** `docs/recipes/playwright.role-projects.recipe.ts`
-
-### Changed
-
-- Root `playwright.config.ts` — `chromium` now `dependencies: ['setup']`; default storage remains empty
-- PR `e2e.yml` artifact path `reports/html/`; optional matrix shards
-- Nightly shards upload `blob-report/` + merge via `playwright merge-reports`
-- Generator/Planner/Healer agent instructions document official Playwright power patterns
-- `requirements/_TEMPLATE.md` — capability scenario tags including `@download` `@upload` `@file-content` (scenario-owned content tokens)
-- `docs/MANUAL-SCENARIOS.md` — upload not manual; PDF text automatable; PDF layout visual remains `@manual`; fixture-first not headed pause
-- `docs/GUIDE.md` / `docs/CHEATSHEET.md` — file power features + `test-fixtures/` paths + restart `playwright-qa` after `mcp:build`
-- `validate_generated_tests` — capability tag ↔ API usage enforcement (demo/seed exempt)
-
-### Added (prior)
-
-- **Table View dashboard** — custom dashboard now has a toggle between Accordion and Table view
-  - General mode: flat 9-column table (Test ID, Description, Test Step, Input Data, Expected Result, Actual Result, Status, Priority, Notes)
-  - Role-aware mode: table grouped per `ROLE: <role>` section header with row numbering reset per role
-  - Layer badges in Notes column: `FE`, `BE`, `DB`, `API`
-- **Export functions** — three export buttons on Table View toolbar:
-  - Copy for Confluence (wiki markup table)
-  - Copy Data (TSV — paste directly to Google Sheets)
-  - Download CSV (RFC 4180 file download)
-- **`test-metadata.ts`** — new helper module (`src/support/test-metadata.ts`)
-  - `setTestMetadata()` — push table-view annotations at start of test
-  - `captureActualResult()` — record actual result after assertions pass
-- **Requirement format v2** — updated `requirements/_TEMPLATE.md` and examples with new per-scenario fields:
-  - `- **Test ID:** \`TC-XXX-NNN\`` (required)
-  - `**Hasil yang Diharapkan:**` replaces `**Hasil:**` (backward-compat preserved)
-  - `- **Prioritas skenario:**` (optional, per-scenario override)
-  - `- **Layer terdampak:**` (optional, FE/BE/DB/API)
-  - `**Input Data:**` bullet list (optional, structured key: value)
-- **`parse_requirement_scenarios` v2** — parser extracts `testId`, `priority`, `inputData`, `expectedResultFormatted`, `affectedLayer` per scenario
-- **`types.ts` extensions** — `CollectedTestData` gains `testId`, `scenarioId`, `role`, `priority`, `inputData`, `expectedResult`, `actualResult`, `affectedLayer`; `TestSummary` gains `reportMode`, `rolesInScope`, `testCases[]`
-- **Agent instruction updates**:
-  - `planner.agent.md` — test plan table now includes Test ID, Priority, Input Data, Layer columns; role-aware mode groups under `## Role: <role>` headers
-  - `generator.agent.md` — mandatory annotation block pattern with `setTestMetadata()` and `captureActualResult()` in every generated test
-  - `reporter.agent.md` — `PipelineReport` JSON schema adds `testCases[]` array; markdown report adds Test Cases table section (flat for general, grouped for role-aware)
-
-### Changed (prior)
-
-- `custom-reporter.ts` — `onTestEnd()` now extracts 6 new annotation fields; `onEnd()` writes extended `TestSummary` including `testCases[]` to `test-summary.json`
-- `build-local-html.ts` / `build-ci-html.ts` — dual panel (Accordion + Table) with ARIA-compliant toggle tabs
-- `shared.ts` — inline JS toggle handler + export button event delegation added to document shell
-- `styles.ts` — new CSS: view toggle, table layout, role section header (teal), priority badges, layer badges, actual result coloring, toolbar
-- `get_test_summary` MCP tool — response now includes `testCases[]`, `reportMode`, `rolesInScope`
-- `get_test_failures` MCP tool — `TestFailure` interface extended with `testId`, `role`, `priority`, `expectedResult`, `actualResult`
-
-### Setup & Onboarding
-
-- **Interactive setup wizard** (`scripts/setup-wizard.ts`, 7 phases): Welcome → Project Info → Credentials → Install → MCP+Hermes → Auth Setup → Verify+Encrypt → Next Steps
-  - State resume via `.wizard-state.json` (Ctrl+C safe)
-  - Generic auth setup template generated per role (`src/support/auth.setup.ts`)
-- **Wizard CLI flags**:
-  - `--dry-run` — preview without writing files or running commands
-  - `--from-phase=N` — resume from specific phase (0-7)
-  - `--help` — usage info
-- **OS detection + sudo prompt** — automatically detects Linux/macOS/Windows and prompts for sudo on `npx playwright install --with-deps`
-- **Dotenvx warning block** added to `environments/local.env.example` for credential encryption awareness
-- **Two new docs**:
-  - `docs/GETTING-STARTED.md` — single entry point for new QA (prerequisites, 3-step setup, verification, next steps)
-  - `docs/TROUBLESHOOTING.md` — 10 most common errors with fixes (Node version, permission, sudo, esbuild crash, encryption key loss, auth selector, MCP, MODULE_NOT_FOUND, etc.)
-- **Documentation cleanup** — removed 5 redundant/agent-only docs:
-  - `docs/README.md` (replaced by GETTING-STARTED.md)
-  - `docs/EXIT-CODES.md` (developer reference, not QA)
-  - `docs/BASELINE-REGRESSION.md` (overlap with failure-triage content)
-  - `docs/QA-DECISION-MODEL.md` (agent guidance, not QA)
-  - `docs/FAILURE-TRIAGE.md` (agent guidance, not QA)
-- **`docs/GUIDE.md` compacted** — setup section reduced from ~60 lines to ~10 (redirects to GETTING-STARTED.md) to eliminate duplication
-- **All broken doc links fixed** across `README.md`, `AGENTS.md`, `CHEATSHEET.md`, `REPORT-GUIDE.md`, `CHANGELOG.md`
-- **`.gitattributes` restored** with CRLF/LF normalization rules for cross-platform consistency
-- **`setup-check.ts` requirements updated** — `requirements/_TEMPLATE.md`, `QA guide` checks verified
-- **`npm run env:edit`** — script to decrypt `local.env`, open in editor, re-encrypt automatically
-
-## [Unreleased — snapshot/discovery]
-
-### Added
-
-- `snapshot_page` and `discover_pages` MCP tools to capture ARIA snapshots and generate/manage selector catalogs
-- `npm run snapshot:page` and `npm run discover:pages` CLI scripts under `scripts/` to run page snapshotting and discovery from command line
-- Property tests for page snapshotting and discovery tools (`snapshot-page.property.ts`, `discover-pages.property.ts`)
-
-### Changed
-
-- Cleaned up raw Markdown files by simplifying all table separator formatting to minimal hyphens for improved readability
-
-### Removed
-
-- Deprecated documentation files (`MIGRATION.md`, ADRs 0001-0003, workshop guides, installation guides, cheatsheets) to clean up and stream line the framework guide
+- Removed legacy root and deprecated directory structures (`src/tests/`, `test-fixtures/`, `src/pages/`).
+- Removed redundant Jira integration in favor of universal CSV/TSV/Confluence exports.
 
 ## [0.1.0-alpha.2] - 2026-06-17
 
@@ -231,5 +96,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 See [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
+[Unreleased]: https://github.com/k-ardliyan/playwright-qa-kit/compare/v0.2.0-alpha.1...HEAD
+[0.2.0-alpha.1]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.2.0-alpha.1
 [0.1.0-alpha.2]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/k-ardliyan/playwright-qa-kit/releases/tag/v0.1.0-alpha.1

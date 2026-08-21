@@ -4,7 +4,7 @@ Operational guide for maintaining the Playwright AI Agent Framework.
 
 ## 1) Add a New Environment File
 
-1. Create a new file in `environments/` (for example `staging.env` or `uat.env`).
+1. Create a new file in `config/environments/` (for example `staging.env` or `uat.env`).
 2. Keep the same key set used by existing environment templates.
 3. Set `APP_ENV=<name>` when running tests.
 4. Ensure `src/utils/env-loader.ts` recognizes the environment name (or gracefully falls back to `local`).
@@ -12,7 +12,7 @@ Operational guide for maintaining the Playwright AI Agent Framework.
 
 Checklist:
 
-- [ ] File exists under `environments/`
+- [ ] File exists under `config/environments/`
 - [ ] Required keys are present
 - [ ] `APP_ENV` run tested locally
 
@@ -42,51 +42,47 @@ export enum TAGS {
 
 ## 3) Register a New MCP Tool
 
-1. Implement the tool in `mcp-server/src/tools/`.
-2. Register in **`mcp-server/src/tools/registry.ts`** — add an entry to `TOOL_REGISTRY` array (name, description, inputSchema, handler). The HTTP route and MCP definition are derived automatically.
-3. Add/adjust helper utilities in `mcp-server/src/utils/` if needed.
+1. Implement the tool in `tools/mcp/src/tools/`.
+2. Register in **`tools/mcp/src/tools/registry.ts`** — add an entry to `TOOL_REGISTRY` array (name, description, inputSchema, handler). The HTTP route and MCP definition are derived automatically.
+3. Add/adjust helper utilities in `tools/mcp/src/utils/` if needed.
 4. Rebuild and verify:
    - `npm run mcp:typecheck`
+   - `npm run mcp:build`
 5. Update documentation **before** marking complete:
    - `CUSTOM-MCP.md` (tool name, input schema, output schema, example invocation)
    - `.github/agents/*.agent.md` if an agent uses the new tool
    - `AGENTS.md` MCP tools list if the Orchestrator should call the tool
-   - `src/agents/integration/manifest.ts` `TOOL_INFO` + phase `toolNames` if the tool is part of a pipeline phase
-   - `npm run manifest:generate` after manifest source changes
+   - `agent-manifest.json` if phase tools changed
 
 Checklist:
 
-- [ ] Tool implemented in `mcp-server/src/tools/`
+- [ ] Tool implemented in `tools/mcp/src/tools/`
 - [ ] Entry added to `TOOL_REGISTRY` in `registry.ts`
-- [ ] `npm run mcp:typecheck` passes
+- [ ] `npm run mcp:typecheck` and `npm run mcp:build` pass
 - [ ] `CUSTOM-MCP.md` updated (tool contract + description)
 - [ ] If the new tool is a health check, update `health_check` description in `CUSTOM-MCP.md`
 - [ ] Agent instructions updated if applicable
-- [ ] `manifest.ts` + `npm run manifest:generate` if phase tools changed
 - [ ] `docs/GUIDE.md` / `docs/CHEATSHEET.md` if QA-facing
 
 ---
 
 ## 4) Update Reporter for a New Field
 
-When a new reporting field is needed (for HTML or `reports/test-summary.json`):
+When a new reporting field is needed (for HTML or `artifacts/reports/test-summary.json`):
 
 1. Update data model in `src/support/custom-reporter.ts`.
 2. Populate field in collection phase (`onTestEnd` / `onEnd`).
 3. Render field in local and/or CI HTML mode.
-4. Include field in `reports/test-summary.json` if required.
-5. Update reporter property tests in `custom-reporter.property.ts`.
+4. Include field in `artifacts/reports/test-summary.json` if required.
+5. Update reporter property tests in `src/__tests__/property/custom-reporter.property.ts`.
 
 Recommended verification:
 
-````bash
-npx tsc --noEmit
-npm run validate
 ```bash
-npx tsx src/tests/property/custom-reporter.property.ts
-````
-
-````
+npm run typecheck
+npm run validate
+npm run test:property
+```
 
 ---
 
@@ -95,11 +91,11 @@ npx tsx src/tests/property/custom-reporter.property.ts
 When extending the QA requirement template (`requirements/_TEMPLATE.md`):
 
 1. Add the field to the template with a short comment explaining its purpose.
-2. Update parser in `mcp-server/src/tools/parse-requirement-scenarios.ts` — add a helper function to extract the new field, then populate it in `parseRequirementScenarios` output.
-3. Update `mcp-server/src/tools/validate-requirement.ts` if the field should trigger a validation rule (error or warn).
+2. Update parser in `tools/mcp/src/tools/parse-requirement-scenarios.ts` — add a helper function to extract the new field, then populate it in `parseRequirementScenarios` output.
+3. Update `tools/mcp/src/tools/validate-requirement.ts` if the field should trigger a validation rule (error or warn).
 4. Update `CUSTOM-MCP.md` output schema for `parse_requirement_scenarios`.
 5. Update `.github/agents/planner.agent.md` and `generator.agent.md` mapping rules if agents consume the field.
-6. Update `requirements/README.md` and `docs/writing-requirements.md` for QA-facing docs.
+6. Update `requirements/README.md` and `docs/WRITING-REQUIREMENTS.md` for QA-facing docs.
 7. Run `npm run mcp:typecheck` to verify types.
 
 Checklist:
@@ -109,7 +105,7 @@ Checklist:
 - [ ] Validation rule added if required (`validate-requirement.ts`)
 - [ ] `CUSTOM-MCP.md` output schema updated
 - [ ] Agent docs updated (`planner.agent.md`, `generator.agent.md`)
-- [ ] QA docs updated (`requirements/README.md`, `docs/writing-requirements.md`)
+- [ ] QA docs updated (`requirements/README.md`, `docs/WRITING-REQUIREMENTS.md`)
 - [ ] `npm run mcp:typecheck` passes
 
 ---
@@ -162,7 +158,7 @@ When upgrading `@playwright/test`:
 5. Preserve framework-specific content:
    - root [`AGENTS.md`](AGENTS.md) (Orchestrator canonical) and [`.github/agents/orchestrator.agent.md`](.github/agents/orchestrator.agent.md) (stub pointer), [`.github/AGENTS.md`](.github/AGENTS.md) governance,
    - `playwright-qa` tools (`validate_requirement`, `parse_requirement_scenarios`, etc.),
-   - `requirements/` → `specs/` → `src/tests/` paths and Indonesian QA template,
+   - `requirements/` → `specs/` → `tests/` paths and Indonesian QA template,
    - hybrid `playwright-cli` + MCP live verification in Generator.
 6. Update golden sample if planner format changes: `specs/sample-login-empty-fields-test-plan.md`.
 7. Rebuild MCP if validator rules changed: `npm run mcp:build`.
@@ -201,16 +197,16 @@ npm run test:ci
 
 When modifying the integration layer (`src/agents/integration/`):
 
-1. Run `npm run validate:agents` to verify agent instruction files remain valid.
+1. Run `npm run validate:architecture` to verify boundary rules.
 2. Run `npm run manifest:generate` if phase definitions or tool mappings changed.
 3. Run `npm run mcp:config` to regenerate platform-specific MCP configs if `.mcp.json` changed.
-4. Run `npm run test:property` — integration layer has 23 correctness properties that must pass.
-5. Run `npx playwright test -c playwright.unit.config.ts` for unit/integration tests.
+4. Run `npm run test:property` — integration layer correctness properties that must pass.
+5. Run `npm run test:unit` for unit/integration tests.
 
 Checklist:
 
-- [ ] `npm run validate:agents` passes (exit code 0)
-- [ ] Property tests pass (50/50 files)
+- [ ] `npm run validate:architecture` passes (exit code 0)
+- [ ] Property tests pass
 - [ ] Unit/integration tests pass
 - [ ] `npm run test:quality` passes
 
@@ -222,14 +218,13 @@ Generated tests (Generator output) **must** include:
 
 ```ts
 // spec: specs/<feature>-test-plan.md
-// seed: src/tests/seed.spec.ts
+// seed: tests/seed.spec.ts
 ```
 
-Legacy manual specs are exempt via `TRACEABILITY_EXEMPT` in `mcp-server/src/tools/validate-generated-tests.ts`:
+Legacy manual specs are exempt via `TRACEABILITY_EXEMPT` in `tools/mcp/src/tools/validate-generated-tests.ts`:
 
-- `src/tests/seed.spec.ts`
-- `src/tests/demo/healer-test.spec.ts`
-- `example/erpku/tests/` (reference adapter — not Generator output)
+- `tests/seed.spec.ts`
+- `tests/demo/healer-test.spec.ts`
+- `examples/erpku/tests/` (reference adapter — not Generator output)
 
 Do not add new paths without maintainer review. Prefer `@legacy` tag automation in future.
-````

@@ -6,7 +6,6 @@ import {
   DataTableHead,
   DataTableRow,
   DataTableCell,
-  DataTableEmpty,
   DataTableActions,
 } from '../../components/data-table';
 import {
@@ -15,6 +14,7 @@ import {
   IconAlert,
   IconTrash,
   IconEdit,
+  IconSave,
 } from '../../components/shared/icons';
 
 export interface HistoryRunsTableProps {
@@ -40,11 +40,30 @@ export function HistoryRunsTable({
 }: HistoryRunsTableProps) {
   if (!history || history.length === 0) {
     return (
-      <DataTableEmpty
-        icon="📜"
-        message="No archived test runs found."
-        submessage="Run tests and save results to build your persistent test history."
-      />
+      <div class="history-placeholder panel">
+        <div class="history-placeholder__inner">
+          <div class="history-placeholder__icon">📜</div>
+          <h3 class="history-placeholder__title">No Archived Test Runs Found</h3>
+          <p class="history-placeholder__desc muted">
+            Jalankan pengujian dan simpan hasil test run Anda (via CLI{' '}
+            <code>npm run archive:save</code> atau tombol <strong>Save Current Run</strong>) untuk
+            mulai membangun riwayat pengujian persisten.
+          </p>
+          {serveMode && (
+            <div class="history-placeholder__actions">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                onclick="openSaveModal && openSaveModal()"
+                title="Save current test run to persistent history"
+              >
+                <IconSave size={14} />
+                <span>Save Current Run</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
 

@@ -1,8 +1,13 @@
 node_modules/
+artifacts/
 test-results/
 playwright-report/
+blob-report/
 reports/
+tools/mcp/dist/
 .auth/
 package-lock.json
+tools/mcp/package-lock.json
+*.md
 # Optional local share deck — not part of quality gate unless explicitly committed
 docs/playwright-qa-kit-sharing.html

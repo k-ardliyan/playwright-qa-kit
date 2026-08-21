@@ -169,12 +169,17 @@ export async function runSetupWizard(options?: WizardOptions): Promise<WizardRes
 function resolveEnvPath(appEnv: AppEnv): string {
   let dir = process.cwd();
   for (let i = 0; i < 12; i += 1) {
-    if (fs.existsSync(path.join(dir, 'package.json')))
+    if (fs.existsSync(path.join(dir, 'package.json'))) {
+      const configPath = path.join(dir, 'config', 'environments', `${appEnv}.env`);
+      if (fs.existsSync(configPath)) return configPath;
       return path.join(dir, 'environments', `${appEnv}.env`);
+    }
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
+  const configPath = path.join(process.cwd(), 'config', 'environments', `${appEnv}.env`);
+  if (fs.existsSync(configPath)) return configPath;
   return path.join(process.cwd(), 'environments', `${appEnv}.env`);
 }
 

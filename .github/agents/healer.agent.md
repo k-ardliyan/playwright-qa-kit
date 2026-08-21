@@ -25,11 +25,11 @@ Read these before healing — canonical failure payload and fix pattern:
 {
   "failures": [
     {
-      "filePath": "src/tests/example.spec.ts",
+      "filePath": "tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
-      "tracePath": "test-results/.../trace.zip",
-      "screenshotPath": "test-results/.../screenshot.png",
+      "tracePath": "artifacts/test-results/.../trace.zip",
+      "screenshotPath": "artifacts/test-results/.../screenshot.png",
       "rootCause": "timing"
     }
   ]
@@ -41,7 +41,7 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 ## MCP Dependencies
 
 | MCP Server        | Tool Name                                            |
-| ----------------- | ---------------------------------------------------- |
+| --- | --- |
 | `playwright-qa`   | `get_test_failures`                                  |
 | `playwright-qa`   | `validate_generated_tests`                           |
 | `playwright-qa`   | `snapshot_page` (refresh catalog after locator heal) |
@@ -51,7 +51,7 @@ Obtain failures via **playwright-qa** `get_test_failures` after **playwright-tes
 ## Browser Interaction Tools (`playwright` MCP)
 
 | Category    | Tools                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------- |
+| --- | --- |
 | Navigation  | `browser_navigate`, `browser_snapshot`, `browser_take_screenshot`                                 |
 | Interaction | `browser_click`, `browser_type`, `browser_fill_form`, `browser_select_option`, `browser_wait_for` |
 | Diagnostics | `browser_console_messages`, `browser_network_requests`                                            |
@@ -207,12 +207,13 @@ Pattern storage behavior:
 12. **Auth / storageState missing**: ensure `dependencies: ['setup']` and `test.use({ storageState: authStatePath('<role>') })` (or `.auth/{APP_ENV}/<role>.json`); re-run setup project — do not skip auth checks.
 13. If service worker swallows routes, suggest `test.use({ serviceWorkers: 'block' })`.
 14. **Download timeout / no Download event**: ensure `page.waitForEvent('download')` (or `downloadAndSave` / `downloadFile`) is registered **before** the click that triggers the download.
-15. **ENOENT fixture / missing upload file**: fix path to a committed file under `test-fixtures/`; use `uploadFixture` / `uploadViaChooser` / `setInputFiles` — never introduce `page.pause()` for OS file pick.
+15. **ENOENT fixture / missing upload file**: fix path to a committed file under `tests/data/`; use `uploadFixture` / `uploadViaChooser` / `setInputFiles` — never introduce `page.pause()` for OS file pick.
 16. **Empty PDF text** (extract returns blank): likely encrypted or scanned PDF — classify as app/requirement limitation; prefer envelope-only (`assertDownloadedEnvelope` / `assertFileMagic`) or `cannotFix` / `@manual` if content was required. Do not invent OCR.
 17. **Content assert fail** (`assertPdfContains` / `assertExcelHeaders` missing needles): re-read **scenario** Expected Result / Input Data / Hasil yang Diharapkan for the correct tokens; optionally call MCP `extract_pdf_text` / `read_excel_summary` for actual text; fix needles only if the plan was mis-transcribed — **do not** replace with canned fields (judul/kode/nama/invoice schema or demo tokens like `QA-KIT-SAMPLE-PDF` / `ColA`).
 
 ## Guardrails (Mandatory)
 
+- **Ownership Boundary**: Healer may only modify `tests/**` (specs, pages, fixtures adapter). Protected internal areas (`src/**`, `tools/**`, `config/**`, `.github/agents/**`) must **NEVER** be modified to make tests green.
 - Max **3** heal cycles per file per orchestrator run. Count each patch + `run_tests` as one cycle.
 - After 3 cycles with the same root error (or no improvement), return `cannotFix` with the last error message.
 - If live UI inspection (`browser_snapshot`, `tracePath`, `screenshotPath`) shows a **product bug** (feature broken in the app, not a test issue), do not weaken assertions. Instead:
@@ -227,13 +228,13 @@ Pattern storage behavior:
 {
   "fixes": [
     {
-      "filePath": "src/tests/example.spec.ts",
+      "filePath": "tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],
   "cannotFix": [
     {
-      "file": "src/tests/other.spec.ts",
+      "file": "tests/other.spec.ts",
       "reason": "Missing reproducible selector context"
     }
   ],
@@ -252,9 +253,9 @@ Pattern storage behavior:
 ## File / PDF / Excel failure patterns
 
 | Symptom                                                                           | Likely cause                                                                             | Fix                                                                                                                                                                                                                                         |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | Timeout waiting for download / no Download event                                  | Listener registered after click, or missing entirely                                     | Add `waitForEvent('download')` **before** trigger, or switch to `downloadAndSave` / `downloadFile` from `@/support/pw` / BasePage                                                                                                           |
-| `ENOENT` / cannot find fixture path                                               | Wrong relative path, missing bank file, or product test using demo-only path incorrectly | Point to committed `test-fixtures/...` path from plan Input Data; list fixtures via MCP `list_test_fixtures` if available                                                                                                                   |
+| `ENOENT` / cannot find fixture path                                               | Wrong relative path, missing bank file, or product test using demo-only path incorrectly | Point to committed `tests/data/...` path from plan Input Data; list fixtures via MCP `list_test_fixtures` if available                                                                                                                      |
 | Upload never attaches / OS dialog                                                 | Generated headed pause or human picker                                                   | Replace with `setInputFiles` / `uploadFixture` / `uploadViaChooser` / `uploadFile` — **never** `page.pause()` for file choose                                                                                                               |
 | PDF assert fails; extract text empty                                              | Encrypted or scanned PDF (no text layer)                                                 | Prefer envelope-only asserts; if scenario required text content, return `cannotFix` / suggest `@manual` — do not invent OCR or domain fields                                                                                                |
 | `assertPdfContains` / Excel headers fail with partial text present                | Needles/headers not from scenario, or mis-transcribed                                    | Re-read plan Expected Result / requirement Hasil; call `extract_pdf_text` / `read_excel_summary` for actual dump; align needles to **scenario tokens only** — never swap in a canned field set or demo tokens (`QA-KIT-SAMPLE-PDF`, `ColA`) |

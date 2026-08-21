@@ -19,7 +19,7 @@ Skenario yang ditandai `(@manual)` di judul `### SC-XX: ...` berarti tidak bisa 
 `(@manual)` adalah salah satu dari empat tipe skenario resmi:
 
 | Tag                     | Artinya                                     | Di-generate sebagai              |
-| ----------------------- | ------------------------------------------- | -------------------------------- |
+| --- | --- | --- |
 | `(@success)`            | Happy path — alur normal berhasil           | Test penuh                       |
 | `(@failure)`            | Negative path — input salah, validasi gagal | Test dengan assertion error      |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak            | Test yang assert penolakan akses |
@@ -34,7 +34,7 @@ Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 Tandai `(@manual)` kalau skenario membutuhkan salah satu dari ini:
 
 | Situasi                | Contoh                              | Kenapa Manual                              |
-| ---------------------- | ----------------------------------- | ------------------------------------------ |
+| --- | --- | --- |
 | CAPTCHA / reCAPTCHA    | Login form pakai reCAPTCHA          | Tidak bisa diotomasi tanpa bypass (ilegal) |
 | OTP / SMS verification | Login dengan SMS OTP                | Butuh akses ke HP asli                     |
 | Email verification     | Konfirmasi signup via email link    | Butuh inbox asli                           |
@@ -52,7 +52,7 @@ Jangan pakai `(@manual)` hanya karena "ribet" — biasanya bisa diotomasi dengan
 
 - Login biasa → tinggal cari selector + isi form
 - Klik tombol + lihat alert → `page.on('dialog')` bisa handle
-- **Upload file** → **bukan manual**. Pakai fixture-first: `setInputFiles()` / `uploadFixture()` / `uploadViaChooser()` dari `@/support/pw` dengan path di `test-fixtures/`. Tag skenario `(@upload)`. **Jangan** pause headed untuk OS file picker.
+- **Upload file** → **bukan manual**. Pakai fixture-first: `setInputFiles()` / `uploadFixture()` / `uploadViaChooser()` dari `@/support/pw` dengan path di `tests/data/`. Tag skenario `(@upload)`. **Jangan** pause headed untuk OS file picker.
 - **Download file** → `downloadAndSave()` + envelope assert (`assertDownloadedEnvelope`). Tag `(@download)`.
 - **PDF teks / Excel struktur** → **bisa diotomasi** dengan `@file-content`: `assertPdfContains` / `extractPdfText` / `assertExcelHeaders` / `readExcelSummary`. Token/needle **milik skenario** (dari Hasil yang Diharapkan) — bukan skema domain tetap.
 - **Cek payload/response API setelah klik submit** → **bukan manual**. Tag `(@network-assert)` + `waitAndAssertApi` / contract partial. Mock error API = `(@network)`, bukan live assert.
@@ -60,20 +60,20 @@ Jangan pakai `(@manual)` hanya karena "ribet" — biasanya bisa diotomasi dengan
 
 ### File / PDF / Excel — manual vs automatable
 
-| Kebutuhan                                           | Tag                 | Manual?          | Cara otomasi                                                    |
-| --------------------------------------------------- | ------------------- | ---------------- | --------------------------------------------------------------- |
-| Upload lampiran / import                            | `(@upload)`         | **Tidak**        | Fixture di `test-fixtures/` + `uploadFixture` / `setInputFiles` |
-| Download export                                     | `(@download)`       | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`                  |
-| Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)`   | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`                  |
-| Header/kolom Excel dari requirement                 | `(@file-content)`   | **Tidak**        | `assertExcelHeaders(path, headersFromScenario)`                 |
-| Live payload + response setelah aksi UI             | `(@network-assert)` | **Tidak**        | `waitAndAssertApi` / partial contract (keys dari skenario)      |
-| Mock HTTP 500 / offline untuk error UX              | `(@network)`        | **Tidak**        | `mockServerError` / `mockAbort`                                 |
-| Layout visual PDF (spasi, alignment, warna)         | `(@manual)`         | **Ya**           | Review mata manusia; bukan `assertPdfContains`                  |
-| OS file-picker pause (headed)                       | —                   | **Anti-pattern** | Selalu fixture-first; tidak ada pause pipeline                  |
+| Kebutuhan                                           | Tag                 | Manual?          | Cara otomasi                                                 |
+| --- | --- | --- | --- |
+| Upload lampiran / import                            | `(@upload)`         | **Tidak**        | Fixture di `tests/data/` + `uploadFixture` / `setInputFiles` |
+| Download export                                     | `(@download)`       | **Tidak**        | `downloadAndSave` + `assertDownloadedEnvelope`               |
+| Isi teks PDF (token, nomor, label dari requirement) | `(@file-content)`   | **Tidak**        | `assertPdfContains(path, needlesFromScenario)`               |
+| Header/kolom Excel dari requirement                 | `(@file-content)`   | **Tidak**        | `assertExcelHeaders(path, headersFromScenario)`              |
+| Live payload + response setelah aksi UI             | `(@network-assert)` | **Tidak**        | `waitAndAssertApi` / partial contract (keys dari skenario)   |
+| Mock HTTP 500 / offline untuk error UX              | `(@network)`        | **Tidak**        | `mockServerError` / `mockAbort`                              |
+| Layout visual PDF (spasi, alignment, warna)         | `(@manual)`         | **Ya**           | Review mata manusia; bukan `assertPdfContains`               |
+| OS file-picker pause (headed)                       | —                   | **Anti-pattern** | Selalu fixture-first; tidak ada pause pipeline               |
 
 **Prinsip:** fixture-first + local-first. MCP tools (`inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`, `browser_network_requests`) untuk **inspect-time** saja; test yang di-commit tetap assert lewat helper `@/support/pw`.
 
-Recipe: [file-upload-download.md](recipes/file-upload-download.md) · [pdf-excel-content-assert.md](recipes/pdf-excel-content-assert.md) · [network-assert.md](recipes/network-assert.md).
+Recipe: [FILE-UPLOAD-DOWNLOAD.md](recipes/FILE-UPLOAD-DOWNLOAD.md) · [PDF-EXCEL-CONTENT-ASSERT.md](recipes/PDF-EXCEL-CONTENT-ASSERT.md) · [NETWORK-ASSERT.md](recipes/NETWORK-ASSERT.md).
 
 Kalau ragu, tanya maintainer framework dulu sebelum tandai `(@manual)`.
 
@@ -150,5 +150,5 @@ Tanya Framework Maintainer kalau:
 
 - [requirements/_TEMPLATE.md](../requirements/_TEMPLATE.md) — format skenario lengkap
 - [requirements/README.md](../requirements/README.md) — panduan tipe skenario dan role-aware
-- [docs/writing-requirements.md](writing-requirements.md) — cara menulis requirement
+- [docs/WRITING-REQUIREMENTS.md](WRITING-REQUIREMENTS.md) — cara menulis requirement
 - [docs/GUIDE.md](GUIDE.md) — panduan QA utama

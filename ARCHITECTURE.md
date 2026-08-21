@@ -9,24 +9,19 @@ menggerakkan pipeline: Requirement → Plan → Generate → Execute → Heal �
 
 ## Layer Diagram
 
-```
+```text
 requirements/          ← QA User menulis requirement di sini
-       ↓
-.github/agents/        ← Sub-agent instructions (planner, generator, healer, reporter)
-       ↓
-Browser Intelligence   ← Intent Router + Live Verification Gate + Pinned MCP
        ↓
 specs/                 ← Planner output: test plan markdown
        ↓
-src/tests/             ← Generator output: Playwright TypeScript specs
+tests/                 ← Playwright Test Workspace (spec, pages, adapter, test data)
        ↓
-src/fixtures/          ← Fixture chain: framework → base → project
-src/pages/             ← Page Object Models (optional, registered di project.fixture.ts)
-src/support/pw/        ← Low-level PW helpers (barrel: src/support/pw/index.ts)
-       ↓
-reports/               ← Runtime output: pipeline-state.json, HTML, archive/
-selector-catalog/      ← ARIA snapshots & semantic locators per page
-test-results/mcp/      ← Evidence Manifests, traces, and reproduction videos
+artifacts/             ← Consolidated Runtime Output (reports, test-results, selector-catalog)
+
+[Core Engine & Tooling]
+src/                   ← Framework Core Engine (protected internal boundary)
+tools/                 ← Tooling, CLI, architecture validators & MCP server
+config/                ← Environments & Playwright configuration presets
 ```
 
 ## Canonical References
@@ -38,11 +33,11 @@ test-results/mcp/      ← Evidence Manifests, traces, and reproduction videos
 ## Key Conventions (inline)
 
 ```ts
-// ✅ Correct import — always from fixture, never from @playwright/test directly
-import { test, expect } from '@/fixtures/base.fixture';
+// ✅ Correct import — always from fixtures adapter or @/public
+import { test, expect } from './fixtures';
 
 // ✅ Auth — always use helper, never hardcode .auth/ path
-import { authStatePath } from '@/support/auth-paths';
+import { authStatePath } from './fixtures';
 test.use({ storageState: authStatePath('finance') });
 
 // ✅ Shared types barrel
@@ -54,6 +49,6 @@ import { networkMock, waitAndAssertApi } from '@/support/pw';
 
 - `APP_ENV` is the sole environment selector — never `NODE_ENV` for target switching
 - Auth files: `.auth/{APP_ENV}/<role>.json`
-- Test naming: `src/tests/<feature>[-<role>].spec.ts`
+- Test naming: `tests/<feature>[-<role>].spec.ts`
 - Specs with unknown selectors → call `browser_snapshot` first, NEVER guess
 - Blocked scenario → `test.skip(true, '<reason>')`, NEVER delete

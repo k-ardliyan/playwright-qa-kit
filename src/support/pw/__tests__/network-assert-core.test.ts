@@ -124,21 +124,21 @@ test('matchNetworkHit forbidKeys', () => {
 });
 
 test('resolve + load demo contract fixture', () => {
-  const p = resolveNetworkContractPath('test-fixtures/network/contracts/demo/submit-success.json');
+  const p = resolveNetworkContractPath('tests/data/network/contracts/demo/submit-success.json');
   assert.ok(fs.existsSync(p), `missing ${p}`);
-  const c = loadNetworkContract('test-fixtures/network/contracts/demo/submit-success.json');
+  const c = loadNetworkContract('tests/data/network/contracts/demo/submit-success.json');
   assert.equal(c.id, 'demo.submit.success');
 });
 
 test('assertNetworkContractHit passes demo fixture', () => {
-  assertNetworkContractHit(sampleHit(), 'test-fixtures/network/contracts/demo/submit-success.json');
+  assertNetworkContractHit(sampleHit(), 'tests/data/network/contracts/demo/submit-success.json');
 });
 
 test('assertNetworkContractHit fails when name wrong', () => {
   const hit = sampleHit();
   hit.requestBody = { name: 'WRONG', qty: 1 };
   assert.throws(
-    () => assertNetworkContractHit(hit, 'test-fixtures/network/contracts/demo/submit-success.json'),
+    () => assertNetworkContractHit(hit, 'tests/data/network/contracts/demo/submit-success.json'),
     /Network contract failed/,
   );
 });

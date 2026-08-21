@@ -117,9 +117,14 @@ jobs:
             printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
             # CI uses plaintext secrets — never encrypt this ephemeral file
             printf 'AUTH_CHALLENGE_MODE=none\n'
-          } > "environments/${TARGET_ENV}.env"
+          } > "config/environments/${TARGET_ENV}.env"
+          mkdir -p environments
+          cp "config/environments/${TARGET_ENV}.env" "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
-          echo "Materialized environments/${TARGET_ENV}.env (plaintext CI profile)"
+          echo "Materialized config/environments/${TARGET_ENV}.env (plaintext CI profile)"
+
+      - name: Install MCP server dependencies
+        run: npm run install:mcp-server
 
       - name: Build playwright-qa MCP server
         run: npm run mcp:build
@@ -150,7 +155,9 @@ jobs:
         if: always()
         with:
           name: blob-report-shard-${{ matrix.shardIndex }}
-          path: blob-report/
+          path: |
+            artifacts/blob-report/
+            blob-report/
           retention-days: 14
 
       - name: Upload Playwright HTML Report (per-shard fallback)
@@ -158,7 +165,10 @@ jobs:
         if: always()
         with:
           name: playwright-report-shard-${{ matrix.shardIndex }}
-          path: reports/html/
+          path: |
+            artifacts/reports/html/
+            reports/html/
+            playwright-report/
           retention-days: 30
 
       - name: Upload test results
@@ -167,10 +177,10 @@ jobs:
         with:
           name: test-results-shard-${{ matrix.shardIndex }}
           path: |
+            artifacts/test-results/
+            artifacts/reports/
             test-results/
-            reports/test-summary.json
-            reports/custom-dashboard.html
-            reports/html/
+            reports/
           retention-days: 30
 
   e2e-skipped:
@@ -288,9 +298,11 @@ jobs:
             printf 'AUTH_LOGIN_URL_PATH=login\n'
             printf 'AUTH_SUCCESS_TEXT=Berhasil Login\n'
             printf 'AUTH_CHALLENGE_MODE=none\n'
-          } > "environments/${TARGET_ENV}.env"
+          } > "config/environments/${TARGET_ENV}.env"
+          mkdir -p environments
+          cp "config/environments/${TARGET_ENV}.env" "environments/${TARGET_ENV}.env"
           echo "APP_ENV=${TARGET_ENV}" >> "$GITHUB_ENV"
-          echo "Materialized environments/${TARGET_ENV}.env (plaintext CI profile)"
+          echo "Materialized config/environments/${TARGET_ENV}.env (plaintext CI profile)"
 
       - name: Install Playwright browsers (chromium, firefox, webkit)
         run: npx playwright install --with-deps chromium firefox webkit
@@ -308,10 +320,10 @@ jobs:
         with:
           name: cross-browser-results
           path: |
+            artifacts/test-results/cross-browser/
+            artifacts/reports/
             test-results/cross-browser/
             reports/html-cross-browser/
-            reports/test-summary.json
-            reports/custom-dashboard.html
           retention-days: 14
 
   publish-reports:

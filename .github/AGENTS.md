@@ -15,11 +15,11 @@ QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requiremen
 
 ## MCP Servers (three-server hybrid)
 
-| Server            | Command                                                        | Role                                            |
-| ----------------- | -------------------------------------------------------------- | ----------------------------------------------- |
-| `playwright`      | `npx -y @playwright/mcp@0.0.77 --headless`                     | Browser exploration (`browser_*` tools)         |
-| `playwright-test` | `npx tsx scripts/playwright-test-mcp-launch.ts`                | Execute tests (`run_tests`, etc.)               |
-| `playwright-qa`   | `node mcp-server/dist/index-mcp.js` (env bootstrap at startup) | Requirements, validation, failure/summary reads |
+| Server            | Command                                                       | Role                                            |
+| --- | --- | --- |
+| `playwright`      | `npx tsx tools/scripts/playwright-mcp-launch.ts`              | Browser exploration (`browser_*` tools)         |
+| `playwright-test` | `npx tsx tools/scripts/playwright-test-mcp-launch.ts`         | Execute tests (`run_tests`, etc.)               |
+| `playwright-qa`   | `node tools/mcp/dist/index-mcp.js` (env bootstrap at startup) | Requirements, validation, failure/summary reads |
 
 Configure all three in [`.mcp.json`](../.mcp.json) as the project MCP config. Keep [`.vscode/mcp.json`](../.vscode/mcp.json) only if your editor still expects workspace MCP config. Build custom QA server: `npm run mcp:build`.
 

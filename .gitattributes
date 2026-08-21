@@ -25,6 +25,9 @@
 
 # Config files
 .gitignore text eol=lf
+.gitattributes text eol=lf
+.prettierignore text eol=lf
+.claudeignore text eol=lf
 .eslintrc* text eol=lf
 .prettierrc* text eol=lf
 tsconfig.json text eol=lf
@@ -36,12 +39,16 @@ tsconfig.json text eol=lf
 *.gif binary
 *.ico binary
 *.pdf binary
+*.xlsx binary
 *.zip binary
 *.gz binary
 *.tar binary
 *.tgz binary
 node_modules/** binary
-dist/** binary
+tools/mcp/dist/** binary
+
+# Hybrid Architecture runtime output directories — binary blobs
+artifacts/** binary
 test-results/** binary
 playwright-report/** binary
 blob-report/** binary
@@ -49,5 +56,7 @@ blob-report/** binary
 # Auth state files (sensitive + JSON)
 .auth/** text eol=lf
 
-# Environments (credentials)
+# Environments & config — keep LF
+config/environments/** text eol=lf
+config/playwright/** text eol=lf
 environments/** text eol=lf

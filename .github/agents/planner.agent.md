@@ -42,7 +42,7 @@ Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/s
 ## MCP Dependencies
 
 | Server          | Tool                          | Purpose                                                       |
-| --------------- | ----------------------------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `playwright-qa` | `validate_requirement`        | Validate requirement format before planning                   |
 | `playwright-qa` | `parse_requirement_scenarios` | Parse scenarios including role scope and scenario type        |
 | `playwright-qa` | `normalize_requirements`      | Normalize requirement text before planning                    |
@@ -64,14 +64,14 @@ For public sites without authentication, prefer **`discover_pages`** over manual
 
 ## Seed and auth context
 
-| Context                    | Seed                                                                      | Auth                                                                                                                                                                                                                                                                                      | POM fixtures                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Template core (`npm test`) | `src/tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `src/support/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it        |
-| ERPKU reference adapter    | Same seed for Generator traceability                                      | `npm run test:erpku-example` — setup project + `.auth/{APP_ENV}/user.json`                                                                                                                                                                                                                | [`example/erpku/fixtures/project.fixture.ts`](../../example/erpku/fixtures/project.fixture.ts) |
+| Context                    | Seed                                                                  | Auth                                                                                                                                                                                                                                                                                | POM fixtures                                                                                     |
+| --- | --- | --- | --- |
+| Template core (`npm test`) | `tests/seed.spec.ts` — generic `page.goto(BASE_URL)`, unauthenticated | Root [`playwright.config.ts`](../../playwright.config.ts): project `setup` → `tests/auth.setup.ts` + `chromium` `dependencies: ['setup']`. Default storage is empty; authenticated specs use `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` | Empty [`project.fixture.ts`](../../src/fixtures/project.fixture.ts) until fork fills it          |
+| ERPKU reference adapter    | Same seed for Generator traceability                                  | `npm run test:erpku-example` — setup project + `.auth/{APP_ENV}/user.json`                                                                                                                                                                                                          | [`examples/erpku/fixtures/project.fixture.ts`](../../examples/erpku/fixtures/project.fixture.ts) |
 
-- Auth state files per role: `.auth/{APP_ENV}/<role>.json` (e.g. `.auth/local/finance.json`). Prefer `authStatePath('finance')` from `@/support/auth-paths`.
-- **Role-aware tests** land in `src/tests/<name>-<role>.spec.ts`, one file per role.
-- **Generated tests** always land in `src/tests/<name>.spec.ts` with `@/fixtures/base.fixture`.
+- Auth state files per role: `.auth/{APP_ENV}/<role>.json` (e.g. `.auth/local/finance.json`). Prefer `authStatePath('finance')` from `@/public/auth` or `./fixtures`.
+- **Role-aware tests** land in `tests/<name>-<role>.spec.ts`, one file per role.
+- **Generated tests** always land in `tests/<name>.spec.ts` importing from `./fixtures`.
 
 ## Role-Aware Planning
 
@@ -89,23 +89,22 @@ If `Role scope` is **not** present, plan in **general mode** — single auth con
 
 ## Output Format
 
-Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requirements/<domain>/<feature>.md`), save to `specs/<domain>/<feature>-test-plan.md`.
+Save the test plan to `specs/<feature-name>-test-plan.md` using the structure below:
 
 ```markdown
-<!-- req: requirements/<feature-name>.md -->
-<!-- generated-at: <ISO8601 timestamp> -->
+# Test Plan: <Feature Title>
 
-# Test Plan: <Feature Name>
+## Metadata
 
-## Application Overview
+- **Requirement:** `requirements/<feature-name>.md`
+- **Mode:** general | role-aware
+- **Roles in Scope:** <comma-separated list, or "none (general)">
+- **Generated At:** <YYYY-MM-DD HH:mm:ss>
+- **Seed Test:** `tests/seed.spec.ts`
 
-<Brief description of the feature under test>
+## Summary
 
-**Mode:** general | role-aware
-**Roles in scope:** <comma-separated list, or "N/A" for general mode>
-**Source requirement:** `requirements/<feature-name>.md`
-
----
+<1-2 paragraphs describing what is tested, which roles are covered, key risks, and why specific capabilities were chosen.>
 
 ## Scenarios
 
@@ -113,18 +112,18 @@ Save to `specs/<feature-name>-test-plan.md`. If the requirement is nested (`requ
 
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated` | `storageState: undefined`
-**Seed:** `src/tests/seed.spec.ts`
+**Seed:** `tests/seed.spec.ts`
 **Browser Intent:** `network: <boolean>, storage: <boolean>, vision: <boolean>, devtools: <boolean>, dialog: <boolean>, multiTab: <boolean>, fileUpload: <boolean>`
 **Capabilities:** <none | network | network-assert | hybrid | aria | visual | download | upload | file-content — derived from title tags / requirement Tags>
 
 | Scenario Name | Steps | Expected Result | Browser Intent | Capabilities         |
-| ------------- | ----- | --------------- | -------------- | -------------------- |
+| --- | --- | --- | --- | --- |
 | SC-01: ...    | ...   | ...             | storage: true  | network, soft-assert |
 
 For **general mode**, the table per scenario is:
 
 | Test ID    | Scenario Name | Priority | Steps          | Input Data | Expected Result    | Layer |
-| ---------- | ------------- | -------- | -------------- | ---------- | ------------------ | ----- |
+| --- | --- | --- | --- | --- | --- | --- |
 | TC-XXX-001 | SC-01: ...    | high     | 1. ...; 2. ... | key: value | observable outcome | FE    |
 
 For **role-aware mode**, group rows under `## Role: <role>` header and use the same columns above.
@@ -133,10 +132,10 @@ For **role-aware mode**, group rows under `## Role: <role>` header and use the s
 
 **Role:** <role name, or "general">
 **Auth Context:** `.auth/{APP_ENV}/<role>.json` | `unauthenticated`
-**Seed:** `src/tests/seed.spec.ts`
+**Seed:** `tests/seed.spec.ts`
 
 | Scenario Name | Steps | Expected Result |
-| ------------- | ----- | --------------- |
+| --- | --- | --- |
 | SC-02: ...    | ...   | ...             |
 ```
 
@@ -156,7 +155,7 @@ For **role-aware mode**, group rows under `## Role: <role>` header and use the s
 
 - `Role` — which role this scenario runs as, or "general"
 - `Auth Context` — exact storage state path or `unauthenticated`
-- `Seed` — always `src/tests/seed.spec.ts` for Generator traceability
+- `Seed` — always `tests/seed.spec.ts` for Generator traceability
 
 ### Scenario type tags in heading
 
@@ -190,7 +189,7 @@ After `snapshot_page` / `discover_pages`:
 When the requirement mentions download, upload, or PDF/Excel **content** checks, set the matching capability tags:
 
 | Signal in requirement                                           | Tag                        | Plan fields to populate                                                                                                                 |
-| --------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | Download / export / unduh file                                  | `(@download)`              | Steps name the trigger control; Expected Result may include filename/ext/size/magic                                                     |
 | Upload / pilih file / lampiran                                  | `(@upload)`                | **Input Data** lists fixture path under `test-fixtures/` (e.g. `fixture: test-fixtures/pdf/sample-text.pdf`)                            |
 | PDF/Excel text, headers, cells, or file magic/envelope          | `(@file-content)`          | **Expected Result** / **Input Data** list **expected tokens or headers copied from Hasil yang Diharapkan** — never invent domain fields |
@@ -234,7 +233,7 @@ Populate plan **Capabilities** from title tags and metadata `#network #network-a
 > List scenarios that **should** exist based on the requirement but could not be planned because of missing information.
 
 | Gap                  | Reason                    | Suggested Action                    |
-| -------------------- | ------------------------- | ----------------------------------- |
+| --- | --- | --- |
 | SC-XX: <description> | <why it can't be planned> | <what QA should clarify or provide> |
 
 If there are no gaps, write: `No coverage gaps identified.`
@@ -246,7 +245,7 @@ If there are no gaps, write: `No coverage gaps identified.`
 > List scenarios marked `(@manual)` with the reason they cannot be automated.
 
 | Scenario   | Reason                                    |
-| ---------- | ----------------------------------------- |
+| --- | --- |
 | SC-XX: ... | CAPTCHA / OTP / biometric / visual review |
 
 If there are no manual scenarios, write: `No manual scenarios.`

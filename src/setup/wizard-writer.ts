@@ -212,6 +212,8 @@ export function writeEnvFile(options: EnvWriteOptions): EnvWriteResult {
 function resolveEnvPath(appEnv: AppEnv): string {
   // Find repo root by climbing up from cwd
   const repoRoot = findRepoRoot();
+  const configPath = path.join(repoRoot, 'config', 'environments', `${appEnv}.env`);
+  if (fs.existsSync(configPath)) return configPath;
   return path.join(repoRoot, 'environments', `${appEnv}.env`);
 }
 

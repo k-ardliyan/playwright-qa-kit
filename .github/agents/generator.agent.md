@@ -48,7 +48,7 @@ Also read metadata from the source requirement via `normalize_requirements` when
 ## MCP Dependencies
 
 | Server          | Tool                       | Purpose                                                       |
-| --------------- | -------------------------- | ------------------------------------------------------------- |
+| --- | --- | --- |
 | `playwright-qa` | `normalize_requirements`   | Read requirement metadata including role scope and auth state |
 | `playwright-qa` | `validate_generated_tests` | Validate generated spec files after generation                |
 | `playwright-qa` | `snapshot_page`            | Capture ARIA + selector catalog for a specific page           |
@@ -102,34 +102,46 @@ Before committing generated test code:
 ## Metadata → Code Mapping
 
 | Source (requirement / test plan)              | Generated code                                                                                                                                   |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| --- | --- |
 | `metadata.tags` or `#tags`                    | `test.describe('...', { tag: ['@auth', '@ui'] }, () => {`                                                                                        |
 | `metadata.authState: unauthenticated`         | `test.use({ storageState: { cookies: [], origins: [] } })`                                                                                       |
 | `metadata.authState: authenticated` (general) | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/user.json\` })`— mode general → role **user**, never invent role`general` |
 | `Role: super-admin`                           | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/super-admin.json\` })`                                                    |
 | `Role: finance`                               | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/finance.json\` })`                                                        |
-| `Role: hrd`                                   | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/hrd.json\` })`                                                            |
-| `Role: admin`                                 | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/admin.json\` })`                                                          |
-| `Role: user` / plan label `general`           | `test.use({ storageState: \`.auth/\${process.env.APP_ENV \|\| 'local'}/user.json\` })`                                                           |
-| `Auth Context: unauthenticated`               | `test.use({ storageState: { cookies: [], origins: [] } })`                                                                                       |
-| `Auth Context: .auth/<role>.json` (legacy)    | Prefer scoped path `.auth/{APP_ENV}/<role>.json` (or `authStatePath('<role>')` from `@/support/auth-paths`)                                      |
-| Scenario type `(@access-restriction)`         | Generate test that verifies access is denied: redirect, error message, or element not visible                                                    |
-| Scenario type `(@failure)`                    | Generate test with invalid input, assert error message / validation state                                                                        |
-| Scenario type `(@manual)`                     | `test.skip(true, 'Manual: <reason from Expected Result>')` — never omit the reason                                                               |
-| Scenario type `(@success)` or untagged        | Generate full positive-path test                                                                                                                 |
-| `metadata.pomRequired`                        | Import and use the named POM class(es) from `src/pages/<name>.ts`                                                                                |
+
+- `Role` — which role this scenario runs as, or "general"
+- `Auth Context` — `.auth/{APP_ENV}/<role>.json` or `unauthenticated`
+- `Seed` — always `tests/seed.spec.ts`
+- `Capabilities` — capability tokens derived from tags (`network`, `network-assert`, `hybrid`, `aria`, `visual`, `download`, `upload`, `file-content`)
+
+## Special Scenario Type Flags
+
+| Flag in Test Plan / Requirement | Generator Action                                                                                                                                      |
+| --- | --- |
+| `(@manual)`                     | **DO NOT** generate executable browser code. Generate `test.skip(true, 'Scenario is marked @manual — <reason>')`. Add tag `@manual` to test title.    |
+| `(@access-restriction)`         | Assert the page redirects to login, shows 403, or hides the restricted UI. Verify error message appears.                                              |
+| `(@failure)`                    | Assert validation error, toast notification, or form boundary is visible and readable.                                                                |
+| `(@success)`                    | Assert final success state (URL, success alert, new record in table).                                                                                 |
+| `(@network)`                    | Use `mockJson()` / `mockServerError()` / `mockAbort()` from `@/support/pw` before triggering the request. Assert UI displays the expected mock state. |
+| `(@network-assert)`             | Use `waitAndAssertApi()` or `waitForApi()` + `assertNetworkMatch()` / `assertNetworkContract()` from `@/support/pw` after triggering action.          |
+| `(@aria)`                       | Assert DOM matches ARIA snapshot with `expectAriaMatchesCatalog()` or `toMatchAriaSnapshot()`.                                                        |
+| `(@visual)`                     | Assert screenshot baseline with `expectVisual(page, 'name')` or `expectPageVisual()`.                                                                 |
+| `(@download)`                   | Download files and verify envelope with `downloadAndSave()` from `@/support/pw`.                                                                      |
+| `(@upload)`                     | Upload files with `uploadFixture()` or `uploadImageAndVerify()` from `@/support/pw`.                                                                  |
+| `(@file-content)`               | Assert text/headers in PDF/Excel fixtures with `assertPdfContains()` or `assertExcelHeaders()` from `@/support/pw`.                                   |
+| `metadata.pomRequired`          | Import and use the named POM class(es) from `tests/pages/<name>.ts`                                                                                   |
 
 ## File Naming Convention
 
 Spec path **mirrors the requirement path domain**. Strip `requirements/` prefix, replace `.md` with `.spec.ts`, add role suffix if role-specific.
 
-| Requirement path                             | Spec path                              |
-| -------------------------------------------- | -------------------------------------- |
-| `requirements/login.md`                      | `src/tests/login.spec.ts`              |
-| `requirements/login.md` (role: finance)      | `src/tests/login-finance.spec.ts`      |
-| `requirements/auth/login.md`                 | `src/tests/auth/login.spec.ts`         |
-| `requirements/auth/login.md` (role: finance) | `src/tests/auth/login-finance.spec.ts` |
-| `requirements/customers/create.md`           | `src/tests/customers/create.spec.ts`   |
+| Requirement path                             | Spec path                          |
+| --- | --- |
+| `requirements/login.md`                      | `tests/login.spec.ts`              |
+| `requirements/login.md` (role: finance)      | `tests/login-finance.spec.ts`      |
+| `requirements/auth/login.md`                 | `tests/auth/login.spec.ts`         |
+| `requirements/auth/login.md` (role: finance) | `tests/auth/login-finance.spec.ts` |
+| `requirements/customers/create.md`           | `tests/customers/create.spec.ts`   |
 
 **Rule:** derive the spec path directly from the requirement path — no separate decision needed.
 
@@ -145,7 +157,7 @@ Every spec file generated **must** begin with these lines before the first `impo
 ```ts
 // req: requirements/<feature>.md
 // spec: specs/<feature>-test-plan.md
-// seed: src/tests/seed.spec.ts
+// seed: tests/seed.spec.ts
 // generated-at: <ISO8601 timestamp>
 ```
 
@@ -153,7 +165,7 @@ Rules:
 
 - `// req:` — path to the source requirement file. Closes the traceability loop back to requirements.
 - `// spec:` — path to the test plan under `specs/`. Already enforced by `validate_generated_tests`.
-- `// seed:` — always `src/tests/seed.spec.ts`. Already enforced by `validate_generated_tests`.
+- `// seed:` — always `tests/seed.spec.ts`. Already enforced by `validate_generated_tests`.
 - `// generated-at:` — ISO 8601 timestamp of when the file was first written. Write-once; do not update on subsequent heals.
 - All four lines must appear before any `import` statement.
 
@@ -162,10 +174,10 @@ Example complete header:
 ```ts
 // req: requirements/auth/login.md
 // spec: specs/auth/login-test-plan.md
-// seed: src/tests/seed.spec.ts
+// seed: tests/seed.spec.ts
 // generated-at: 2026-07-23T14:30:22Z
 
-import { test, expect } from '@/fixtures/base.fixture';
+import { test, expect } from './fixtures';
 ```
 
 Never put all role scenarios in a single file — each role gets its own file so they can run independently and report separately.
@@ -332,7 +344,7 @@ import {
 ```
 
 | Capability (title tag / metadata tags)   | When                                                      | Generate                                                                                                                                                                                                                                    |
-| ---------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- |
 | `(@network)` or `#network`               | Failure depends on HTTP status / offline / API error body | `mockJson` / `mockServerError` / `mockAbort` **before** the UI action; `unmockAll` in cleanup step                                                                                                                                          |
 | `(@network-assert)` or `#network-assert` | Live request payload + response after UI action           | Prefer **`waitAndAssertApi`** (one call) with **inline** `assert` from Input Data keys; optional `contract` path if listed. Fallback: `waitForApi` + `assertNetworkMatch`. Never invent endpoints — discover first if unknown (see recipe). |
 | `(@hybrid)` or `#hybrid`                 | Seed/cleanup cheaper via API than UI                      | Use `request` fixture + `apiSeed` / `apiCleanup`; then assert UI                                                                                                                                                                            |
@@ -486,10 +498,10 @@ Return:
 
 ## Example Prompts
 
-- "Generate tests from `specs/sample-login-empty-fields-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
-- "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `src/tests/invoice-finance.spec.ts` and `src/tests/invoice-super-admin.spec.ts`."
+- "Generate tests from `specs/sample-login-empty-fields-test-plan.md` into `tests/login-empty-fields.spec.ts`."
+- "Generate role-aware tests from `specs/finance-approve-invoice-test-plan.md` — create one file per role: `tests/invoice-finance.spec.ts` and `tests/invoice-super-admin.spec.ts`."
 - "Generate access-restriction test from SC-03 in `specs/finance-approve-invoice-test-plan.md` for role hrd."
 - "Generate `@network` failure test that mocks `**/api/invoices/**` 500 using `@/support/pw` helpers."
 - "Generate `@network-assert` submit test with `waitAndAssertApi` (inline assert keys from plan Input Data); optional contract path only if listed."
 - "Generate `@download` + `@file-content` export test using `downloadAndSave` and `assertPdfContains` with tokens from the plan Expected Result only."
-- "Generate `@upload` test with `uploadFixture` / `uploadViaChooser` from `test-fixtures/` — never `page.pause()`."
+- "Generate `@upload` test with `uploadFixture` / `uploadViaChooser` from `tests/data/` — never `page.pause()`."

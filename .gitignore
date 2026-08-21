@@ -1,38 +1,49 @@
 # Dependencies
 node_modules/
 
-# Per-environment files (contain real credentials — never commit)
-# Create environments/{local|dev|staging|production}.env with your credentials.
+# Per-environment configuration & secrets (never commit real credentials)
+# Create config/environments/{local|dev|staging|production}.env with your credentials.
 # Template examples (*.env.example) are tracked for reference.
+config/environments/*.env
+!config/environments/*.env.example
 environments/*.env
 !environments/*.env.example
 
 # Local active profile pin (written by npm run env:use)
+config/environments/.active-env
 environments/.active-env
 
-# dotenvx keys
+# dotenvx encryption keys
 **/.env.keys
 .env.keys
 
-# Env edit / encrypt backups (may contain secrets)
+# Env edit & encryption backups (may contain secrets)
 *.env.bak
+config/environments/*.bak
 environments/*.bak
 **/*.env.bak
 **/*.bak
 
-# Hermes agent local plans / cache (not part of release)
+# AI agent local cache & state (not part of release)
 .hermes/
+.agents/
+.claude/
+.gemini/
 
-# Playwright artifacts
+# Consolidated Runtime Artifacts (Hybrid Architecture)
+artifacts/
+!artifacts/.gitkeep
+!artifacts/reports/.gitkeep
+!artifacts/test-results/.gitkeep
+!artifacts/selector-catalog/.gitkeep
+!artifacts/blob-report/.gitkeep
+
+# Legacy output directories (fallback)
 test-results/
 playwright-report/
 blob-report/
-
-# Reports (generated)
 reports/
 !reports/.gitkeep
-
-# Selector catalog (regenerable from snapshot_page / discover_pages MCP tools)
 selector-catalog/
 !selector-catalog/.gitkeep
 !selector-catalog/.meta.json
@@ -40,21 +51,18 @@ selector-catalog/
 # Logger output
 logs/
 
-# Auth state cache (login cookies/localStorage)
+# Auth state cache (login cookies/localStorage per environment)
 .auth/
 
 # Property test transient artifacts
-src/tests/__property_validator__/
-src/tests/__property_capability__/
+tests/__property_*/
+src/__tests__/__property_*/
 src/tests/__property_*/
 
-# TypeScript
+# TypeScript build outputs
 *.tsbuildinfo
+tools/mcp/dist/
 mcp-server/dist/
-
-# Local agent tooling (not part of release)
-.agents/
-.claude/
 
 # Generated platform MCP configs (regenerable via `npm run mcp:config`)
 claude_desktop_config.json
@@ -63,11 +71,9 @@ claude_desktop_config.json
 # Generated capability manifest (regenerable via `npm run manifest:generate`)
 agent-manifest.json
 
-# OS
+# OS & Editor files
 .DS_Store
 Thumbs.db
-
-# IDEs
 .idea/
 *.swp
 *.swo
@@ -83,6 +89,8 @@ _rpc*.jsonl
 snack-*.png
 *.mockup-detail.html
 .playwright-mcp/
+tools/scripts/_*.html
+tools/scripts/_*.mjs
 scripts/_*.html
 scripts/_*.mjs
 
@@ -93,6 +101,6 @@ scripts/_*.mjs
 src/utils/*.js
 src/utils/*.d.ts
 
-# Setup wizard state (per-machine, not tracked)
+# Setup wizard state & run pointer (per-machine, not tracked)
 .wizard-state.json
 .latest-run

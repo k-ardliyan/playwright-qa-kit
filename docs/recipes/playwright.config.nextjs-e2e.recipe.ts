@@ -11,7 +11,7 @@ import { loadEnvironment } from '../../src/utils/env-loader';
 import {
   buildPlaywrightSharedDefaults,
   createFrameworkReporters,
-} from '../../playwright.config.base';
+} from '../../config/playwright/base';
 
 loadEnvironment();
 

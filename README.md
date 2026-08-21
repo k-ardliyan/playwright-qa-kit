@@ -4,7 +4,7 @@
 
 <br/>
 
-[![Version](https://img.shields.io/badge/version-0.1.0--alpha.2-2E86AB?style=for-the-badge&logo=git&logoColor=white)](https://github.com/k-ardliyan/playwright-qa-kit/releases) [![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org) [![Playwright](https://img.shields.io/badge/playwright-1.62+-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev) [![TypeScript](https://img.shields.io/badge/typescript-6.x-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Version](https://img.shields.io/badge/version-0.2.0--alpha.1-2E86AB?style=for-the-badge&logo=git&logoColor=white)](https://github.com/k-ardliyan/playwright-qa-kit/releases) [![Node.js](https://img.shields.io/badge/node-%3E%3D20.19.0-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org) [![Playwright](https://img.shields.io/badge/playwright-1.62+-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev) [![TypeScript](https://img.shields.io/badge/typescript-5.9+-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-1.30+-A23B72?style=for-the-badge&logo=protocol&logoColor=white)](https://modelcontextprotocol.io)
 
 <br/>
 
@@ -45,7 +45,7 @@
 <div align="center">
 
 |     | Fitur                      | Deskripsi                                                |
-| --- | -------------------------- | -------------------------------------------------------- |
+| --- | --- | --- |
 | 📝  | **Requirement-first**      | QA tulis Markdown, AI generate test                      |
 | 🤖  | **5-Phase AI Pipeline**    | Plan → Generate → Execute → Heal → Report                |
 | 🔁  | **Healer + Snapshot Loop** | Test gagal → AI fix locator → re-snapshot → rerun        |
@@ -82,7 +82,7 @@
                                          │
                                          ▼
    ┌─────────────────────┐    ┌─────────────────────┐
-   │   AI Generator      │───►│  src/tests/*.spec.ts│
+   │   AI Generator      │───►│  tests/*.spec.ts    │
    └─────────────────────┘    └──────────┬──────────┘
                                          │
                                          ▼
@@ -135,7 +135,7 @@ Hasil: file `requirements/login.md` siap untuk website kamu.
 npm install
 npx playwright install --with-deps chromium
 npm run mcp:build
-cp environments/local.env.example environments/local.env   # isi BASE_URL + creds
+cp config/environments/local.env.example config/environments/local.env   # isi BASE_URL + creds
 npm run setup:check && npm run health:check
 ```
 
@@ -167,7 +167,7 @@ npm run qa:run -- requirements/login.md --open-dashboard
 ```
 
 | File                            | Peran                                                    |
-| ------------------------------- | -------------------------------------------------------- |
+| --- | --- |
 | `requirements/login.md`         | 🎯 **Setup awal** — di-generate wizard, per website kamu |
 | `requirements/auth/sample-*.md` | 📚 **Latihan format** — bukan target app                 |
 | `requirements/_TEMPLATE.md`     | 📝 Template untuk fitur baru                             |
@@ -240,7 +240,7 @@ Contoh lengkap: [_GOOD_EXAMPLE.md](requirements/_GOOD_EXAMPLE.md) · [_BAD_EXAMP
 ## 🏷️ Scenario Tags
 
 | Tag                     | Kapan Dipakai                                   |
-| ----------------------- | ----------------------------------------------- |
+| --- | --- |
 | `(@success)`            | Happy path — alur normal berhasil               |
 | `(@failure)`            | Negative path — validasi gagal                  |
 | `(@access-restriction)` | Role tidak berhak, akses ditolak                |
@@ -265,7 +265,7 @@ Panduan lengkap: [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)
 ### 🎯 Daily Flow
 
 | Command                                | Fungsi                                |
-| -------------------------------------- | ------------------------------------- |
+| --- | --- |
 | `npm run qa:run -- requirements/X.md`  | Preflight + prompt Hermes + dashboard |
 | `npm run validate:requirement -- X.md` | Validasi format requirement           |
 | `npm run auth:setup`                   | Refresh session login                 |
@@ -275,7 +275,7 @@ Panduan lengkap: [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)
 ### 🔍 Discovery & Setup
 
 | Command                  | Fungsi                                 |
-| ------------------------ | -------------------------------------- |
+| --- | --- |
 | `npm run setup:wizard`   | Wizard interaktif (recommended)        |
 | `npm run setup:check`    | Verifikasi setup lokal                 |
 | `npm run health:check`   | Pre-flight pipeline (env + MCP + auth) |
@@ -286,7 +286,7 @@ Panduan lengkap: [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)
 ### 🧪 Test & Quality
 
 | Command                   | Fungsi                    |
-| ------------------------- | ------------------------- |
+| --- | --- |
 | `npm test`                | Jalankan semua test       |
 | `npm run test:smoke`      | Smoke test saja           |
 | `npm run test:headed`     | Browser visible (debug)   |
@@ -307,19 +307,17 @@ Lihat [docs/CHEATSHEET.md](docs/CHEATSHEET.md) untuk cheat sheet A4 printable.
 
 ## 🏗️ Architecture
 
-```
+```text
 playwright-qa-kit/
-├─ requirements/        ← Input requirement QA
+├─ requirements/        ← Input requirement QA (Indonesian & English)
 ├─ specs/               ← Test plan output (AI Planner)
-├─ src/tests/           ← Spec Playwright (AI Generator)
-├─ src/support/         ← Fixtures, reporter, dashboard, human-challenge
-├─ mcp-server/          ← 19 MCP tools (QA + Test + Browser)
-├─ .github/agents/      ← 5 sub-agent (planner/generator/healer/reporter)
-├─ environments/        ← APP_ENV config (local/staging/production)
-├─ reports/             ← Dashboard, summary, archive
-├─ docs/                ← Dokumentasi operasional
-├─ test-fixtures/       ← Sample PDF/Excel/image/network contract
-└─ example/erpku/       ← Reference adapter (project-specific)
+├─ tests/               ← Playwright Test Workspace (specs, pages, data, adapter)
+├─ artifacts/           ← Consolidated runtime output (reports, test-results, selector-catalog)
+├─ src/                 ← Framework Core Engine (protected internal boundary)
+├─ tools/               ← Maintainer tooling, scripts, validators & MCP server
+├─ config/              ← Environment credentials & Playwright configs
+├─ docs/                ← Operational & architectural documentation
+└─ examples/            ← Reference implementations (ERPku adapter)
 ```
 
 > 📚 Detail lengkap → [docs/architecture/DIRECTORY-MAP.md](docs/architecture/DIRECTORY-MAP.md) · [DECISIONS.md](docs/architecture/DECISIONS.md) · [LESSONS-LEARNED.md](docs/architecture/LESSONS-LEARNED.md)
@@ -329,7 +327,7 @@ playwright-qa-kit/
 ## 🔌 MCP Servers
 
 | Server                   | Fungsi Utama                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------ |
+| --- | --- |
 | 🎭 **`playwright-qa`**   | Requirement parsing, validation, coverage, POM, health check, failure analysis |
 | 🎬 **`playwright-test`** | Run dan debug test                                                             |
 | 🌐 **`playwright`**      | Browser interaction, eksplorasi UI                                             |
@@ -369,13 +367,13 @@ Generator otomatis membuat file test terpisah per role (`<feature>-<role>.spec.t
 <br/>
 
 | Recipe                                   | Use Case                                                   |
-| ---------------------------------------- | ---------------------------------------------------------- |
+| --- | --- |
 | `playwright.config.nextjs-e2e.recipe.ts` | Next.js app under `/e2e` dengan auth setup + `webServer`   |
 | `playwright.role-projects.recipe.ts`     | Multi-role via `buildRoleProjects` + `.auth/<role>.json`   |
-| `file-upload-download.md`                | Fixture-first `@upload` / `@download` — no OS picker       |
-| `pdf-excel-content-assert.md`            | `@file-content` PDF text / Excel headers                   |
-| `network-assert.md`                      | `@network-assert` live payload/response — partial contract |
-| `multi-session-sync.md`                  | Dual `browser.newContext` admin↔user data sync             |
+| `FILE-UPLOAD-DOWNLOAD.md`                | Fixture-first `@upload` / `@download` — no OS picker       |
+| `PDF-EXCEL-CONTENT-ASSERT.md`            | `@file-content` PDF text / Excel headers                   |
+| `NETWORK-ASSERT.md`                      | `@network-assert` live payload/response — partial contract |
+| `MULTI-SESSION-SYNC.md`                  | Dual `browser.newContext` admin↔user data sync             |
 
 Lihat semua → [docs/recipes/README.md](docs/recipes/README.md)
 
@@ -388,7 +386,7 @@ Lihat semua → [docs/recipes/README.md](docs/recipes/README.md)
 <div align="center">
 
 | Layer         | Tools                                                                                                                                                                                                                             |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --- | --- |
 | **Runtime**   | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)          |
 | **Testing**   | ![Playwright](https://img.shields.io/badge/Playwright-45ba4b?style=flat-square&logo=playwright&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-000000?style=flat-square&logo=modelcontextprotocol&logoColor=white)       |
 | **AI Agent**  | ![Hermes](https://img.shields.io/badge/Hermes_Agent-F18F01?style=flat-square&logo=robot&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=flat-square&logo=claude&logoColor=white)                      |
@@ -402,25 +400,25 @@ Lihat semua → [docs/recipes/README.md](docs/recipes/README.md)
 
 ## 📚 Dokumentasi
 
-| Saya ingin...                       | Buka                                                             |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| 🆕 Setup QA pertama kali            | [docs/GUIDE.md](docs/GUIDE.md)                                   |
-| 📖 Panduan pemula step-by-step      | [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)               |
-| ✏️ Menulis requirement valid        | [docs/writing-requirements.md](docs/writing-requirements.md)     |
-| 🔐 Auth per role + OTP/CAPTCHA      | [docs/AUTH-CONTEXT-CONVENTION.md](docs/AUTH-CONT-CONVENTION.md)  |
-| 🗝️ Kredensial & multi-role          | [docs/CREDENTIALS.md](docs/CREDENTIALS.md)                       |
-| 🔄 Pasca-pipeline                   | [docs/POST-PIPELINE.md](docs/POST-PIPELINE.md)                   |
-| 📊 Dashboard triage guide           | [docs/REPORT-GUIDE.md](docs/REPORT-GUIDE.md)                     |
-| ✋ Skenario `(@manual)`             | [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)             |
-| 🌍 Environment (local/staging/prod) | [docs/ENVIRONMENT-GUIDE.md](docs/ENVIRONMENT-GUIDE.md)           |
-| ⌨️ Command cheat sheet              | [docs/CHEATSHEET.md](docs/CHEATSHEET.md)                         |
-| 🧩 Integration recipes              | [docs/recipes/README.md](docs/recipes/README.md)                 |
-| 🎬 Full E2E walkthrough             | [docs/SAMPLE-E2E-Pipeline.md](docs/SAMPLE-E2E-Pipeline.md)       |
-| 🍴 Fork ke project lain             | [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md)               |
-| 🩺 Troubleshooting                  | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)               |
-| 🔌 MCP tool reference               | [CUSTOM-MCP.md](CUSTOM-MCP.md)                                   |
-| 🤖 Pipeline agent contract          | [AGENTS.md](AGENTS.md)                                           |
-| 🏗️ Architecture decisions           | [docs/architecture/DECISIONS.md](docs/architecture/DECISIONS.md) |
+| Saya ingin...                       | Buka                                                               |
+| --- | --- |
+| 🆕 Setup QA pertama kali            | [docs/GUIDE.md](docs/GUIDE.md)                                     |
+| 📖 Panduan pemula step-by-step      | [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)                 |
+| ✏️ Menulis requirement valid        | [docs/WRITING-REQUIREMENTS.md](docs/WRITING-REQUIREMENTS.md)       |
+| 🔐 Auth per role + OTP/CAPTCHA      | [docs/AUTH-CONTEXT-CONVENTION.md](docs/AUTH-CONTEXT-CONVENTION.md) |
+| 🗝️ Kredensial & multi-role          | [docs/CREDENTIALS.md](docs/CREDENTIALS.md)                         |
+| 🔄 Pasca-pipeline                   | [docs/POST-PIPELINE.md](docs/POST-PIPELINE.md)                     |
+| 📊 Dashboard triage guide           | [docs/REPORT-GUIDE.md](docs/REPORT-GUIDE.md)                       |
+| ✋ Skenario `(@manual)`             | [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)               |
+| 🌍 Environment (local/staging/prod) | [docs/ENVIRONMENT-GUIDE.md](docs/ENVIRONMENT-GUIDE.md)             |
+| ⌨️ Command cheat sheet              | [docs/CHEATSHEET.md](docs/CHEATSHEET.md)                           |
+| 🧩 Integration recipes              | [docs/recipes/README.md](docs/recipes/README.md)                   |
+| 🎬 Full E2E walkthrough             | [docs/SAMPLE-E2E-PIPELINE.md](docs/SAMPLE-E2E-PIPELINE.md)         |
+| 🍴 Fork ke project lain             | [docs/FORK-ONBOARDING.md](docs/FORK-ONBOARDING.md)                 |
+| 🩺 Troubleshooting                  | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)                 |
+| 🔌 MCP tool reference               | [CUSTOM-MCP.md](CUSTOM-MCP.md)                                     |
+| 🤖 Pipeline agent contract          | [AGENTS.md](AGENTS.md)                                             |
+| 🏗️ Architecture decisions           | [docs/architecture/DECISIONS.md](docs/architecture/DECISIONS.md)   |
 
 ---
 

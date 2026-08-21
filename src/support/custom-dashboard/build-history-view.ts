@@ -35,9 +35,23 @@ export function buildHistorySection(
   if (entries.length === 0) {
     return `
       <div class="history-section" id="history-section">
-        <div class="history-empty">
-          <p>No archived reports found.</p>
-          <p class="muted">Run tests and save results to build your history.</p>
+        <div class="history-placeholder panel">
+          <div class="history-placeholder__inner">
+            <div class="history-placeholder__icon">📜</div>
+            <h3 class="history-placeholder__title">No Archived Test Runs Found</h3>
+            <p class="history-placeholder__desc muted">
+              Run tests and save results to build your persistent test history.
+            </p>
+            ${
+              options?.serveMode
+                ? `<div class="history-placeholder__actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openSaveModal && openSaveModal()">
+                      💾 Save Current Run
+                    </button>
+                  </div>`
+                : ''
+            }
+          </div>
         </div>
       </div>
       ${buildConfirmDeleteModal()}`;

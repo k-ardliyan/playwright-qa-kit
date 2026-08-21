@@ -59,7 +59,7 @@ export function buildRoleProject(options: RoleProjectOptions): Project {
       ...devices[deviceName],
       storageState,
     },
-    testDir: options.testDir ?? './src/tests',
+    testDir: options.testDir ?? './tests',
     testMatch: options.testMatch ?? new RegExp(`.*-${escapeRegExp(role)}\\.spec\\.ts$`),
     ...(options.testIgnore ? { testIgnore: options.testIgnore } : {}),
     dependencies: [setupName],

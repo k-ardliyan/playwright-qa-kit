@@ -1,10 +1,23 @@
 # Prevent AI agents from reading private keys or credentials
 **/.env.keys
 .env.keys
-environments/.env.keys
-mcp.json
-mcp-server/.env
+config/environments/*.env
+environments/*.env
 
-# Ignore compiled javascript files in src/utils
+# Compiled JS artifacts (not source of truth)
 src/utils/*.js
 src/utils/*.d.ts
+tools/mcp/dist/
+
+# Runtime output directories (too large / binary / not useful as context)
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+
+# Auth session state (sensitive)
+.auth/
+
+# Legacy MCP config that may contain tokens
+mcp.json
+tools/mcp/.env

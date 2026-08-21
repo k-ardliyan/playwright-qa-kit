@@ -8,14 +8,14 @@ Before writing or editing any file:
 2. Then use this table to find the specific reference you need.
 
 | Need                            | File                                                                       |
-| ------------------------------- | -------------------------------------------------------------------------- |
+| --- | --- |
 | Exact path of any `src/` module | [`docs/architecture/DIRECTORY-MAP.md`](docs/architecture/DIRECTORY-MAP.md) |
 | Auth pattern, fixture chain     | [`docs/AUTH-CONTEXT-CONVENTION.md`](docs/AUTH-CONTEXT-CONVENTION.md)       |
 | WHY behind each constraint      | [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md)         |
 | Domain glossary (roles, terms)  | [`CONTEXT.md`](CONTEXT.md)                                                 |
 | Commands, env, npm scripts      | [`docs/CHEATSHEET.md`](docs/CHEATSHEET.md)                                 |
 | Requirement format              | [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md)                   |
-| Writing a requirement           | [`docs/writing-requirements.md`](docs/writing-requirements.md)             |
+| Writing a requirement           | [`docs/WRITING-REQUIREMENTS.md`](docs/WRITING-REQUIREMENTS.md)             |
 
 > After creating any file under `src/`, update `docs/architecture/DIRECTORY-MAP.md` in the same commit.
 
@@ -66,7 +66,7 @@ You must delegate tasks by consulting the corresponding sub-agent file for instr
 ## Orchestration Modes
 
 | Mode        | Behavior                                                         | When to use                                            |
-| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| --- | --- | --- |
 | `manual`    | Execute one phase at a time; wait for user prompt between phases | Debugging, exploratory testing, review-driven workflow |
 | `automatic` | Execute all phases sequentially without pausing                  | Daily run, CI, batch execution                         |
 
@@ -87,15 +87,15 @@ List every tool explicitly by server:
   - `list_artifacts`
   - `list_requirement_status` (coverage map: plan/tests/manual/lastStatus per requirement)
   - `archive_report` (call after Reporter produces the final report)
-  - `snapshot_page` (capture ARIA + selector catalog to `selector-catalog/<feature>/<page>.{aria.yml,json}`)
+  - `snapshot_page` (capture ARIA + selector catalog to `artifacts/selector-catalog/<feature>/<page>.{aria.yml,json}`)
   - `discover_pages` (BFS auto-crawl a public site, writes per-page catalog + `page-map.json`)
-  - `list_test_fixtures` (fixture-first upload paths under `test-fixtures/`)
-  - `inspect_file` (envelope: kind/size/magic under `test-fixtures/` or `test-results/`)
+  - `list_test_fixtures` (fixture-first upload paths under `tests/data/`)
+  - `inspect_file` (envelope: kind/size/magic under `tests/data/` or `artifacts/test-results/`)
   - `extract_pdf_text` (raw PDF text only — match scenario tokens; no domain field schema)
   - `read_excel_summary` (headers/sample rows — compare to scenario Expected Result)
 - **playwright-test**
   - `run_tests` (and related test-runner tools from this server)
-- **playwright** (`@playwright/mcp` via `scripts/playwright-mcp-launch.ts`)
+- **playwright** (`@playwright/mcp` via `tools/scripts/playwright-mcp-launch.ts`)
   - **Tool Routing Policy:**
     - Code search/refactor → CLI / repository tools
     - Test execution → `playwright-test` MCP (`run_tests`)
@@ -150,14 +150,14 @@ List every tool explicitly by server:
 - Expect Planner output as a Markdown test plan with columns per scenario:
   - `Scenario Name`, `Steps`, `Expected Result`, `Role`, `Auth Context`, `Type`
 - Planner must include a `Coverage Gap` section for scenarios that couldn't be planned.
-- When the requirement targets a public site, Planner MAY call `discover_pages` first to populate `selector-catalog/<feature>/`.
+- When the requirement targets a public site, Planner MAY call `discover_pages` first to populate `artifacts/selector-catalog/<feature>/`.
 
 ### Phase 2: Generate
 
 - Pass Planner test plan to Generator.
 - Generator reads `Role` and `Auth Context` columns per scenario.
 - Generator reads `Module` and `Feature` from requirement metadata (via `parse_requirement_scenarios` output fields `module` and `feature`) and injects them into every `setTestMetadata()` call: `module: '<value>'` and `feature: '<value>'`. This ensures the dashboard grouping and export CSV/TSV columns are populated correctly. If module is `'-'`, use the requirement filename stem as fallback.
-- If role-aware: Generator creates one file per role (`src/tests/<feature>-<role>.spec.ts`).
+- If role-aware: Generator creates one file per role (`tests/<feature>-<role>.spec.ts`).
 - Generator uses `test.use({ storageState: authStatePath('<role>') })` or `.auth/{APP_ENV}/<role>.json` for role-specific files.
 - For blocked/unclear scenarios: Generator produces skeleton with `test.skip`.
 - Call `validate_generated_tests` before execution.
@@ -166,7 +166,7 @@ List every tool explicitly by server:
 ### Phase 3: Execute
 
 - Run tests using `run_tests` from **playwright-test** (not playwright-qa).
-- If `roleFilter` is set, scope the run to matching files: `src/tests/<feature>-<role>.spec.ts`.
+- If `roleFilter` is set, scope the run to matching files: `tests/<feature>-<role>.spec.ts`.
 - Prefer scoped runs (single file or `--grep` tag) when healing.
 
 ### Phase 4: Heal
@@ -186,7 +186,7 @@ List every tool explicitly by server:
 - Reporter calls `get_test_summary` (reads `byRole` and `byModule` if available) and `get_test_failures`.
 - Reporter produces:
   - Structured JSON `PipelineReport` with summary metrics, per-scenario coverage, `summaryByRole`, `summaryByModule` (with nested `features` per module), `failureSource` per unresolved failure, and QA Decision section.
-  - Markdown report written to `reports/pipeline-report-<runId>.md`.
+  - Markdown report written to `artifacts/reports/pipeline-report-<runId>.md`.
 - Call `archive_report` with `runId` and `reportPath` after Reporter completes.
 - In `automatic` mode: Reporter runs immediately after Heal without prompting.
 - In `manual` mode: Reporter waits for explicit invocation.
@@ -209,7 +209,7 @@ List every tool explicitly by server:
 After Report is produced, one of these decisions must be taken. See `AGENTS.md` exit-criteria and triage guide.
 
 | Decision                  | Condition                                    | Follow-up action                                    |
-| ------------------------- | -------------------------------------------- | --------------------------------------------------- |
+| --- | --- | --- |
 | ✅ **APPROVE**            | All scenarios pass, no unresolved failures   | Call `archive_report`, mark as baseline             |
 | 🐛 **FILE BUG**           | `failureSource: 'app'`                       | Create defect ticket, keep test as regression guard |
 | 📝 **REVISE REQUIREMENT** | `failureSource: 'requirement'`               | Update requirement → plan → generate → rerun        |
@@ -236,12 +236,12 @@ If `roleFilter` is provided, skip scenarios for roles not in the filter — but 
 
 ## Pipeline State and Resume
 
-The pipeline persists execution state to `reports/pipeline-state.json` after each phase completion:
+The pipeline persists execution state to `artifacts/reports/pipeline-state.json` after each phase completion:
 
 - **Fields:** `runId`, `status`, `currentPhase`, `completedPhases`, `artifacts`, `timestamp`, `rolesInScope`
 - **Resume:** If a run is interrupted, send a `resume` request with the `runId` to continue from the last completed phase.
 - **Artifact validation:** On resume, artifact file paths are verified. If any are missing, affected phases are invalidated and re-run.
-- **Archive:** Completed runs are archived to `reports/archive/<runId>/` via `archive_report`.
+- **Archive:** Completed runs are archived to `artifacts/reports/archive/<runId>/` via `archive_report`.
 
 ---
 

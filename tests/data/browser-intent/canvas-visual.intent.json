@@ -1,0 +1,11 @@
+{
+  "$schema": "browser-intent.schema.json",
+  "scenarioId": "CANVAS-001",
+  "title": "Interact with WebGL canvas map controls",
+  "intent": {
+    "requires": {
+      "vision": true
+    },
+    "mode": "visual"
+  }
+}

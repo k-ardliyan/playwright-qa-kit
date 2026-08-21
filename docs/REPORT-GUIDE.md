@@ -11,22 +11,22 @@ Setiap test run menghasilkan **3 lapisan report**:
 ```
 Playwright Test Run
 │
-├── reports/html/index.html              ← Playwright built-in HTML report
-├── reports/custom-dashboard.html        ← Custom dashboard (local + CI; mode via CI=true)
-├── reports/test-summary.json            ← Structured JSON summary
-└── reports/pipeline-report-<runId>.md   ← Pipeline markdown report (saat run via orchestrator)
+├── artifacts/reports/html/index.html              ← Playwright built-in HTML report
+├── artifacts/reports/custom-dashboard.html        ← Custom dashboard (local + CI; mode via CI=true)
+├── artifacts/reports/test-summary.json            ← Structured JSON summary
+└── artifacts/reports/pipeline-report-<runId>.md   ← Pipeline markdown report (saat run via orchestrator)
 ```
 
-### 1. **Playwright HTML Report** (`reports/html/index.html`)
+### 1. **Playwright HTML Report** (`artifacts/reports/html/index.html`)
 
 - **Sumber:** Playwright built-in reporter
 - **Isi:** Test result per file, test step, screenshot, video, trace viewer
 - **Kapan digunakan:** Debugging test individual, lihat trace interaktif
 
-### 2. **Custom Dashboard** (`reports/custom-dashboard.html`)
+### 2. **Custom Dashboard** (`artifacts/reports/custom-dashboard.html`)
 
 - **Sumber:** `CustomReporter` (`src/support/custom-reporter.ts`) + modules `src/support/custom-dashboard/*`
-- **File output:** selalu `reports/custom-dashboard.html` (bukan path terpisah untuk CI). Mode **local** vs **ci** dipilih di builder (`buildLocalHtml` / `buildCiHtml`) berdasarkan `CI=true`.
+- **File output:** selalu `artifacts/reports/custom-dashboard.html` (bukan path terpisah untuk CI). Mode **local** vs **ci** dipilih di builder (`buildLocalHtml` / `buildCiHtml`) berdasarkan `CI=true`.
 - **Isi:** **2 view mode** (toggle di section head)
   - **Table View** (**default**) — triage table + Filter columns + export
   - **Accordion View** — grouped failure-first, **semua card collapse** (termasuk failed)
@@ -36,13 +36,13 @@ Playwright Test Run
 - **Tidak ada:** integrasi Jira / Create JIRA, donut Chart.js, Scan guide, Ops summary duplikat hero
 - **Kapan digunakan:** QA review harian, triage `failureSource`, export Confluence/CSV/TSV
 
-### 3. **Test Summary JSON** (`reports/test-summary.json`)
+### 3. **Test Summary JSON** (`artifacts/reports/test-summary.json`)
 
 - **Sumber:** `CustomReporter` → `onEnd()`
 - **Isi:** Structured JSON dengan metadata test, pass/fail counts, per-role breakdown (jika role-aware), dan detail test case per item
 - **Kapan digunakan:** Automasi CI/CD, parsing programmatic, MCP tool integration
 
-### 4. **Pipeline Report Markdown** (`reports/pipeline-report-<runId>.md`)
+### 4. **Pipeline Report Markdown** (`artifacts/reports/pipeline-report-<runId>.md`)
 
 - **Sumber:** Reporter agent (`.github/agents/reporter.agent.md`)
 - **Isi:** Markdown narrative dari full pipeline run (Plan → Generate → Execute → Heal → Report)
@@ -73,7 +73,7 @@ Playwright Test Run
 #### **Table View** (Default)
 
 | Aspek              | Perilaku sekarang                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| --- | --- |
 | Kolom              | Test ID, Description, Test Step, Input Data, Expected, Actual, Status, Priority, **SOURCE**, Notes                |
 | Steps / Input      | Multi-line blocks (`1. step…`, `key: value` per baris) — **bukan** join inline `·`, **tanpa** ellipsis truncate   |
 | SOURCE (gagal)     | Stack **Cause** (badge) → **Do** (decision: FILE BUG / FIX TEST / …) → **blurb** singkat; hover = tooltip lengkap |
@@ -148,7 +148,7 @@ interface CollectedTestCase {
   duration: number; // ms
   scenarioId?: string;
   role?: string;
-  /** Module dari requirement `- **Module:** <name>` atau subfolder src/tests/. Default: '-' jika belum diisi. */
+  /** Module dari requirement `- **Module:** <name>` atau subfolder tests/. Default: '-' jika belum diisi. */
   module: string;
   /** Feature dari requirement `- **Feature:** <name>` atau filename stem. Default: '-' jika belum diisi. */
   feature: string;
@@ -197,7 +197,7 @@ interface CollectedTestCase {
 Untuk classify failure, lihat failure source di pesan error test (`result.errors`) — heuristic: app/test/env/requirement.
 
 | Kondisi Actual Result                                   | Decision                  | Action                                                 |
-| ------------------------------------------------------- | ------------------------- | ------------------------------------------------------ |
+| --- | --- | --- |
 | Error dari app (500, validation error, crash)           | 🐛 **FILE BUG**           | Buat defect ticket, keep test sebagai regression guard |
 | Error dari test code (selector broken, assertion salah) | 🔧 **FIX TEST**           | Fix test code atau generator input, rerun              |
 | Expected result tidak match requirement                 | 📝 **REVISE REQUIREMENT** | Update requirement, replan, regenerate                 |
@@ -306,7 +306,7 @@ Saat test dijalankan via **Orchestrator pipeline** (Plan → Generate → Execut
 ## Test Coverage
 
 | Scenario                            | Status    | Duration | Role    | Notes                   |
-| ----------------------------------- | --------- | -------- | ------- | ----------------------- |
+| --- | --- | --- | --- | --- |
 | SC-01: Login with valid credentials | ✅ PASSED | 2.5s     | finance | -                       |
 | SC-02: Login with invalid password  | ❌ FAILED | 1.8s     | finance | Error: Assertion failed |
 
@@ -315,7 +315,7 @@ Saat test dijalankan via **Orchestrator pipeline** (Plan → Generate → Execut
 ## Test Cases (General Mode)
 
 | Test ID     | Description                           | Status    | Priority | Notes                |
-| ----------- | ------------------------------------- | --------- | -------- | -------------------- |
+| --- | --- | --- | --- | --- |
 | TC-LOGIN-01 | should login successfully             | ✅ PASSED | HIGH     | -                    |
 | TC-LOGIN-02 | should show error on invalid password | ❌ FAILED | HIGH     | Screenshot available |
 

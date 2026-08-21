@@ -39,7 +39,7 @@ Update `package.json` `name` and `description` to match your project. This is co
 Your fork should have two remotes:
 
 | Remote     | Purpose                                             |
-| ---------- | --------------------------------------------------- |
+| --- | --- |
 | `origin`   | Your project repository (push/pull daily work here) |
 | `upstream` | Template core repository (pull framework updates)   |
 
@@ -68,44 +68,46 @@ Prefer merging `upstream/main` on a schedule (e.g. monthly) rather than letting 
 
 ### Conflict-prone files
 
-| File / folder                                 | Owner                                         | Merge strategy                                                                            |
-| --------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `src/fixtures/project.fixture.ts`             | **Fork** — your POM registrations             | Keep yours; rarely accept upstream wholesale                                              |
-| `playwright.config.base.ts`                   | **Upstream** — shared execution policy        | Accept upstream wholesale (retries, workers, timeout, `use`)                              |
-| `playwright.config.ts`                        | **Fork** — project-specific projects/timeouts | Merge carefully; take upstream base + defaults, re-apply your `projects` / reporter paths |
-| `environments/*.env`                          | **Fork** (gitignored)                         | Never committed; copy new keys from `*.env.example` manually                              |
-| `environments/*.env.example`                  | **Shared**                                    | Accept upstream generic keys; keep your extra keys                                        |
-| `requirements/`, `specs/`, `src/tests/`       | **Fork**                                      | Keep yours; upstream should not touch these                                               |
-| `example/erpku/`                              | **Template sample**                           | Accept upstream updates or delete if unused                                               |
-| `.github/agents/`, `mcp-server/`, `AGENTS.md` | **Upstream**                                  | Prefer upstream — these are framework core                                                |
+| File / folder                                | Owner                                         | Merge strategy                                                                            |
+| --- | --- | --- |
+| `tests/fixtures.ts`                          | **Fork** — your POM registrations             | Keep yours; rarely accept upstream wholesale                                              |
+| `config/playwright/base.ts`                  | **Upstream** — shared execution policy        | Accept upstream wholesale (retries, workers, timeout, `use`)                              |
+| `playwright.config.ts`                       | **Fork** — project-specific projects/timeouts | Merge carefully; take upstream base + defaults, re-apply your `projects` / reporter paths |
+| `config/environments/*.env`                  | **Fork** (gitignored)                         | Never committed; copy new keys from `*.env.example` manually                              |
+| `config/environments/*.env.example`          | **Shared**                                    | Accept upstream generic keys; keep your extra keys                                        |
+| `requirements/`, `specs/`, `tests/`          | **Fork**                                      | Keep yours; upstream should not touch these                                               |
+| `examples/erpku/`                            | **Template sample**                           | Accept upstream updates or delete if unused                                               |
+| `.github/agents/`, `tools/mcp/`, `AGENTS.md` | **Upstream**                                  | Prefer upstream — these are framework core                                                |
 
 ---
 
-## 5. Customization — project.fixture.ts
+## 5. Customization — tests/fixtures.ts
 
-Saat mulai pakai repo hasil fork, register Page Object Models di [`src/fixtures/project.fixture.ts`](../src/fixtures/project.fixture.ts).
+Saat mulai pakai repo hasil fork, register Page Object Models di [`tests/fixtures.ts`](../tests/fixtures.ts).
 
-Use [`example/erpku/fixtures/project.fixture.ts`](../example/erpku/fixtures/project.fixture.ts) as a reference — it registers `loginPage`, `dashboardPage`, and customer POMs for the ERPKU adapter.
+Use [`examples/erpku/playwright.config.ts`](../examples/erpku/playwright.config.ts) as a reference for multi-tenant adapter projects.
 
-Template starting point (empty seam):
+Template starting point:
 
 ```typescript
-export type ProjectFixtures = Record<string, never>;
-export const projectTest = base.extend<ProjectFixtures>({});
+import { test as baseTest, expect as baseExpect } from '../src/public/fixtures';
+
+export const test = baseTest;
+export const expect = baseExpect;
 ```
 
-After customization, tests import `@/fixtures/base.fixture` and receive your POM fixtures.
+After customization, tests import `./fixtures` (or `@/public/fixtures`) and receive your POM fixtures.
 
 ### Auth setup (forks using a setup project)
 
-Template core ships multi-role discovery auth at [`src/support/auth.setup.ts`](../src/support/auth.setup.ts)  
+Template core ships multi-role discovery auth at [`tests/auth.setup.ts`](../tests/auth.setup.ts)  
 (with OTP/CAPTCHA assist via `src/support/human-challenge.ts` + `AUTH_CHALLENGE_MODE`).
 
 If your Playwright config uses a `setup` project with `storageState`:
 
-1. Prefer template core: keep `src/support/auth.setup.ts` (wizard / `env:edit` regenerate).  
-   Or create `support/auth.setup.ts` in your project tree for a custom POM flow.
-2. For POM-based login, see [`example/erpku/support/auth.setup.ts`](../example/erpku/support/auth.setup.ts)  
+1. Prefer template core: keep `tests/auth.setup.ts` (wizard / `env:edit` regenerate).  
+   Or create `tests/auth.setup.ts` in your project tree for a custom POM flow.
+2. For POM-based login, see [`tests/auth.setup.ts`](../tests/auth.setup.ts)  
    (also calls `handlePostLoginChallenge` for OTP/CAPTCHA).
 3. Point the setup project at the correct `testDir` in your `playwright.config.ts`.
 4. Refresh session: `npm run auth:setup` — OTP/CAPTCHA: `npm run auth:setup:headed`.
@@ -118,9 +120,9 @@ If your Playwright config uses a `setup` project with `storageState`:
 
 ```bash
 # Windows
-copy environments\local.env.example environments\local.env
+copy config\environments\local.env.example config\environments\local.env
 # Mac/Linux
-cp environments/local.env.example environments/local.env
+cp config/environments/local.env.example config/environments/local.env
 ```
 
 2. Fill universal keys: `BASE_URL`, `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`, etc.  
@@ -130,15 +132,15 @@ cp environments/local.env.example environments/local.env
 
 ```typescript
 loadEnvironment({
-  adapterEnv: { dir: 'example/erpku/environments', name: 'erpku' },
+  adapterEnv: { dir: 'examples/erpku/environments', name: 'erpku' },
 });
 ```
 
-Core credentials in `environments/local.env` win — overlay only fills missing keys. Optional local override: `{dir}/{name}.env` (gitignored).
+Core credentials in `config/environments/local.env` win — overlay only fills missing keys. Optional local override: `{dir}/{name}.env` (gitignored).
 
-See [`example/erpku/environments/erpku.env.example`](../example/erpku/environments/erpku.env.example) for ERPKU reference values.
+See [`examples/erpku/environments/erpku.env.example`](../examples/erpku/environments/erpku.env.example) for ERPKU reference values.
 
-**Never commit** `environments/*.env` files containing real credentials.
+**Never commit** `config/environments/*.env` files containing real credentials.
 
 ---
 
@@ -173,13 +175,13 @@ The template core (`src/`) remains generic without the example folder.
 
 ## 9. Daily workflow reminder
 
-| Task                    | Where                                 |
-| ----------------------- | ------------------------------------- |
-| Write requirements      | `requirements/`                       |
-| Run Planner → test plan | `specs/`                              |
-| Generator output        | `src/tests/*.spec.ts`                 |
-| Register new POMs       | `src/fixtures/project.fixture.ts`     |
-| Local credentials       | `environments/local.env` (gitignored) |
+| Task                    | Where                                        |
+| --- | --- |
+| Write requirements      | `requirements/`                              |
+| Run Planner → test plan | `specs/`                                     |
+| Generator output        | `tests/*.spec.ts`                            |
+| Register new POMs       | `tests/fixtures.ts`                          |
+| Local credentials       | `config/environments/local.env` (gitignored) |
 
 See [GUIDE.md](GUIDE.md) for the full QA pipeline on a local machine.
 
@@ -201,7 +203,7 @@ For a single-project frontend repo:
 2. **Merge dependencies and scripts**
    Add E2E scripts and Playwright dependencies to the target repo's `package.json`.
 3. **Use the Playwright config**
-   Copy `playwright.config.base.ts` (shared execution policy) and use [`docs/recipes/playwright.config.nextjs-e2e.recipe.ts`](recipes/playwright.config.nextjs-e2e.recipe.ts) as a reference for the target repo's `playwright.config.ts` — call `loadEnvironment()` first, then spread `buildPlaywrightSharedDefaults()`, then override `testDir`, `projects`, and `reporter` to match your `/e2e` layout.
+   Copy `config/playwright/base.ts` (shared execution policy) and use [`docs/recipes/playwright.config.nextjs-e2e.recipe.ts`](recipes/playwright.config.nextjs-e2e.recipe.ts) as a reference for the target repo's `playwright.config.ts` — call `loadEnvironment()` first, then spread `buildPlaywrightSharedDefaults()`, then override `testDir`, `projects`, and `reporter` to match your `/e2e` layout.
 
 ### Skenario B: Monorepo package (`/packages/e2e-tests`)
 

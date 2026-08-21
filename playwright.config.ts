@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironment } from './src/utils/env-loader';
-import { buildPlaywrightSharedDefaults, createFrameworkReporters } from './playwright.config.base';
+import { buildPlaywrightSharedDefaults, createFrameworkReporters } from './config/playwright/base';
 
 loadEnvironment();
 
@@ -8,20 +8,20 @@ const includeBlob = process.env.CI === 'true' && process.env.PW_BLOB === '1';
 
 export default defineConfig({
   ...buildPlaywrightSharedDefaults(),
-  testDir: './src/tests',
+  testDir: './tests',
   reporter: createFrameworkReporters({
-    jsonOutput: 'test-results/results.json',
-    htmlFolder: './reports/html',
+    jsonOutput: 'artifacts/test-results/results.json',
+    htmlFolder: './artifacts/reports/html',
     customReporterPath: './src/support/custom-reporter.ts',
     includeBlob,
-    blobOutputDir: 'blob-report',
+    blobOutputDir: 'artifacts/blob-report',
   }),
   projects: [
     // Auth setup — materializes .auth/{APP_ENV}/<role>.json for every login-ready role.
     // Run: npm run auth:setup  |  npm run auth:setup:headed (OTP/CAPTCHA)
     {
       name: 'setup',
-      testDir: './src/support',
+      testDir: './tests',
       testMatch: /auth\.setup\.ts/,
       // Multi-role auth must not race (OTP stdin / browser pause).
       fullyParallel: false,
@@ -36,7 +36,7 @@ export default defineConfig({
         // Forcing .auth/.../user.json here would break unauth + public demos.
         storageState: { cookies: [], origins: [] },
       },
-      testDir: './src/tests',
+      testDir: './tests',
       testMatch: '**/*.spec.ts',
       testIgnore: ['**/demo/**'],
       // Official Playwright auth pattern: setup always runs first.
@@ -50,9 +50,9 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
       },
-      testDir: './src/tests/demo',
+      testDir: './tests/demo',
       testMatch: '**/*.spec.ts',
     },
   ],
-  outputDir: './test-results',
+  outputDir: './artifacts/test-results',
 });

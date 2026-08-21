@@ -24,11 +24,11 @@ test.use({ storageState: authStatePath('finance') });
 
 ---
 
-## D-02: Import dari `@/fixtures/base.fixture`, bukan `@playwright/test`
+## D-02: Import dari `./fixtures` (atau `@/public`), bukan langsung `@playwright/test`
 
-**Keputusan:** Semua spec harus import `test` dan `expect` dari `@/fixtures/base.fixture`.
+**Keputusan:** Semua spec di `tests/` harus import `test` dan `expect` dari `./fixtures` (atau `@/public`).
 
-**Kenapa:** `base.fixture.ts` re-export framework fixtures (`logger`, lifecycle `testTrace`) yang dibutuhkan
+**Kenapa:** `fixtures.ts` me-re-export framework fixtures (`logger`, lifecycle `testTrace`) yang dibutuhkan
 untuk reporting dan debugging. Import langsung dari `@playwright/test` melewati fixture chain ini —
 test akan jalan tapi tanpa trace, tanpa logger, dan reporter tidak bisa render detail yang benar.
 
@@ -37,25 +37,25 @@ test akan jalan tapi tanpa trace, tanpa logger, dan reporter tidak bisa render d
 import { test, expect } from '@playwright/test';
 
 // ✅ Lakukan
-import { test, expect } from '@/fixtures/base.fixture';
+import { test, expect } from './fixtures';
 ```
 
 ---
 
 ## D-03: Satu spec file per role, bukan satu file dengan multiple `test.use()`
 
-**Keputusan:** Role-aware requirement → `src/tests/<feature>-<role>.spec.ts` per role.
+**Keputusan:** Role-aware requirement → `tests/<feature>-<role>.spec.ts` per role.
 
 **Kenapa:** Playwright tidak support multiple `test.use({ storageState })` dalam satu file dengan auth berbeda.
 Satu file per role juga memudahkan `roleFilter` di pipeline dan `--grep` saat debugging.
 
 ```
 // ❌ Jangan — tidak bekerja dengan benar
-src/tests/invoice.spec.ts   ← berisi test finance DAN test hrd
+tests/invoice.spec.ts   ← berisi test finance DAN test hrd
 
 // ✅ Lakukan
-src/tests/invoice-finance.spec.ts
-src/tests/invoice-hrd.spec.ts
+tests/invoice-finance.spec.ts
+tests/invoice-hrd.spec.ts
 ```
 
 ---
@@ -108,3 +108,19 @@ import type { PipelineReport } from '@/shared/types/pipeline-metrics.schema';
 import { networkMock } from '@/support/pw';
 import type { PipelineReport } from '@/shared/types';
 ```
+
+---
+
+## D-08: Hybrid Architecture Boundary (v2.1)
+
+**Keputusan:**
+
+- Alur kerja QA: `requirements/` ➔ `specs/` ➔ `tests/` ➔ `artifacts/`.
+- Framework core engine tetap di `src/`, tooling di `tools/`, konfigurasi di `config/`.
+- File tes di `tests/` tidak boleh mengimpor langsung internal `src/agents`, `src/cli`, `src/setup`, melainkan melalui `tests/fixtures.ts` atau `@/public`.
+
+**Kenapa:**
+
+1. Memisahkan test workspace aplikasi dari implementasi framework Playwright QA Kit.
+2. Mencegah AI Healer/Generator mengubah implementasi framework core engine saat melakukan healing skenario.
+3. Selaras dengan standar dokumentasi dan konvensi resmi Playwright (`playwright.config.ts`, `tests/seed.spec.ts`, `tests/auth.setup.ts`).

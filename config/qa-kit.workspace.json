@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "paths": {
+    "requirements": "requirements",
+    "specs": "specs",
+    "tests": "tests",
+    "testData": "tests/data",
+    "artifacts": "artifacts",
+    "reports": "artifacts/reports",
+    "testResults": "artifacts/test-results",
+    "selectorCatalog": "artifacts/selector-catalog",
+    "blobReport": "artifacts/blob-report",
+    "environments": "config/environments"
+  },
+  "ownership": {
+    "qa": ["requirements/**"],
+    "review": ["specs/**", "tests/**"],
+    "generated": ["artifacts/**"],
+    "protected": ["src/**", "tools/**", "config/**", ".github/agents/**"]
+  }
+}

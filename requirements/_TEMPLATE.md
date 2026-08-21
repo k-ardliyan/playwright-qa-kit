@@ -17,7 +17,7 @@
 ## Metadata
 
 | Field                 | Wajib?       | Contoh nilai                                     | Keterangan                                                                                                      |
-| --------------------- | ------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| --- | --- | --- | --- |
 | `Tags`                | ✅ Ya        | `#smoke #regression #ui`                         | Pisahkan dengan spasi. Dipakai filter test.                                                                     |
 | `Prioritas`           | ✅ Ya        | `high` / `medium` / `low`                        | Prioritas bisnis default untuk semua skenario.                                                                  |
 | `Auth state`          | ✅ Ya        | `unauthenticated` / `authenticated`              | Butuh login atau tidak.                                                                                         |
@@ -97,7 +97,7 @@
 >
 > **Konten file scenario-owned:** tulis token yang harus ada di PDF/Excel di **Hasil yang Diharapkan** atau **Input Data**. Generator/helper hanya match token itu — jangan hardcode judul/kode/nama produk di helper.
 >
-> **Network live assert scenario-owned:** method, urlIncludes/endpoint, status, request/response keys di **Input Data** / **Hasil**. Optional path contract: `test-fixtures/network/contracts/...`. Jangan invent endpoint.
+> **Network live assert scenario-owned:** method, urlIncludes/endpoint, status, request/response keys di **Input Data** / **Hasil**. Optional path contract: `tests/data/network/contracts/...`. Jangan invent endpoint.
 >
 > Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 >
@@ -210,11 +210,11 @@
 >
 > **Bukan manual (otomasi fixture-first):**
 >
-> - **Upload** → `(@upload)` + file di `test-fixtures/` (`setInputFiles` / `uploadFixture`)
+> - **Upload** → `(@upload)` + file di `tests/data/` (`setInputFiles` / `uploadFixture`)
 > - **Download** → `(@download)` + `downloadAndSave`
 > - **PDF teks / Excel header** → `(@file-content)` + needles dari requirement
 >
-> **Lihat panduan lengkap:** [docs/MANUAL-SCENARIOS.md](../docs/MANUAL-SCENARIOS.md) · [docs/recipes/file-upload-download.md](../docs/recipes/file-upload-download.md) · [docs/recipes/pdf-excel-content-assert.md](../docs/recipes/pdf-excel-content-assert.md)
+> **Lihat panduan lengkap:** [docs/MANUAL-SCENARIOS.md](../docs/MANUAL-SCENARIOS.md) · [docs/recipes/FILE-UPLOAD-DOWNLOAD.md](../docs/recipes/FILE-UPLOAD-DOWNLOAD.md) · [docs/recipes/PDF-EXCEL-CONTENT-ASSERT.md](../docs/recipes/PDF-EXCEL-CONTENT-ASSERT.md)
 
 ---
 

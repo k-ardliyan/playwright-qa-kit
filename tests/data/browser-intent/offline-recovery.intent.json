@@ -1,0 +1,11 @@
+{
+  "$schema": "browser-intent.schema.json",
+  "scenarioId": "OFFLINE-001",
+  "title": "Display banner when offline and recover when reconnected",
+  "intent": {
+    "requires": {
+      "network": true
+    },
+    "mode": "offline"
+  }
+}

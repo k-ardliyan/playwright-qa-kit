@@ -4,9 +4,9 @@ Dokumen ini mendefinisikan konvensi penyimpanan auth state per role untuk framew
 
 > **Kelola kredensial (password, tambah/hapus role, encrypt):** lihat **[CREDENTIALS.md](CREDENTIALS.md)** — `npm run env:edit`.
 >
-> **Path auth setup (template core):** `src/support/auth.setup.ts`  
+> **Path auth setup (template core):** `tests/auth.setup.ts`  
 > (discover semua role login-ready dari env; multi-role otomatis).  
-> Adapter ERPKU sample: `example/erpku/support/auth.setup.ts`.
+> Adapter ERPKU sample: `examples/erpku/`.
 >
 > **Root Playwright wiring (official):** project `setup` → `chromium` memakai `dependencies: ['setup']`.  
 > Default `storageState` di project chromium **kosong** (unauthenticated). Spec terautentikasi **wajib** override:
@@ -46,7 +46,7 @@ File berisi Playwright storage state (cookies + localStorage).
 ## Naming Convention
 
 | Role bisnis   | Storage state path                 | Keterangan                                    |
-| ------------- | ---------------------------------- | --------------------------------------------- |
+| --- | --- | --- |
 | `user`        | `.auth/{APP_ENV}/user.json`        | Default authenticated user (mode **general**) |
 | `super-admin` | `.auth/{APP_ENV}/super-admin.json` | Super admin                                   |
 | `finance`     | `.auth/{APP_ENV}/finance.json`     | Finance                                       |
@@ -61,7 +61,7 @@ Helper: `authStatePath('finance')` / `authStateWritePath('finance')` di `src/sup
 
 ## Cara menjalankan Auth Setup
 
-**Disarankan:** biarkan discovery otomatis di `src/support/auth.setup.ts` (setelah `env:edit` / wizard).
+**Disarankan:** biarkan discovery otomatis di `tests/auth.setup.ts` (setelah `env:edit` / wizard).
 
 Setup mendaftarkan satu test `authenticate:<role>` per role yang **login-ready**  
 (password + minimal satu EMAIL | USERNAME | PHONE). Login id: `LOGIN_ID_PREF` → email → username → phone.
@@ -71,7 +71,7 @@ npm run auth:setup
 # OTP / CAPTCHA di browser:
 npm run auth:setup:headed
 # setara:
-npx playwright test src/support/auth.setup.ts --project=setup --workers=1
+npx playwright test tests/auth.setup.ts --project=setup --workers=1
 ```
 
 Regenerate template multi-role (opsional): `npm run env:edit` → _Regenerasi auth.setup.ts_  
@@ -84,7 +84,7 @@ Regenerate template multi-role (opsional): `npm run env:edit` → _Regenerasi au
 Session bootstrap boleh **dibantu manusia** (local only) lewat env:
 
 | Mode              | Arti                                                       | Headless   | Terminal               |
-| ----------------- | ---------------------------------------------------------- | ---------- | ---------------------- |
+| --- | --- | --- | --- |
 | `none` (default)  | Tidak ada assist                                           | ya         | —                      |
 | `otp-browser`     | **OTP di browser** (disarankan)                            | **tidak**  | tidak untuk isi OTP UI |
 | `otp-stdin`       | OTP diketik di terminal                                    | boleh      | **wajib TTY**          |
@@ -92,7 +92,7 @@ Session bootstrap boleh **dibantu manusia** (local only) lewat env:
 | `auto`            | Deteksi: CAPTCHA→browser; OTP→browser dulu, fallback stdin | tergantung | tergantung             |
 
 ```bash
-# environments/{APP_ENV}.env
+# config/environments/{APP_ENV}.env
 AUTH_CHALLENGE_MODE=otp-browser
 HEADLESS=false
 SLOW_MO=100
@@ -110,7 +110,7 @@ SLOW_MO=100
 Skenario requirement OTP/CAPTCHA tetap ditandai `(@manual)` (skip di pipeline).  
 Fitur ini hanya membantu **menyimpan sesi** `.auth/{APP_ENV}/role.json`.
 
-Implementasi: `src/support/human-challenge.ts` dipanggil dari `auth.setup.ts` setelah submit password.
+Implementasi: `src/support/human-challenge.ts` dipanggil dari `tests/auth.setup.ts` setelah submit password.
 
 ---
 
@@ -123,7 +123,7 @@ Lihat [CREDENTIALS.md](CREDENTIALS.md) — skema seragam per role; multi N=1 mir
 ## Related
 
 | Dokumen                                            | Isi                                 |
-| -------------------------------------------------- | ----------------------------------- |
+| --- | --- |
 | [CREDENTIALS.md](CREDENTIALS.md)                   | Keys, identifier opsional, env:edit |
 | [GUIDE.md](GUIDE.md)                               | APP_ENV control plane               |
-| [writing-requirements.md](writing-requirements.md) | Mode general vs role-aware          |
+| [WRITING-REQUIREMENTS.md](WRITING-REQUIREMENTS.md) | Mode general vs role-aware          |

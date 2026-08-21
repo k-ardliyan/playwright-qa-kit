@@ -293,7 +293,19 @@ export function resolveNetworkContractPath(relativeOrAbsolute: string): string {
     return relativeOrAbsolute;
   }
   const normalized = relativeOrAbsolute.replace(/\\/g, '/');
+  if (normalized.startsWith('tests/data/')) {
+    return path.join(findRepoRoot(), ...normalized.split('/'));
+  }
   if (normalized.startsWith('test-fixtures/')) {
+    const dataCandidate = path.join(
+      findRepoRoot(),
+      'tests',
+      'data',
+      ...normalized.replace(/^test-fixtures\//, '').split('/'),
+    );
+    if (fs.existsSync(dataCandidate)) {
+      return dataCandidate;
+    }
     return path.join(findRepoRoot(), ...normalized.split('/'));
   }
   if (normalized.startsWith('network/')) {

@@ -41,15 +41,21 @@ export function isKnownAppEnv(value: string): value is AppEnv {
   return (KNOWN_APP_ENVS as readonly string[]).includes(value);
 }
 
+export function getEnvironmentsDir(repoRoot: string): string {
+  const configDir = path.join(repoRoot, 'config', 'environments');
+  if (fs.existsSync(configDir)) return configDir;
+  return path.join(repoRoot, 'environments');
+}
+
 export function readActiveEnvPin(repoRoot: string): string | null {
-  const pinPath = path.join(repoRoot, 'environments', ACTIVE_ENV_FILENAME);
+  const pinPath = path.join(getEnvironmentsDir(repoRoot), ACTIVE_ENV_FILENAME);
   if (!fs.existsSync(pinPath)) return null;
   const raw = fs.readFileSync(pinPath, 'utf8').trim();
   return raw.length > 0 ? raw : null;
 }
 
 export function writeActiveEnvPin(repoRoot: string, appEnv: AppEnv): string {
-  const envDir = path.join(repoRoot, 'environments');
+  const envDir = getEnvironmentsDir(repoRoot);
   if (!fs.existsSync(envDir)) fs.mkdirSync(envDir, { recursive: true });
   const pinPath = path.join(envDir, ACTIVE_ENV_FILENAME);
   fs.writeFileSync(pinPath, `${appEnv}\n`, 'utf8');
@@ -57,11 +63,11 @@ export function writeActiveEnvPin(repoRoot: string, appEnv: AppEnv): string {
 }
 
 function envFilePath(repoRoot: string, appEnv: AppEnv): string {
-  return path.join(repoRoot, 'environments', `${appEnv}.env`);
+  return path.join(getEnvironmentsDir(repoRoot), `${appEnv}.env`);
 }
 
 function pinPathFor(repoRoot: string): string {
-  return path.join(repoRoot, 'environments', ACTIVE_ENV_FILENAME);
+  return path.join(getEnvironmentsDir(repoRoot), ACTIVE_ENV_FILENAME);
 }
 
 /**

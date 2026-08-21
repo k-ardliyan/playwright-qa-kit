@@ -10,14 +10,14 @@ import * as path from 'node:path';
 
 export type FileKind = 'pdf' | 'xlsx' | 'zip' | 'png' | 'jpg' | 'gif' | 'csv' | 'txt' | 'unknown';
 
-const REPO_MARKER = 'mcp-server';
+const REPO_MARKERS = ['config/qa-kit.workspace.json', 'tools/mcp', 'mcp-server'];
 const MAX_HOPS = 12;
 
-/** Resolve repository root (directory that contains `mcp-server/`). */
+/** Resolve repository root. */
 export function findRepoRoot(start: string = process.cwd()): string {
   let dir = path.resolve(start);
   for (let i = 0; i < MAX_HOPS; i += 1) {
-    if (fs.existsSync(path.join(dir, REPO_MARKER))) {
+    if (REPO_MARKERS.some((marker) => fs.existsSync(path.join(dir, ...marker.split('/'))))) {
       return dir;
     }
     const parent = path.dirname(dir);
@@ -27,9 +27,18 @@ export function findRepoRoot(start: string = process.cwd()): string {
   return path.resolve(start);
 }
 
-/** Absolute path under `test-fixtures/` (repo root). */
+/** Absolute path under `tests/data/` (or legacy `test-fixtures/`). */
 export function fixturePath(...parts: string[]): string {
-  return path.join(findRepoRoot(), 'test-fixtures', ...parts);
+  const root = findRepoRoot();
+  const candidate = path.join(root, 'tests', 'data', ...parts);
+  if (fs.existsSync(candidate)) {
+    return candidate;
+  }
+  const legacyCandidate = path.join(root, 'test-fixtures', ...parts);
+  if (fs.existsSync(legacyCandidate)) {
+    return legacyCandidate;
+  }
+  return candidate;
 }
 
 /** Detect common file kinds from magic bytes (envelope layer). */

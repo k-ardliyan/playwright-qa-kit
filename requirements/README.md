@@ -5,7 +5,7 @@ Folder ini untuk **file requirement fitur** yang dibaca Planner / pipeline Herme
 ## Penamaan penting
 
 | File                                   | Arti                                                                                                              |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| --- | --- |
 | `login.md`                             | **REAL** — di-generate `setup:wizard` Phase 7 dari BASE_URL + path + roles **website kamu**. Setup awal pipeline. |
 | `sample-*.md`                          | **SAMPLE format** — latihan / referensi. Bukan target app kamu.                                                   |
 | `_TEMPLATE.md`                         | Template kosong untuk fitur baru.                                                                                 |

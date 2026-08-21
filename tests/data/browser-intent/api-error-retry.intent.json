@@ -1,0 +1,12 @@
+{
+  "$schema": "browser-intent.schema.json",
+  "scenarioId": "API-500-001",
+  "title": "Retry when API endpoint returns 500",
+  "intent": {
+    "requires": {
+      "network": true,
+      "storage": true
+    },
+    "mode": "semantic"
+  }
+}

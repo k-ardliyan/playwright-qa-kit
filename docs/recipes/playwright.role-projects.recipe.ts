@@ -3,9 +3,9 @@
  * Copy patterns into your playwright.config.ts or import buildRoleProjects.
  *
  * Prerequisites:
- * - src/support/auth.setup.ts writes .auth/{APP_ENV}/<role>.json
+ * - tests/auth.setup.ts writes .auth/{APP_ENV}/<role>.json
  * - OTP/CAPTCHA session: AUTH_CHALLENGE_MODE + npm run auth:setup:headed
- * - Specs named src/tests/<feature>-<role>.spec.ts
+ * - Specs named tests/<feature>-<role>.spec.ts
  *
  * Not the default root config (template stays single chromium + empty default storage).
  */
@@ -14,7 +14,7 @@ import { loadEnvironment } from '../../src/utils/env-loader';
 import {
   buildPlaywrightSharedDefaults,
   createFrameworkReporters,
-} from '../../playwright.config.base';
+} from '../../config/playwright/base';
 import { buildRoleProjects } from '../../src/support/pw/role-projects';
 
 loadEnvironment();
@@ -26,10 +26,10 @@ const roles = (process.env.ROLE_SCOPE ?? 'finance,hrd,super-admin')
 
 export default defineConfig({
   ...buildPlaywrightSharedDefaults(),
-  testDir: './src/tests',
+  testDir: './tests',
   reporter: createFrameworkReporters({
-    jsonOutput: 'test-results/role-results.json',
-    htmlFolder: './reports/html-roles',
+    jsonOutput: 'artifacts/test-results/role-results.json',
+    htmlFolder: './artifacts/reports/html-roles',
     customReporterPath: './src/support/custom-reporter.ts',
   }),
   projects: [

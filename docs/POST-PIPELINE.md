@@ -7,14 +7,14 @@ Hermes Agent setelah `setup:wizard` selesai.
 
 Setelah pipeline Plan → Generate → Execute → Heal → Report selesai:
 
-| Artefak                              | Wajib | Keterangan                                                                                                                                                    |
-| ------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specs/login-test-plan.md`           | ✅    | Test plan dari Planner                                                                                                                                        |
-| `src/tests/login*.spec.ts`           | ✅    | Spec Playwright dari Generator (Path A inline locators)                                                                                                       |
-| `reports/pipeline-report-<runId>.md` | ✅    | Ringkasan eksekusi + unresolved failures                                                                                                                      |
-| `reports/custom-dashboard.html`      | ✅    | Dashboard triage (Table/Accordion, SOURCE, Evidence card) — ditulis Reporter; dibuka otomatis oleh `qa-run --open-dashboard` (skip via `--no-open-dashboard`) |
-| `reports/test-summary.json`          | ✅    | Data mentah untuk tooling / agent                                                                                                                             |
-| `reports/archive/<runId>/`           | ✅    | Snapshot report — buka untuk approval                                                                                                                         |
+| Artefak                                        | Wajib | Keterangan                                                                                                                                                    |
+| --- | --- | --- |
+| `specs/login-test-plan.md`                     | ✅    | Test plan dari Planner                                                                                                                                        |
+| `tests/login*.spec.ts`                         | ✅    | Spec Playwright dari Generator (Path A inline locators)                                                                                                       |
+| `artifacts/reports/pipeline-report-<runId>.md` | ✅    | Ringkasan eksekusi + unresolved failures                                                                                                                      |
+| `artifacts/reports/custom-dashboard.html`      | ✅    | Dashboard triage (Table/Accordion, SOURCE, Evidence card) — ditulis Reporter; dibuka otomatis oleh `qa-run --open-dashboard` (skip via `--no-open-dashboard`) |
+| `artifacts/reports/test-summary.json`          | ✅    | Data mentah untuk tooling / agent                                                                                                                             |
+| `artifacts/reports/archive/<runId>/`           | ✅    | Snapshot report — buka untuk approval                                                                                                                         |
 
 **Dashboard terbuka otomatis** lewat `npm run qa:run` (default ON).
 Skip dengan `--no-open-dashboard` atau buka manual via OS file manager.
@@ -25,10 +25,10 @@ Hermes mengklasifikasikan setiap unresolved failure ke salah satu sumber.
 Di **custom dashboard**, kolom **SOURCE** menampilkan Cause + decision (Do) + blurb; hover untuk arti lengkap.
 
 | `failureSource` | Artinya                              | Decision hint (UI) | Tindakan                                     |
-| --------------- | ------------------------------------ | ------------------ | -------------------------------------------- |
+| --- | --- | --- | --- |
 | `app`           | Aplikasi yang salah (product bug)    | FILE BUG           | 🐛 buat defect ticket, pertahankan test      |
 | `requirement`   | Requirement ambigu atau kontradiktif | REVISE REQUIREMENT | 📝 perbaiki file, ulangi dari Plan           |
-| `test`          | Test code / locator salah            | FIX TEST           | 🔧 perbaiki `src/tests/`, re-run scoped      |
+| `test`          | Test code / locator salah            | FIX TEST           | 🔧 perbaiki `tests/`, re-run scoped          |
 | `env`           | Env / auth / seed missing            | FIX ENVIRONMENT    | 🔧 cek `.auth/`, `env:edit`, `auth.setup.ts` |
 | `ai_generation` | Generator salah pilih strategi       | FIX TEST/GENERATOR | 🔧 perbaiki input generator / hint / POM     |
 | `unknown`       | Belum jelas                          | TRIAGE             | Investigasi trace/screenshot dulu            |
@@ -38,7 +38,7 @@ Detail UI dashboard: [REPORT-GUIDE.md](REPORT-GUIDE.md).
 ## 6 Keputusan QA
 
 | Keputusan                 | Kapan                                              |
-| ------------------------- | -------------------------------------------------- |
+| --- | --- |
 | ✅ **APPROVE**            | Semua pass. `archive_report` → baseline.           |
 | 🐛 **FILE BUG**           | Ada `failureSource: 'app'`                         |
 | 📝 **REVISE REQUIREMENT** | Ada `failureSource: 'requirement'`                 |
@@ -111,10 +111,10 @@ cat docs/CHEATSHEET.md
 ## Referensi Cepat
 
 | Kebutuhan                  | Buka                              |
-| -------------------------- | --------------------------------- |
+| --- | --- |
 | Command ringkas            | `docs/CHEATSHEET.md`              |
 | Setup mesin (first-time)   | `docs/GETTING-STARTED.md`         |
-| Format requirement         | `docs/writing-requirements.md`    |
+| Format requirement         | `docs/WRITING-REQUIREMENTS.md`    |
 | Panduan pipeline lengkap   | `docs/GUIDE.md`                   |
 | Role-aware testing         | `docs/AUTH-CONTEXT-CONVENTION.md` |
 | Format laporan / dashboard | `docs/REPORT-GUIDE.md`            |

@@ -31,11 +31,19 @@ environments/*.bak
 .gemini/
 
 # Consolidated Runtime Artifacts (Hybrid Architecture)
-artifacts/
+artifacts/*
 !artifacts/.gitkeep
+!artifacts/reports/
+artifacts/reports/*
 !artifacts/reports/.gitkeep
+!artifacts/test-results/
+artifacts/test-results/*
 !artifacts/test-results/.gitkeep
+!artifacts/selector-catalog/
+artifacts/selector-catalog/*
 !artifacts/selector-catalog/.gitkeep
+!artifacts/blob-report/
+artifacts/blob-report/*
 !artifacts/blob-report/.gitkeep
 
 # Legacy output directories (fallback)

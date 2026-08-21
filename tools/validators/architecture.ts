@@ -148,6 +148,15 @@ const requiredConfigDirs = [
 for (const relPath of requiredConfigDirs) {
   const fullPath = path.join(ROOT, relPath);
   if (!fs.existsSync(fullPath)) {
+    if (relPath.startsWith('artifacts')) {
+      try {
+        fs.mkdirSync(fullPath, { recursive: true });
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (!fs.existsSync(fullPath)) {
     violations.push({
       rule: 'ARCH-005: Project Layout',
       message: `Required directory '${relPath}' is missing.`,

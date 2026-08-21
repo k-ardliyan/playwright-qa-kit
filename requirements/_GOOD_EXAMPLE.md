@@ -1,7 +1,7 @@
 # REQ-AUTH-001: Login — Akun Valid ke Dashboard
 
-> **Contoh requirement yang BAIK** — digunakan sebagai referensi untuk menulis requirement baru.
-> File ini divalidasi `validate_requirement` dengan exit 0.
+> **Contoh requirement yang BAIK (v2.0)** — digunakan sebagai referensi untuk menulis requirement baru.
+> File ini divalidasi `compile_requirement` dan `validate_requirement` dengan status success dan 0 warning.
 
 ## Metadata
 
@@ -9,80 +9,82 @@
 - **Prioritas:** high
 - **Auth state:** unauthenticated
 - **Halaman awal:** /login
-- **POM yang dibutuhkan:** loginPage, dashboardPage
+- **Module:** auth
+- **Feature:** login-valid
 
 ## Kriteria Penerimaan
 
-- Pengguna dapat login dengan email + password valid dan diredirect ke `/dashboard` dalam < 3 detik
-- Setelah login berhasil, header dashboard menampilkan greeting dengan nama user
-- Session cookie tersimpan dengan expiry 24 jam
-- Login gagal dengan kredensial invalid menampilkan error message yang jelas tanpa membocorkan info
-  (misal: "Email atau password salah", BUKAN "Email tidak ditemukan")
-- Form login menolak submit ketika field email kosong (HTML5 validation atau JS validation)
-- Form login menolak submit ketika field password kosong
+- **AC-01:** Pengguna dapat login dengan email dan password valid dan diredirect ke `/dashboard` dalam waktu < 3 detik.
+- **AC-02:** Setelah login berhasil, header dashboard menampilkan greeting dengan nama user dan session cookie tersimpan.
+- **AC-03:** Login gagal dengan kredensial invalid menampilkan pesan error tanpa membocorkan eksistensi akun.
+- **AC-04:** Form login menolak submit ketika field email kosong.
+- **AC-05:** Form login mengunci akun sementara setelah 5 kali gagal berturut-turut.
+- **AC-06:** Login pihak ketiga dengan Google OAuth diverifikasi secara manual.
 
 ## Skenario Uji
 
 ### SC-01: Login Berhasil dengan Email dan Password Valid (@success)
 
 - **Test ID:** `TC-AUTH-001`
+- **Covers:** `AC-01`, `AC-02`
 - **Prioritas skenario:** `high`
 - **Layer terdampak:** `FE` `BE`
 
-**Prekondisi:** Pengguna berada di halaman `/login`, akun `qa.test@example.com` terdaftar dengan
-password `Test1234!`, user belum login.
+**Prekondisi:** Pengguna berada di halaman `/login`, akun terdaftar dengan password valid, user belum login.
 
 **Input Data:**
 
-- email: qa.test@example.com
-- password: Test1234!
+- email: credential:user.email
+- password: credential:user.password
 
 **Langkah:**
 
-1. Ketik `qa.test@example.com` di field Email
-2. Ketik `Test1234!` di field Password
+1. Ketik email valid di field Email
+2. Ketik password valid di field Password
 3. Klik tombol "Masuk"
 
 **Hasil yang Diharapkan:**
 
 - URL browser berubah ke `/dashboard`
-- Header dashboard menampilkan teks "Selamat datang, QA Test"
+- Header dashboard menampilkan teks "Selamat datang"
 - Tombol "Logout" terlihat di pojok kanan atas header
-- Cookie `session_id` ada di browser DevTools > Application > Cookies
+- Cookie `session_id` tersimpan di browser
 
 ---
 
 ### SC-02: Login Gagal dengan Password Salah (@failure)
 
 - **Test ID:** `TC-AUTH-002`
+- **Covers:** `AC-03`
 - **Prioritas skenario:** `high`
 - **Layer terdampak:** `FE` `BE`
 
-**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` ada, password yang dipakai salah.
+**Prekondisi:** Pengguna berada di `/login`, akun terdaftar, password yang dimasukkan salah.
 
 **Input Data:**
 
-- email: qa.test@example.com
-- password: WrongPass
+- email: credential:user.email
+- password: literal:WrongPassword123!
 
 **Langkah:**
 
-1. Ketik `qa.test@example.com` di field Email
-2. Ketik `WrongPass` di field Password
+1. Ketik email di field Email
+2. Ketik password salah di field Password
 3. Klik tombol "Masuk"
 
 **Hasil yang Diharapkan:**
 
-- URL tetap di `/login` (tidak redirect)
+- URL tetap di `/login`
 - Muncul pesan error merah di bawah form: "Email atau password salah"
-- Field password di-clear (kosong kembali)
-- Tombol "Masuk" kembali enabled (tidak stuck di loading)
+- Field password dikosongkan kembali
+- Tombol "Masuk" kembali aktif
 
 ---
 
 ### SC-03: Submit dengan Email Kosong (@failure)
 
 - **Test ID:** `TC-AUTH-003`
+- **Covers:** `AC-04`
 - **Prioritas skenario:** `medium`
 - **Layer terdampak:** `FE`
 
@@ -90,67 +92,69 @@ password `Test1234!`, user belum login.
 
 **Input Data:**
 
-- email: (kosong)
-- password: Test1234!
+- email: literal:
+- password: credential:user.password
 
 **Langkah:**
 
 1. Biarkan field Email kosong
-2. Ketik `Test1234!` di field Password
+2. Ketik password di field Password
 3. Klik tombol "Masuk"
 
 **Hasil yang Diharapkan:**
 
-- Submit form ter-block (validasi muncul di field Email)
+- Submit form ditolak dan validasi muncul di field Email
 - URL tetap di `/login`
-- Tidak ada request POST ke `/api/login`
+- Tidak ada request otentikasi yang dikirim
 
 ---
 
 ### SC-04: Akun Terkunci Setelah 5 Kali Gagal (@failure)
 
 - **Test ID:** `TC-AUTH-004`
+- **Covers:** `AC-05`
 - **Prioritas skenario:** `medium`
 - **Layer terdampak:** `FE` `BE`
 
-**Prekondisi:** Pengguna di `/login`, akun `qa.test@example.com` sudah pernah gagal login 4 kali
-berturut-turut.
+**Prekondisi:** Pengguna di `/login`, akun sudah mengalami 4 kali kegagalan login sebelumnya.
 
 **Input Data:**
 
-- email: qa.test@example.com
-- password: WrongPass
+- email: credential:user.email
+- password: literal:WrongPassword123!
 
 **Langkah:**
 
-1. Ketik `qa.test@example.com` di field Email
-2. Ketik `WrongPass` di field Password
-3. Klik tombol "Masuk" (ini kegagalan ke-5)
+1. Ketik email di field Email
+2. Ketik password salah di field Password
+3. Klik tombol "Masuk"
 
 **Hasil yang Diharapkan:**
 
 - URL tetap di `/login`
-- Muncul pesan error: "Akun terkunci karena 5 kali gagal. Coba lagi dalam 15 menit."
-- Field login disabled (abu-abu, tidak bisa diketik)
-- API call `/api/auth/lock-status` return `{ locked: true, until: <timestamp> }`
+- Muncul pesan error "Akun terkunci karena 5 kali gagal. Coba lagi dalam 15 menit."
+- Form login dinonaktifkan sementara
 
 ---
 
 ### SC-05: Login dengan Google OAuth (@manual)
 
 - **Test ID:** `TC-AUTH-005`
+- **Covers:** `AC-06`
 - **Prioritas skenario:** `low`
 
-**Prekondisi:** Pengguna di `/login`, punya akun Google aktif, popup OAuth tidak di-block browser.
+**Prekondisi:** Pengguna di `/login`, memiliki akun Google aktif.
+
+**Input Data:**
+
+- provider: literal:google
 
 **Langkah:**
 
 1. Klik tombol "Login dengan Google"
-2. Pilih akun Google di popup OAuth
-3. Klik tombol "Allow" di halaman permission Google
+2. Pilih akun Google di popup otorisasi eksternal
+3. Setujui izin akses aplikasi
 
 **Hasil yang Diharapkan:**
 
-- URL kembali ke `/dashboard?oauth=success`
-- Session tersimpan, greeting "Selamat datang" tampil
-- Verifikasi manual diperlukan karena OAuth popup + akun Google asli tidak bisa diotomasi dari CI
+- Sesi login terbuat dan diredirect ke `/dashboard` — verifikasi manual diperlukan karena interaksi popup OAuth dan verifikasi Google eksternal tidak diotomasi dari CI

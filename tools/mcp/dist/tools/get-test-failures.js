@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.inferFailureSource = inferFailureSource;
 exports.getTestFailures = getTestFailures;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
@@ -66,6 +67,25 @@ function loadSummaryAnnotationMap(repoRoot) {
     catch {
         return new Map();
     }
+}
+function inferFailureSource(errorMessage) {
+    const msg = errorMessage.toLowerCase();
+    if (/\b5\d\d\b|internal server error|database error|sqlstate|unhandled exception|status 5\d\d/i.test(msg)) {
+        return 'app';
+    }
+    if (/storage.?state|unauthorized|401|403|login required|session expired|redirected to login|sign in required|credentials expired/i.test(msg)) {
+        return 'env';
+    }
+    if (/syntaxerror|referenceerror|unexpected token|is not defined|ref:\w+|handle:\w+|tw-[0-9a-f]+/i.test(msg)) {
+        return 'ai_generation';
+    }
+    // GAP 2: Detect assertion failures that indicate outdated business logic / changed workflow
+    // These are assertion-level failures where the test ran successfully but the expected outcome
+    // doesn't match the current application behavior — a signal that the requirement spec is stale.
+    if (/expected\s+\d+.*but\s+(got|received)\s+\d+|assertion.*failed.*expected|no such step|unknown field|missing mandatory field|business rule|workflow.?changed|step.?not.?found|field.?not.?in.?form|expected.?state.?was.?not.?reached/i.test(msg)) {
+        return 'requirement';
+    }
+    return 'test';
 }
 const DEFAULT_RESULTS_DIR = path.resolve((0, safety_1.getRepoRoot)(), 'test-results');
 function resolveResultsFile(resultsDir) {
@@ -177,8 +197,12 @@ function traverseSuites(suiteNode, inheritedTitle, failures, annotationMap = new
                     failure.expectedResult = annotation.expectedResult;
                 if (annotation.actualResult)
                     failure.actualResult = annotation.actualResult;
-                if (annotation.failureSource)
+                if (annotation.failureSource && annotation.failureSource !== 'unknown') {
                     failure.failureSource = annotation.failureSource;
+                }
+            }
+            if (!failure.failureSource || failure.failureSource === 'unknown') {
+                failure.failureSource = inferFailureSource(failure.errorMessage);
             }
         }
     }

@@ -19,7 +19,7 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 ## Alur kerja
 
 1. Duplikat [`_TEMPLATE.md`](../requirements/_TEMPLATE.md) → `requirements/nama-fitur.md`.
-2. Isi Metadata, Kriteria Penerimaan, dan Skenario Uji.
+2. Isi Metadata, Access Matrix (jika multi-role), Kriteria Penerimaan (dengan `AC-XX`), dan Skenario Uji (dengan `Covers` dan `Test ID`).
 3. (Opsional) Rapikan catatan kasar via ChatGPT/Gemini — lihat section **Prompt untuk AI eksternal** di bawah.
 4. Validasi: `npm run validate:requirement -- requirements/nama-fitur.md`
 5. Koreksi ringan di editor jika perlu.
@@ -31,16 +31,19 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 
 - [ ] `npm run validate:requirement` lulus (tanpa error)
 - [ ] Judul `# REQ-XXX: ...` ada di baris pertama
-- [ ] Section `## Metadata` terisi (minimal Tags, Auth state, Halaman awal)
-- [ ] **`- **Module:** <nama-modul>`** diisi — wajib, validator akan error jika kosong
-- [ ] `- **Feature:** <nama-fitur>` diisi jika memungkinkan — opsional tapi sangat direkomendasikan
-- [ ] Minimal satu bullet di `## Kriteria Penerimaan`, semuanya observable
-- [ ] Setiap skenario punya `### SC-XX:` heading + `**Langkah:**` + `**Hasil:**`
-- [ ] Hasil bersifat observable (URL, teks, visibility — bukan "berjalan baik")
-- [ ] Skenario non-otomatis ditandai `(@manual)` di judul
-- [ ] Prekondisi diisi untuk skenario auth-sensitive
-- [ ] Jika `Auth state: authenticated` dan fitur berbeda per role → tambah `Role scope` dan `Access expectation`
-- [ ] (Disarankan) setiap skenario isi `- **Layer terdampak:** FE` / `BE` / `DB` / `API` — warning `layer_recommended` jika kosong
+- [ ] Section `## Metadata` terisi (Tags, Prioritas, Auth state, Halaman awal, Module, Feature)
+- [ ] **`- **Module:** <nama-modul>`** diisi — wajib untuk machine contract & report grouping
+- [ ] **`- **Feature:** <nama-fitur>`** diisi — wajib untuk pemetaan spesifik
+- [ ] Setiap item di `## Kriteria Penerimaan` memiliki ID eksplisit: `- **AC-01:** [Deskripsi]`
+- [ ] Setiap skenario memiliki `- **Test ID:** \`TC-MODUL-NNN\``
+- [ ] Setiap skenario memiliki `- **Covers:** \`AC-01\`, \`AC-02\``
+- [ ] Skenario multi-role memiliki `- **Actor:** \`role-name\``
+- [ ] Input Data menggunakan format provenance eksplisit (`seed:...`, `credential:...`, `fixture:...`, `literal:...`)
+- [ ] Hasil bersifat observable (URL, teks, status badge — bukan "berjalan baik")
+- [ ] Skenario non-otomatis ditandai `(@manual)` di judul dengan alasan di Hasil yang Diharapkan
+- [ ] Jika multi-role, sediakan tabel `## Access Matrix`
+- [ ] (Disarankan) setiap skenario isi `- **Layer terdampak:** FE` / `BE` / `DB` / `API`
+
 
 ---
 

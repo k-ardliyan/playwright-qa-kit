@@ -179,6 +179,16 @@ const legacyRuntimePatterns = [
     pattern: /(?:path\.join|path\.resolve)\s*[:(].*['"]mcp-server['"]/,
     message: 'Legacy path "mcp-server" still used in runtime config (PATH004)',
   },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*[:(].*['"]test-fixtures['"]/,
+    message:
+      'Legacy path "test-fixtures" still used in runtime code — use tests/data/ or workspace registry (PATH005)',
+  },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*[:(].*['"]src['"],\s*['"]pages['"]/,
+    message:
+      'Legacy path "src/pages" still used in runtime code — use tests/pages/ or workspace registry (PATH006)',
+  },
 ];
 
 function isAllowlistedFile(filePath: string): boolean {
@@ -189,6 +199,8 @@ function isAllowlistedFile(filePath: string): boolean {
     rel.startsWith('docs/architecture/') ||
     rel.startsWith('docs/migration/') ||
     rel.startsWith('docs/history/') ||
+    // Negative test examples intentionally contain violations for validation test suites
+    rel.includes('_BAD_EXAMPLE') ||
     // Test/mock files use old paths as test data, not runtime config
     rel.includes('/__tests__/') ||
     rel.includes('/__test__/') ||

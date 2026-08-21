@@ -12,6 +12,8 @@ import {
   failureResult,
 } from '../contracts';
 import { compileRequirementFromText } from './compile-requirement';
+import { compileTestPlanFromText } from './compile-test-plan';
+import { containsEphemeralRef } from '../utils/ephemeral-guard';
 
 export interface ValidatePlanArgs {
   testPlan?: TestPlanContractV1 | unknown;
@@ -31,16 +33,8 @@ export interface PlanValidationSummary {
 
 export type ValidatePlanOutput = McpResult<PlanValidationSummary | undefined>;
 
-const EPHEMERAL_REF_PATTERNS = [
-  /\bref:[a-zA-Z0-9_-]+\b/i,
-  /\bhandle:[a-zA-Z0-9_-]+\b/i,
-  /\btw-[0-9a-fA-F]{4,}\b/i,
-  /\bplaywright-element-[0-9]+\b/i,
-];
-
-function checkForEphemeralRefs(str: string): boolean {
-  return EPHEMERAL_REF_PATTERNS.some((p) => p.test(str));
-}
+/** @deprecated Use `containsEphemeralRef` from `../utils/ephemeral-guard` instead. */
+const checkForEphemeralRefs = containsEphemeralRef;
 
 export function validateTestPlan(
   plan: TestPlanContractV1,
@@ -74,12 +68,23 @@ export function validateTestPlan(
 
   const plannedScenariosMap = new Map(plan.scenarios.map((s) => [s.scenarioId, s]));
   const plannedCoveredAcs = new Set<string>();
+  const reqAcIds = new Set(requirement?.acceptanceCriteria.map((a) => a.id) ?? []);
 
   // 3. Check Ephemeral Refs & Provenance across planned scenarios
   let assumptionsCount = 0;
   for (const sc of plan.scenarios) {
     for (const ac of sc.covers) {
       plannedCoveredAcs.add(ac);
+      if (requirement && reqAcIds.size > 0 && !reqAcIds.has(ac)) {
+        diagnostics.push(
+          createDiagnostic(
+            'PLAN_UNKNOWN_AC',
+            'error',
+            `Scenario ${sc.scenarioId} covers unknown acceptance criterion "${ac}".`,
+            { scenarioId: sc.scenarioId },
+          ),
+        );
+      }
     }
 
     // Check actions / locator intents for ephemeral refs
@@ -177,6 +182,17 @@ export function validateTestPlan(
               'PLAN_AUTH_DRIFT',
               'error',
               `Scenario ${reqSc.id} auth drift: requirement specifies "${reqSc.authContext}", plan specifies "${plannedSc.authContext}".`,
+              { scenarioId: reqSc.id },
+            ),
+          );
+        }
+        // Check Manual converted to automated without gap/review
+        if (reqSc.type === 'manual' && plannedSc.executionMode === 'automated') {
+          diagnostics.push(
+            createDiagnostic(
+              'PLAN_MANUAL_CONVERTED_WITHOUT_REASON',
+              'warning',
+              `Scenario ${reqSc.id} is marked @manual in requirement but automated in plan. Ensure automation capability is verified.`,
               { scenarioId: reqSc.id },
             ),
           );
@@ -279,13 +295,31 @@ export function validatePlan(args: ValidatePlanArgs | undefined): ValidatePlanOu
         }),
       ]);
     }
-    try {
-      const raw = fs.readFileSync(resolved.absolutePath, 'utf-8');
-      plan = JSON.parse(raw) as TestPlanContractV1;
-    } catch (err) {
-      return failureResult([
-        createDiagnostic('INVALID_INPUT', 'error', `Failed to parse plan JSON: ${err}`),
-      ]);
+    const raw = fs.readFileSync(resolved.absolutePath, 'utf-8');
+    if (resolved.relativePath.endsWith('.md')) {
+      const compiled = compileTestPlanFromText(raw, resolved.relativePath, args.requirementPath);
+      if (compiled.data) {
+        plan = compiled.data;
+      } else {
+        return failureResult(compiled.diagnostics, { message: compiled.message });
+      }
+    } else {
+      try {
+        plan = JSON.parse(raw) as TestPlanContractV1;
+      } catch (err) {
+        const compiled = compileTestPlanFromText(raw, resolved.relativePath, args.requirementPath);
+        if (compiled.data) {
+          plan = compiled.data;
+        } else {
+          return failureResult([
+            createDiagnostic(
+              'INVALID_INPUT',
+              'error',
+              `Failed to parse plan JSON or Markdown: ${err}`,
+            ),
+          ]);
+        }
+      }
     }
   }
 

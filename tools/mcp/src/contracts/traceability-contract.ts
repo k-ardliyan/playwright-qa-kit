@@ -62,6 +62,8 @@ export interface TraceabilityContractV1 {
     totalScenarios: number;
     passingScenarios: number;
     failingScenarios: number;
+    /** Scenarios that failed initially but were successfully healed in the same pipeline run. */
+    healedScenarios: number;
     skippedScenarios: number;
     manualScenarios: number;
     blockedScenarios: number;

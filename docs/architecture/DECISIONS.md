@@ -141,3 +141,15 @@ import type { PipelineReport } from '@/shared/types';
 2. Memastikan setiap assertion memiliki provenance yang jelas (`requirement`, `live-verification`, `framework-derived`, `planner-assumption`).
 3. Menjamin keterlacakan penuh: Requirement → AC → Scenario → Test ID → Spec → Execution Status → Artifact Evidence.
 
+---
+
+## D-10: Contract Adoption & Harness Pipeline Closure (v2.3)
+
+**Keputusan:**
+Milestone saat ini adalah Contract Adoption & Harness Pipeline Closure. Implementasi Prompt Studio diblokir hingga seluruh readiness gate pada milestone ini lulus.
+
+**Kenapa:**
+Fondasi kontrak (`qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, `qa.mcp-result/v1`) harus diadopsi secara konsisten di seluruh lapisan harness (`qa:run`, Planner, Generator, Healer, Reporter, CI, dan dokumentasi) agar eksekusi pipeline deterministik, versioned, resumable, dan bebas path drift sebelum antarmuka authoring grafis dibangun.
+
+
+

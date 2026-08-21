@@ -11,6 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PipelinePhase, ProtocolError } from './types';
+import { computeSourceHash } from '@/contracts';
 
 /**
  * Ordered sequence of pipeline phases for resume logic.
@@ -30,6 +31,9 @@ const ARCHIVE_DIR = path.resolve('reports/archive');
 /**
  * Persistent state for a pipeline run.
  */
+/**
+ * Persistent state for a pipeline run.
+ */
 export interface PipelineState {
   runId: string; // UUID v4
   status: 'running' | 'completed' | 'failed' | 'paused';
@@ -39,6 +43,8 @@ export interface PipelineState {
   timestamp: string; // ISO 8601, last update
   startedAt: string; // ISO 8601
   requirementPath: string;
+  requirementHash?: string;
+  planHash?: string;
   orchestrationMode: 'manual' | 'automatic';
   errors: ProtocolError[];
 }
@@ -68,7 +74,26 @@ export function loadState(): PipelineState | null {
     return null;
   }
   const content = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
-  return JSON.parse(content) as PipelineState;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    // State file is corrupt — treat as no valid state
+    return null;
+  }
+  // GAP 3: Guard against partially-written or manually-edited state files.
+  // If required fields are absent, resume is impossible — return null rather than crashing.
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('runId' in parsed) ||
+    !('completedPhases' in parsed) ||
+    !('artifacts' in parsed) ||
+    !('requirementPath' in parsed)
+  ) {
+    return null;
+  }
+  return parsed as PipelineState;
 }
 
 /**
@@ -90,10 +115,11 @@ export function archiveState(state: PipelineState): void {
  * Logic:
  * 1. Load state from `reports/pipeline-state.json`
  * 2. If no state file exists, return an error
- * 3. Validate all artifact paths still exist on disk
- * 4. If artifacts are missing, invalidate the affected phase and all subsequent phases
- * 5. Determine resume point: first phase in sequence not in completedPhases
- * 6. Return the updated state and the phase to resume from
+ * 3. Validate source requirement staleness (hash check)
+ * 4. Validate all artifact paths still exist on disk
+ * 5. If artifacts or requirement changed, invalidate affected phases
+ * 6. Determine resume point: first phase in sequence not in completedPhases
+ * 7. Return the updated state and the phase to resume from
  */
 export function resumeState():
   { state: PipelineState; resumePhase: PipelinePhase } | { error: string } {
@@ -103,7 +129,24 @@ export function resumeState():
     return { error: 'No resumable pipeline run found.' };
   }
 
-  // Validate artifact paths for each completed phase
+  // 1. Validate requirement staleness
+  if (state.requirementPath && fs.existsSync(path.resolve(state.requirementPath))) {
+    const reqContent = fs.readFileSync(path.resolve(state.requirementPath), 'utf-8');
+    const currentReqHash = computeSourceHash(reqContent);
+
+    if (state.requirementHash && state.requirementHash !== currentReqHash) {
+      // Requirement changed! Cascade invalidate all phases
+      state.completedPhases = [];
+      for (const phase of PHASE_SEQUENCE) {
+        state.artifacts[phase] = [];
+      }
+      state.requirementHash = currentReqHash;
+      saveState(state);
+      return { state, resumePhase: 'plan' };
+    }
+  }
+
+  // 2. Validate artifact paths for each completed phase
   // Find the earliest phase with missing artifacts
   let earliestInvalidIndex = -1;
 

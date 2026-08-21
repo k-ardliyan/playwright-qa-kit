@@ -11,16 +11,16 @@ Authoritative documentation for MCP servers and custom QA tools in this reposito
 Register and use these **three** servers. **Project source of truth:** [`.mcp.json`](.mcp.json). Keep [`.vscode/mcp.json`](.vscode/mcp.json) only for editor compatibility when needed.
 
 1. **Playwright MCP** (`playwright`) — browser intelligence layer for Planner/Generator/Healer
-   - Launcher: `npx tsx scripts/playwright-mcp-launch.ts` (resolves profiles, isolated sessions, and allowed origins)
+   - Launcher: `npx tsx tools/scripts/playwright-mcp-launch.ts` (resolves profiles, isolated sessions, and allowed origins)
    - Baseline: `@playwright/mcp@0.0.79`
 
 2. **Playwright Test MCP** (`playwright-test`) — run and debug tests
-   - Launcher: `npx tsx scripts/playwright-test-mcp-launch.ts` (loads `environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
+   - Launcher: `npx tsx tools/scripts/playwright-test-mcp-launch.ts` (loads `config/environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
    - Requires `@playwright/test` >= 1.56
 
 3. **Custom QA MCP** (`playwright-qa`) — project-specific QA tools
    - Build: `npm run mcp:build`
-   - Run: `node mcp-server/dist/index-mcp.js` (bootstraps env at startup via `mcp-env-bootstrap.ts`)
+   - Run: `node tools/mcp/dist/index-mcp.js` (bootstraps env at startup via `tools/scripts/mcp-bootstrap.ts`)
 
 ### Intent Profiles & Capability Router
 
@@ -43,8 +43,8 @@ The framework automatically manages MCP capabilities based on scenario intent. Q
 
 ## Running the Custom QA MCP Server
 
-- **Stdio (IDE)**: `node mcp-server/dist/index-mcp.js`
-- **HTTP (legacy/testing)**: `npm run mcp:dev` in `mcp-server/` or `node mcp-server/dist/index.js` on port `3100`
+- **Stdio (IDE)**: `node tools/mcp/dist/index-mcp.js`
+- **HTTP (testing/dev)**: `cd tools/mcp && npm run build && node dist/index.js` on port `3100`
 
 ---
 

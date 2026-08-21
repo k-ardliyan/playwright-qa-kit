@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-INVOICE-001",
+  "title": "Invoice Approval Workflow",
+  "sourcePath": "requirements/finance/approve-invoice.md",
+  "sourceHash": "c3d4e5f6a7b8c9d0",
+  "module": "finance",
+  "feature": "invoice-approval",
+  "priority": "critical",
+  "tags": ["finance", "approval", "multi-role"],
+  "auth": {
+    "state": "authenticated",
+    "defaultRole": "finance"
+  },
+  "roles": ["super-admin", "finance", "hrd"],
+  "accessMatrix": [
+    {
+      "role": "super-admin",
+      "access": "allow",
+      "expectation": "Can approve and reject any invoice"
+    },
+    {
+      "role": "finance",
+      "access": "allow",
+      "expectation": "Can approve pending invoice"
+    },
+    {
+      "role": "hrd",
+      "access": "deny",
+      "expectation": "Cannot approve invoice"
+    }
+  ],
+  "startPage": "/finance/invoices",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "Finance role can approve an eligible invoice."
+    },
+    {
+      "id": "AC-02",
+      "description": "HRD role is restricted from approving invoices."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-INV-001",
+      "title": "Finance Approves Invoice",
+      "type": "success",
+      "actor": "finance",
+      "authContext": "finance",
+      "capabilities": [],
+      "affectedLayers": ["FE", "BE"],
+      "covers": ["AC-01"],
+      "preconditions": ["Logged in as finance", "Invoice in pending status exists"],
+      "inputData": [
+        {
+          "key": "invoiceId",
+          "source": "seed",
+          "value": "seed:invoice.pending"
+        }
+      ],
+      "steps": ["Navigate to invoice detail", "Click Approve", "Confirm approval dialog"],
+      "expectations": ["Invoice status changes to Approved"],
+      "automation": {
+        "automatable": true
+      }
+    },
+    {
+      "id": "SC-02",
+      "testId": "TC-INV-002",
+      "title": "HRD Denied From Approval",
+      "type": "access-restriction",
+      "actor": "hrd",
+      "authContext": "hrd",
+      "capabilities": [],
+      "affectedLayers": ["FE", "BE"],
+      "covers": ["AC-02"],
+      "preconditions": ["Logged in as hrd"],
+      "inputData": [],
+      "steps": ["Attempt navigation to /finance/invoices"],
+      "expectations": ["Access denied alert is shown or redirected to dashboard"],
+      "automation": {
+        "automatable": true
+      }
+    }
+  ],
+  "diagnostics": []
+}

@@ -44,6 +44,7 @@ Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/s
 | Server          | Tool                          | Purpose                                                          |
 | --------------- | ----------------------------- | ---------------------------------------------------------------- |
 | `playwright-qa` | `compile_requirement`         | Compile requirement into typed RequirementContractV1 (preferred) |
+| `playwright-qa` | `compile_test_plan`           | Compile Markdown test plan into canonical TestPlanContractV1     |
 | `playwright-qa` | `validate_plan`               | Validate test plan contract against requirement contract         |
 | `playwright-qa` | `validate_requirement`        | Validate requirement format before planning                      |
 | `playwright-qa` | `parse_requirement_scenarios` | Parse scenarios including role scope and scenario type           |

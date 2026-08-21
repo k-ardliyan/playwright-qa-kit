@@ -4,7 +4,6 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getRepoRoot } from '../utils/safety';
 import { mcpWorkspace } from '../utils/workspace-paths';
 
 function walk(dir: string, base: string, prefix: string, out: string[]): void {
@@ -22,15 +21,8 @@ function walk(dir: string, base: string, prefix: string, out: string[]): void {
 }
 
 export function listTestFixtures(args: Record<string, unknown> | undefined): unknown {
-  const repoRoot = getRepoRoot();
-  const primaryRoot = mcpWorkspace.testDataDir;
-  const legacyRoot = path.join(repoRoot, 'test-fixtures');
-  const fixturesRoot = fs.existsSync(primaryRoot)
-    ? primaryRoot
-    : fs.existsSync(legacyRoot)
-      ? legacyRoot
-      : primaryRoot;
-  const prefix = fixturesRoot === primaryRoot ? mcpWorkspace.testDataRel : 'test-fixtures';
+  const fixturesRoot = mcpWorkspace.testDataDir;
+  const prefix = mcpWorkspace.testDataRel;
 
   if (!fs.existsSync(fixturesRoot)) {
     return {

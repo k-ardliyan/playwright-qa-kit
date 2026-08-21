@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-AUTH-2FA",
+  "title": "Two-Factor SMS Authentication",
+  "sourcePath": "requirements/auth/2fa-sms.md",
+  "sourceHash": "d4e5f6a7b8c9d0e1",
+  "module": "auth",
+  "feature": "2fa-sms",
+  "priority": "high",
+  "tags": ["auth", "security", "manual"],
+  "auth": {
+    "state": "unauthenticated"
+  },
+  "roles": [],
+  "accessMatrix": [],
+  "startPage": "/login/2fa",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "User enters SMS OTP received on physical mobile device."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-2FA-001",
+      "title": "Verify Physical Device SMS OTP",
+      "type": "manual",
+      "capabilities": [],
+      "affectedLayers": ["FE", "BE"],
+      "covers": ["AC-01"],
+      "preconditions": ["User has submitted valid primary password"],
+      "inputData": [
+        {
+          "key": "otpCode",
+          "source": "literal",
+          "value": "dynamic-sms-code"
+        }
+      ],
+      "steps": ["Wait for SMS on mobile handset", "Type 6-digit code", "Submit"],
+      "expectations": ["Session authenticated — requires physical handset; cannot automate"],
+      "automation": {
+        "automatable": false,
+        "reason": "Requires physical SMS receipt on external mobile carrier network"
+      }
+    }
+  ],
+  "diagnostics": []
+}

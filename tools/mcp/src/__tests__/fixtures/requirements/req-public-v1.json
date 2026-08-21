@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-LANDING-001",
+  "title": "Public Landing Page Exploration",
+  "sourcePath": "requirements/public/landing.md",
+  "sourceHash": "a1b2c3d4e5f60718",
+  "module": "landing",
+  "feature": "public-home",
+  "priority": "medium",
+  "tags": ["smoke", "public", "landing"],
+  "auth": {
+    "state": "unauthenticated"
+  },
+  "roles": [],
+  "accessMatrix": [],
+  "startPage": "/",
+  "environmentScope": ["staging", "production"],
+  "dataScope": [],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "Visitor can view hero headline and features list."
+    },
+    {
+      "id": "AC-02",
+      "description": "Navigation links lead to valid public routes."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-LANDING-001",
+      "title": "View Landing Page Content",
+      "type": "success",
+      "priority": "medium",
+      "capabilities": [],
+      "affectedLayers": ["FE"],
+      "covers": ["AC-01"],
+      "preconditions": ["Browser is at public origin"],
+      "inputData": [],
+      "steps": ["Navigate to /", "Wait for hero section to render"],
+      "expectations": ["Hero title is visible", "Feature cards count is 4"],
+      "automation": {
+        "automatable": true
+      }
+    }
+  ],
+  "diagnostics": []
+}

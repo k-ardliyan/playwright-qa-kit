@@ -34,6 +34,7 @@
     "test:file-content": "tsx src/support/pw/__tests__/file-content-core.test.ts",
     "test:network-assert": "tsx src/support/pw/__tests__/network-assert-core.test.ts",
     "test:unit": "npx playwright test -c config/playwright/unit.ts",
+    "test:contract": "npx playwright test src/__tests__/unit/golden-contract-ci.test.ts -c config/playwright/unit.ts",
     "sync:file-core": "tsx tools/scripts/sync-file-content-core.ts",
     "mcp:check": "tsx tools/scripts/mcp-compat-check.ts",
     "mcp:build": "npm run install:mcp-server && npm run sync:file-core && npx tsc src/utils/app-env.ts src/utils/env-loader.ts src/utils/logger.ts --outDir src/utils --module commonjs --target es2020 --esModuleInterop --declaration --skipLibCheck --types node && cd tools/mcp && npm run build",

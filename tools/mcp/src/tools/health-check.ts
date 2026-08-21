@@ -6,6 +6,7 @@ import {
   resolvePlaywrightConfigAbsolute,
 } from '../utils/playwright-paths';
 import { getRepoRoot } from '../utils/safety';
+import { mcpWorkspace } from '../utils/workspace-paths';
 
 export interface HealthCheckItem {
   name: string;
@@ -325,9 +326,7 @@ function checkFileContentCapability(): HealthCheckItem {
   } catch {
     missing.push('exceljs');
   }
-  const fixtures = fs.existsSync(path.join(root, 'tests', 'data'))
-    ? path.join(root, 'tests', 'data')
-    : path.join(root, 'test-fixtures');
+  const fixtures = mcpWorkspace.testDataDir;
   if (!fs.existsSync(fixtures)) {
     missing.push('tests/data/');
   }
@@ -353,13 +352,16 @@ function checkNetworkAssertCapability(): HealthCheckItem {
   const missing: string[] = [];
   const helper = path.join(root, 'src', 'support', 'pw', 'network-assert.ts');
   const core = path.join(root, 'src', 'support', 'pw', 'network-assert-core.ts');
-  const contractCandidates = [
-    path.join(root, 'tests', 'data', 'network', 'contracts', 'demo', 'submit-success.json'),
-    path.join(root, 'test-fixtures', 'network', 'contracts', 'demo', 'submit-success.json'),
-  ];
+  const contractCandidate = path.join(
+    mcpWorkspace.testDataDir,
+    'network',
+    'contracts',
+    'demo',
+    'submit-success.json',
+  );
   if (!fs.existsSync(helper)) missing.push('src/support/pw/network-assert.ts');
   if (!fs.existsSync(core)) missing.push('src/support/pw/network-assert-core.ts');
-  if (!contractCandidates.some((c) => fs.existsSync(c))) {
+  if (!fs.existsSync(contractCandidate)) {
     missing.push('tests/data/network/contracts/demo/submit-success.json');
   }
   if (missing.length > 0) {

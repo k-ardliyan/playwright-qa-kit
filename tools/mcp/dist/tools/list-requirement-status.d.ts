@@ -3,6 +3,12 @@
  *
  * Helps QA answer: which features have a plan, generated specs, and manual gaps.
  */
+export interface CoverageStateBreakdown {
+    design: 'planned' | 'unplanned';
+    automation: 'automated' | 'manual' | 'mixed' | 'unautomated';
+    execution: 'executed' | 'not-executed';
+    verification: 'passed' | 'failed' | 'healed' | 'unverified';
+}
 export interface RequirementStatusRow {
     requirementPath: string;
     module: string;
@@ -13,6 +19,7 @@ export interface RequirementStatusRow {
     hasTests: boolean;
     manualCount: number;
     lastStatus: string | null;
+    coverageState: CoverageStateBreakdown;
 }
 export interface FeatureSummary {
     total: number;

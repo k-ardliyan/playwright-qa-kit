@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "qa.test-plan/v1",
+  "sourceRequirementPath": "requirements/finance/approve-invoice.md",
+  "sourceRequirementHash": "c3d4e5f6a7b8c9d0",
+  "planPath": "specs/finance-approve-invoice.plan.json",
+  "planHash": "f1e2d3c4b5a60718",
+  "seed": "seed:invoice.pending",
+  "module": "finance",
+  "feature": "invoice-approval",
+  "catalogEvidence": [
+    {
+      "page": "invoice-detail",
+      "catalogPath": "artifacts/selector-catalog/finance/invoice-detail.json",
+      "catalogHash": "1122334455667788"
+    }
+  ],
+  "scenarios": [
+    {
+      "scenarioId": "SC-01",
+      "testId": "TC-INV-001",
+      "covers": ["AC-01"],
+      "actor": "finance",
+      "authContext": "finance",
+      "executionMode": "automated",
+      "dataSetup": ["seed invoice in pending status"],
+      "actions": [
+        "navigate to /finance/invoices/101",
+        "click button[data-testid='approve-button']",
+        "click button[data-testid='confirm-approval']"
+      ],
+      "assertions": [
+        {
+          "description": "Invoice status changes to Approved",
+          "provenance": "requirement"
+        }
+      ],
+      "locatorIntent": [
+        "button[data-testid='approve-button']",
+        "button[data-testid='confirm-approval']"
+      ],
+      "networkExpectations": ["POST /api/invoices/101/approve -> 200"],
+      "artifactExpectations": [],
+      "cleanup": [],
+      "unknowns": []
+    }
+  ],
+  "coverageGaps": [
+    {
+      "scenarioId": "SC-02",
+      "acceptanceCriterionId": "AC-02",
+      "reason": "HRD negative access restriction planned in separate suite"
+    }
+  ],
+  "diagnostics": []
+}

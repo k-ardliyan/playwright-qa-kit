@@ -37,7 +37,7 @@ import {
 } from './format-error';
 import { buildAgentPrompt } from './qa-run-prompt';
 
-const REPO_MARKERS = ['config/qa-kit.workspace.json', 'tools/mcp', 'mcp-server', 'package.json'];
+const REPO_MARKERS = ['config/qa-kit.workspace.json', 'tools/mcp', 'package.json'];
 const MAX_HOPS = 12;
 
 function findRepoRoot(start: string): string {
@@ -79,12 +79,19 @@ interface ValidationResult {
 // ─── Dashboard opener ──────────────────────────────────────────────────────
 
 /**
- * Open reports/custom-dashboard.html with the OS default browser.
+ * Open artifacts/reports/custom-dashboard.html with the OS default browser.
  * No-op (with message) if the file doesn't exist or platform unsupported.
  * Spawn detached so we never block qa:run's exit.
  */
 function openCustomDashboard(repoRoot: string): void {
-  const dashboardAbs = path.join(repoRoot, 'reports', 'custom-dashboard.html');
+  const primaryDashboard = path.join(repoRoot, 'artifacts', 'reports', 'custom-dashboard.html');
+  const legacyDashboard = path.join(repoRoot, 'reports', 'custom-dashboard.html');
+  const dashboardAbs = fs.existsSync(primaryDashboard)
+    ? primaryDashboard
+    : fs.existsSync(legacyDashboard)
+      ? legacyDashboard
+      : primaryDashboard;
+
   if (!fs.existsSync(dashboardAbs)) {
     process.stdout.write(
       `  ⓘ Dashboard belum ada di ${path.relative(repoRoot, dashboardAbs)}. Jalankan pipeline dulu.\n`,
@@ -143,7 +150,7 @@ Options:
   --smoke          (Opsional) Jalankan smoke test setelah cetak prompt
   --dry-run        Validate only, exit 0 tanpa side-effect lain
   --no-confirm     Skip konfirmasi interaktif sebelum --smoke
-  --open-dashboard Setelah cetak prompt, buka reports/custom-dashboard.html
+  --open-dashboard Setelah cetak prompt, buka artifacts/reports/custom-dashboard.html
                    otomatis di browser default (default: ON jika file ada).
                    Pakai --no-open-dashboard untuk skip.
   -h, --help       Tampilkan pesan ini
@@ -203,12 +210,13 @@ function preflight(repoRoot: string): PreFlightResult {
     resolveAppEnv: (o: { repoRoot: string }) => { appEnv: string };
   };
   const appEnv = resolveAppEnv({ repoRoot }).appEnv;
-  const envPath = path.join(repoRoot, 'environments', `${appEnv}.env`);
-  const envExamplePath = path.join(repoRoot, 'environments', `${appEnv}.env.example`);
+  const envPath = path.join(repoRoot, 'config', 'environments', `${appEnv}.env`);
+  const envExamplePath = path.join(repoRoot, 'config', 'environments', `${appEnv}.env.example`);
+  const legacyEnvPath = path.join(repoRoot, 'environments', `${appEnv}.env`);
 
-  if (!fs.existsSync(envPath) && !fs.existsSync(envExamplePath)) {
+  if (!fs.existsSync(envPath) && !fs.existsSync(envExamplePath) && !fs.existsSync(legacyEnvPath)) {
     issues.push(
-      `Environment file tidak ada. Buat: cp environments/local.env.example environments/${appEnv}.env  (atau: npm run env:use -- ${appEnv} --init)`,
+      `Environment file tidak ada. Buat: cp config/environments/local.env.example config/environments/${appEnv}.env  (atau: npm run env:use -- ${appEnv} --init)`,
     );
   }
 
@@ -223,7 +231,9 @@ function preflight(repoRoot: string): PreFlightResult {
     ? envPath
     : fs.existsSync(envExamplePath)
       ? envExamplePath
-      : null;
+      : fs.existsSync(legacyEnvPath)
+        ? legacyEnvPath
+        : null;
   if (targetEnv) {
     const content = fs.readFileSync(targetEnv, 'utf-8');
     if (!/^BASE_URL\s*=\s*\S+/m.test(content)) {
@@ -236,75 +246,54 @@ function preflight(repoRoot: string): PreFlightResult {
   return { ok: issues.length === 0, issues };
 }
 
-function stripAnsi(s: string): string {
-  // eslint-disable-next-line no-control-regex
-  return s.replace(/\x1b\[[0-9;]*m/g, '');
-}
-
 function validateRequirementFile(repoRoot: string, relPath: string): ValidationResult {
-  // Spawn validate-requirement.ts via tsx — reuse existing logic.
-  // Output diparse dari stdout/stderr sederhana.
-  const cliPath = path.join(repoRoot, 'validate-requirement.ts');
-  const tsxBin = path.join(repoRoot, 'node_modules', '.bin', 'tsx');
+  const normRel = relPath.replace(/\\/g, '/');
+  const reqAbs = path.resolve(repoRoot, normRel);
 
-  if (!fs.existsSync(cliPath)) {
+  if (!fs.existsSync(reqAbs)) {
     throw friendly({
-      title: 'validate-requirement.ts tidak ditemukan',
-      detail: `Expected at: ${cliPath}`,
-      hint: 'Pastikan Anda menjalankan dari repo root dan file belum terhapus.',
-      exitCode: EXIT.ESCALATE,
+      title: `File requirement tidak ditemukan: ${normRel}`,
+      detail: `Resolved at: ${reqAbs}`,
+      hint: 'Pastikan path file requirement benar dan file ada di disk.',
+      exitCode: EXIT.USAGE,
     });
   }
 
-  const result = spawnSync(tsxBin, [cliPath, relPath], {
-    cwd: repoRoot,
-    encoding: 'utf-8',
-    shell: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { validateRequirement } = require('../mcp/src/tools/validate-requirement') as {
+    validateRequirement: (args: { requirementPath?: string }) => {
+      status: string;
+      violations: Array<{
+        ruleName: string;
+        severity: 'error' | 'warning' | 'info';
+        message: string;
+        suggestion?: string;
+        scenarioName?: string;
+      }>;
+      score: number;
+    };
+  };
 
-  const rawStdout = result.stdout ?? '';
-  const rawStderr = result.stderr ?? '';
-  const exitCode = result.status ?? 1;
-
-  // Strip ANSI color codes before parsing
-  const stdout = stripAnsi(rawStdout);
-  const stderr = stripAnsi(rawStderr);
+  const output = validateRequirement({ requirementPath: normRel });
 
   const errors: string[] = [];
   const warnings: string[] = [];
-  let score = 0;
 
-  // Parse output lines
-  const allLines = (stdout + '\n' + stderr).split('\n');
-  for (const line of allLines) {
-    const trimmed = line.trim();
-    // ✗ → error
-    if (/^✗|^❌/.test(trimmed)) {
-      errors.push(trimmed.replace(/^✗\s*|^❌\s*/, '').trim());
-    }
-    // ⚠ → warning
-    else if (/^⚠/.test(trimmed)) {
-      warnings.push(trimmed.replace(/^⚠\s*/, '').trim());
-    }
-    // Score: X/100 (multiple times → ambil yang terakhir = final)
-    const scoreMatch = trimmed.match(/Score:\s*(\d+)\/100/);
-    if (scoreMatch) {
-      score = parseInt(scoreMatch[1], 10);
-    }
-    // Detect "All requirement checks passed" sebagai success marker
-    if (/All requirement checks passed/.test(trimmed)) {
-      // success confirmed — keep exitCode check
+  for (const v of output.violations) {
+    const sc = v.scenarioName ? ` [${v.scenarioName}]` : '';
+    const formatted = `${v.ruleName}${sc}: ${v.message}`;
+    if (v.severity === 'error') {
+      errors.push(formatted);
+    } else {
+      warnings.push(formatted);
     }
   }
 
-  // Override ok jika ada success marker tapi exit non-zero (false positive)
-  const hasSuccessMarker = /All requirement checks passed/.test(stdout);
-  const finalOk = (exitCode === 0 && hasSuccessMarker) || (exitCode === 0 && errors.length === 0);
+  const ok = output.status !== 'error' && errors.length === 0;
 
   return {
-    ok: finalOk,
-    score,
+    ok,
+    score: output.score ?? (ok ? 100 : 0),
     errors,
     warnings,
   };

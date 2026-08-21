@@ -54,6 +54,7 @@ cp requirements/_TEMPLATE.md requirements/fitur-saya.md
 | `list_requirement_status` (MCP)     | Peta: requirement → plan → tests → manual                     |
 | `npm test`                          | Jalankan semua test                                           |
 | `npm run test:smoke`                | Cuma smoke test                                               |
+| `npm run test:contract`             | Validasi Golden Contract CI offline                           |
 | `npm run health:check`              | Cek MCP + env                                                 |
 
 ---

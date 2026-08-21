@@ -217,6 +217,24 @@ function listRequirementStatus() {
         }
         const module = resolveModuleFromRequirement(requirementPath);
         const feature = resolveFeatureFromRequirement(requirementPath);
+        const hasTests = testPaths.length > 0;
+        const lastStatus = lastStatusForTests(testPaths, statusByFile);
+        const design = hasPlan ? 'planned' : 'unplanned';
+        const automation = hasTests && manualCount > 0
+            ? 'mixed'
+            : hasTests
+                ? 'automated'
+                : manualCount > 0
+                    ? 'manual'
+                    : 'unautomated';
+        const execution = lastStatus !== null ? 'executed' : 'not-executed';
+        const verification = lastStatus === 'passed'
+            ? 'passed'
+            : lastStatus === 'failed'
+                ? 'failed'
+                : lastStatus === 'healed'
+                    ? 'healed'
+                    : 'unverified';
         return {
             requirementPath,
             module,
@@ -224,9 +242,15 @@ function listRequirementStatus() {
             planPath,
             hasPlan,
             testPaths,
-            hasTests: testPaths.length > 0,
+            hasTests,
             manualCount,
-            lastStatus: lastStatusForTests(testPaths, statusByFile),
+            lastStatus,
+            coverageState: {
+                design,
+                automation,
+                execution,
+                verification,
+            },
         };
     });
     const planned = rows.filter((r) => r.hasPlan).length;

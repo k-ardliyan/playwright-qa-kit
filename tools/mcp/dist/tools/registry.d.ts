@@ -10,6 +10,7 @@ export interface JsonSchemaObject {
     properties: Record<string, unknown>;
     required?: string[];
 }
+export type IntentProfile = 'author' | 'debug' | 'auth' | 'visual' | 'artifact' | 'minimal' | 'all';
 export interface ToolEntry {
     name: string;
     description: string;
@@ -18,7 +19,10 @@ export interface ToolEntry {
     handler: (args: Record<string, unknown> | undefined) => unknown;
     /** Optional override; default checks `payload.status === 'error'`. */
     isError?: (payload: unknown) => boolean;
+    /** Profiles where this tool is active. Defaults to all if omitted. */
+    profiles?: IntentProfile[];
 }
+export declare function getToolsForProfile(profile?: IntentProfile): ToolEntry[];
 export declare const TOOL_REGISTRY: ToolEntry[];
 export declare function getToolEntry(name: string): ToolEntry | undefined;
 export declare function isToolError(name: string, payload: unknown): boolean;

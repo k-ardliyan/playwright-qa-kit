@@ -24,6 +24,7 @@ import { readExcelSummaryTool } from './read-excel-summary';
 import { listTestFixtures } from './list-test-fixtures';
 import { listRequirementStatus } from './list-requirement-status';
 import { compileRequirement } from './compile-requirement';
+import { compileTestPlan } from './compile-test-plan';
 import { validatePlan } from './validate-plan';
 import { traceRequirement } from './trace-requirement';
 import { resolveAllowedPath } from '../utils/safety';
@@ -34,6 +35,8 @@ export interface JsonSchemaObject {
   required?: string[];
 }
 
+export type IntentProfile = 'author' | 'debug' | 'auth' | 'visual' | 'artifact' | 'minimal' | 'all';
+
 export interface ToolEntry {
   name: string;
   description: string;
@@ -42,6 +45,15 @@ export interface ToolEntry {
   handler: (args: Record<string, unknown> | undefined) => unknown;
   /** Optional override; default checks `payload.status === 'error'`. */
   isError?: (payload: unknown) => boolean;
+  /** Profiles where this tool is active. Defaults to all if omitted. */
+  profiles?: IntentProfile[];
+}
+
+export function getToolsForProfile(profile: IntentProfile = 'all'): ToolEntry[] {
+  if (profile === 'all') return TOOL_REGISTRY;
+  return TOOL_REGISTRY.filter(
+    (t) => !t.profiles || t.profiles.includes('all') || t.profiles.includes(profile),
+  );
 }
 
 function isStatusError(payload: unknown): boolean {
@@ -56,7 +68,7 @@ const GET_TEST_FAILURES_INPUT: JsonSchemaObject = {
     resultsDir: {
       type: 'string',
       description:
-        'Path to test-results directory (repo-relative or absolute, must stay inside the repo). Defaults to repo test-results/.',
+        'Path to test-results directory (repo-relative or absolute, must stay inside the repo). Defaults to artifacts/test-results/.',
     },
   },
 };
@@ -79,13 +91,15 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Verify Node, Playwright packages, MCP build, environment files, `.auth/{APP_ENV}/` storage state, and test result artifacts before running the agent pipeline.',
     inputSchema: { type: 'object', properties: {} },
+    profiles: ['all'],
     handler: () => healthCheck(),
   },
   {
     name: 'get_test_failures',
     description:
-      "Get Playwright test failures from the caller's resultsDir (or repo test-results/ by default). Includes trace and screenshot paths when available.",
+      "Get Playwright test failures from the caller's resultsDir (or artifacts/test-results/ by default). Includes trace and screenshot paths when available.",
     inputSchema: GET_TEST_FAILURES_INPUT,
+    profiles: ['debug', 'all'],
     handler: (args) => {
       const raw = typeof args?.resultsDir === 'string' ? args.resultsDir : undefined;
       if (raw !== undefined) {
@@ -100,14 +114,17 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   },
   {
     name: 'get_test_summary',
-    description: 'Read machine-readable pass/fail summary from reports/test-summary.json.',
+    description:
+      'Read machine-readable pass/fail summary from artifacts/reports/test-summary.json.',
     inputSchema: { type: 'object', properties: {} },
+    profiles: ['debug', 'all'],
     handler: () => getTestSummary(),
   },
   {
     name: 'list_artifacts',
     description: 'List requirement, spec, and generated test files under allowed project paths.',
     inputSchema: { type: 'object', properties: {} },
+    profiles: ['debug', 'author', 'all'],
     handler: () => listArtifacts(),
   },
   {
@@ -115,6 +132,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Coverage map: each pipeline requirement with hasPlan, hasTests, manual scenario count, and last run status from test-summary when available.',
     inputSchema: { type: 'object', properties: {} },
+    profiles: ['author', 'all'],
     handler: () => listRequirementStatus(),
   },
   {
@@ -122,6 +140,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Compile requirement markdown into canonical RequirementContractV1 (qa.requirement/v1) with typed diagnostics, deterministic sourceHash, acceptance criteria, scenarios, actor and access matrix.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
+    profiles: ['author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -135,6 +154,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Parse requirement markdown into structured contract with acceptance criteria and optional test scenarios.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
+    profiles: ['author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -148,6 +168,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Extract ### scenarios with Langkah/Hasil sections from requirement markdown (Indonesian or English).',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
+    profiles: ['author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -166,10 +187,11 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         filePath: {
           type: 'string',
           description:
-            'Optional single file under PLAYWRIGHT_TEST_ROOT (default src/tests/) or PLAYWRIGHT_ADAPTER_TEST_ROOT (default example/erpku/tests). Validates all specs when omitted.',
+            'Optional single file under PLAYWRIGHT_TEST_ROOT (default tests/) or PLAYWRIGHT_ADAPTER_TEST_ROOT (default examples/erpku/tests). Validates all specs when omitted.',
         },
       },
     },
+    profiles: ['author', 'debug', 'all'],
     handler: (args) => {
       const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
       return validateGeneratedTests(filePath);
@@ -180,6 +202,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Validate requirement markdown structure before Planner runs. Checks title, scenarios, observable results, and @manual conventions.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
+    profiles: ['author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -196,12 +219,46 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       type: 'object',
       properties: {
         testPlan: { type: 'object', description: 'TestPlanContractV1 JSON payload.' },
-        testPlanPath: { type: 'string', description: 'Path to test plan file under specs/.' },
+        testPlanPath: {
+          type: 'string',
+          description: 'Path to test plan file under specs/ (markdown or JSON).',
+        },
         requirement: { type: 'object', description: 'Optional RequirementContractV1 payload.' },
         requirementPath: { type: 'string', description: 'Optional path under requirements/.' },
       },
     },
+    profiles: ['author', 'all'],
     handler: (args) => validatePlan(args),
+  },
+  {
+    name: 'compile_test_plan',
+    description:
+      'Compile Markdown test plan (specs/*.md) into canonical TestPlanContractV1 (qa.test-plan/v1) with typed assertion provenance, scenario metadata, and coverage gaps.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testPlanPath: {
+          type: 'string',
+          description: 'Repo-relative path under specs/ (e.g. specs/feature.plan.md).',
+        },
+        testPlanText: {
+          type: 'string',
+          description: 'Optional raw markdown test plan content.',
+        },
+        requirementPath: {
+          type: 'string',
+          description: 'Optional path to source requirement under requirements/.',
+        },
+      },
+    },
+    profiles: ['author', 'all'],
+    handler: (args) => {
+      const testPlanPath = typeof args?.testPlanPath === 'string' ? args.testPlanPath : undefined;
+      const testPlanText = typeof args?.testPlanText === 'string' ? args.testPlanText : undefined;
+      const requirementPath =
+        typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
+      return compileTestPlan({ testPlanPath, testPlanText, requirementPath });
+    },
   },
   {
     name: 'trace_requirement',
@@ -228,12 +285,13 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
       },
     },
+    profiles: ['author', 'debug', 'all'],
     handler: (args) => traceRequirement(args),
   },
   {
     name: 'snapshot_page',
     description:
-      'Navigate to URL, capture ARIA snapshot, and persist a structured selector catalog under selector-catalog/<feature>/<page>.{aria.yml,json}. Returns a compact summary (path, elementCount, hash) for AI agents — read the JSON file for selector details.',
+      'Navigate to URL, capture ARIA snapshot, and persist a structured selector catalog under artifacts/selector-catalog/<feature>/<page>.{aria.yml,json}. Returns a compact summary (path, elementCount, hash) for AI agents — read the JSON file for selector details.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -275,6 +333,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['url', 'featureName', 'pageName'],
     },
+    profiles: ['author', 'visual', 'all'],
     handler: (args) => snapshotPage(args),
   },
   {
@@ -318,12 +377,13 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['rootUrl', 'featureName'],
     },
+    profiles: ['author', 'minimal', 'all'],
     handler: (args) => discoverPages(args),
   },
   {
     name: 'archive_report',
     description:
-      'Archive a pipeline report (Markdown + optional JSON) to reports/archive/<runId>/. Safe to call multiple times — overwrites if already exists. Call this after the Reporter produces the final pipeline report.',
+      'Archive a pipeline report (Markdown + optional JSON) to artifacts/reports/archive/<runId>/. Safe to call multiple times — overwrites if already exists. Call this after the Reporter produces the final pipeline report.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -342,6 +402,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['runId', 'reportPath'],
     },
+    profiles: ['author', 'debug', 'all'],
     handler: (args) =>
       archiveReport(args as { runId: string; reportPath: string; jsonReportPath?: string }),
   },
@@ -354,11 +415,11 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       properties: {
         featureName: {
           type: 'string',
-          description: 'Feature name (folder in selector-catalog/).',
+          description: 'Feature name (folder in artifacts/selector-catalog/).',
         },
         pageName: {
           type: 'string',
-          description: 'Page name (JSON file in selector-catalog/<feature>/).',
+          description: 'Page name (JSON file in artifacts/selector-catalog/<feature>/).',
         },
         className: {
           type: 'string',
@@ -366,7 +427,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
         outputPath: {
           type: 'string',
-          description: 'Optional output path (default: src/pages/<ClassName>.ts).',
+          description: 'Optional output path (default: tests/pages/<ClassName>.ts).',
         },
         force: {
           type: 'boolean',
@@ -375,34 +436,36 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['featureName', 'pageName'],
     },
+    profiles: ['author', 'all'],
     handler: (args) => generatePageObject(args),
   },
   {
     name: 'inspect_file',
     description:
-      'Inspect a file under test-fixtures/ or test-results/ (kind, size, magic bytes). Envelope only — no domain field schema.',
+      'Inspect a file under tests/data/ or artifacts/test-results/ (kind, size, magic bytes). Envelope only — no domain field schema.',
     inputSchema: {
       type: 'object',
       properties: {
         filePath: {
           type: 'string',
-          description: 'Repo-relative path under test-fixtures/ or test-results/.',
+          description: 'Repo-relative path under tests/data/ or artifacts/test-results/.',
         },
       },
       required: ['filePath'],
     },
+    profiles: ['debug', 'artifact', 'all'],
     handler: (args) => inspectFile(args),
   },
   {
     name: 'extract_pdf_text',
     description:
-      'Extract plain text from a PDF under test-fixtures/ or test-results/. Returns raw text only — match against scenario expected tokens from the requirement; does not define business fields (no title/code/name schema).',
+      'Extract plain text from a PDF under tests/data/ or artifacts/test-results/. Returns raw text only — match against scenario expected tokens from the requirement; does not define business fields (no title/code/name schema).',
     inputSchema: {
       type: 'object',
       properties: {
         filePath: {
           type: 'string',
-          description: 'Repo-relative path to a PDF under test-fixtures/ or test-results/.',
+          description: 'Repo-relative path to a PDF under tests/data/ or artifacts/test-results/.',
         },
         maxChars: {
           type: 'number',
@@ -411,18 +474,20 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['filePath'],
     },
+    profiles: ['debug', 'artifact', 'all'],
     handler: (args) => extractPdfTextTool(args),
   },
   {
     name: 'read_excel_summary',
     description:
-      'Read xlsx sheet names, header row, and sample rows under test-fixtures/ or test-results/. Structure dump only — expected headers come from the scenario, not a fixed domain schema.',
+      'Read xlsx sheet names, header row, and sample rows under tests/data/ or artifacts/test-results/. Structure dump only — expected headers come from the scenario, not a fixed domain schema.',
     inputSchema: {
       type: 'object',
       properties: {
         filePath: {
           type: 'string',
-          description: 'Repo-relative path to an xlsx file under test-fixtures/ or test-results/.',
+          description:
+            'Repo-relative path to an xlsx file under tests/data/ or artifacts/test-results/.',
         },
         sheet: {
           description: 'Optional sheet name or 0-based index.',
@@ -434,21 +499,23 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['filePath'],
     },
+    profiles: ['debug', 'artifact', 'all'],
     handler: (args) => readExcelSummaryTool(args),
   },
   {
     name: 'list_test_fixtures',
     description:
-      'List files under test-fixtures/ for upload Input Data paths (fixture-first; no headed OS file picker).',
+      'List files under tests/data/ for upload Input Data paths (fixture-first; no headed OS file picker).',
     inputSchema: {
       type: 'object',
       properties: {
         subdir: {
           type: 'string',
-          description: 'Optional relative subdir under test-fixtures/ (e.g. pdf, excel).',
+          description: 'Optional relative subdir under tests/data/ (e.g. pdf, excel).',
         },
       },
     },
+    profiles: ['author', 'debug', 'all'],
     handler: (args) => listTestFixtures(args),
   },
 ];

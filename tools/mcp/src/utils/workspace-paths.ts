@@ -71,16 +71,26 @@ export function findRepoRoot(startDir: string = __dirname): string {
   return path.resolve(startDir);
 }
 
+export type WorkspaceManifestMode = 'strict' | 'compat';
+
 export class McpWorkspacePathRegistry {
   private readonly _rootDir: string;
+  private readonly _mode: WorkspaceManifestMode;
   private _manifest: WorkspaceManifest | null = null;
+  private _fallbackWarningEmitted = false;
 
-  constructor(rootDir?: string) {
+  constructor(rootDir?: string, mode?: WorkspaceManifestMode) {
     this._rootDir = rootDir ? path.resolve(rootDir) : findRepoRoot();
+    const envMode = process.env.QA_WORKSPACE_MANIFEST_MODE?.toLowerCase();
+    this._mode = mode ?? (envMode === 'strict' ? 'strict' : 'compat');
   }
 
   public get rootDir(): string {
     return this._rootDir;
+  }
+
+  public get mode(): WorkspaceManifestMode {
+    return this._mode;
   }
 
   public get manifest(): WorkspaceManifest {
@@ -93,12 +103,24 @@ export class McpWorkspacePathRegistry {
   private loadManifest(): WorkspaceManifest {
     const manifestFile = path.join(this._rootDir, MANIFEST_RELATIVE_PATH);
     if (!fs.existsSync(manifestFile)) {
+      if (this._mode === 'strict') {
+        throw new Error(
+          `WORKSPACE_MANIFEST_MISSING: Workspace manifest "${MANIFEST_RELATIVE_PATH}" is missing in root "${this._rootDir}".`,
+        );
+      }
+      this.warnFallback('Manifest file does not exist');
       return DEFAULT_WORKSPACE_MANIFEST;
     }
     try {
       const raw = fs.readFileSync(manifestFile, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<WorkspaceManifest>;
       if (!parsed.paths || typeof parsed.paths !== 'object') {
+        if (this._mode === 'strict') {
+          throw new Error(
+            `WORKSPACE_MANIFEST_INVALID: Manifest "${MANIFEST_RELATIVE_PATH}" is missing valid paths configuration.`,
+          );
+        }
+        this.warnFallback('Manifest paths object is invalid');
         return DEFAULT_WORKSPACE_MANIFEST;
       }
       return {
@@ -112,8 +134,28 @@ export class McpWorkspacePathRegistry {
           ...(parsed.ownership ?? {}),
         },
       };
-    } catch {
+    } catch (err) {
+      if (this._mode === 'strict') {
+        throw new Error(
+          `WORKSPACE_MANIFEST_INVALID: Failed to parse "${MANIFEST_RELATIVE_PATH}": ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
+      }
+      this.warnFallback(
+        `Manifest parse error: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return DEFAULT_WORKSPACE_MANIFEST;
+    }
+  }
+
+  private warnFallback(reason: string): void {
+    if (!this._fallbackWarningEmitted) {
+      this._fallbackWarningEmitted = true;
+      if (process.env.NODE_ENV !== 'test') {
+        process.stderr.write(
+          `[WARN] WORKSPACE_MANIFEST_FALLBACK: Using default workspace manifest. Reason: ${reason}\n`,
+        );
+      }
     }
   }
 

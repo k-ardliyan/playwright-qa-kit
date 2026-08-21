@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { validateTestPlan } from '../../../tools/mcp/src/tools/validate-plan';
+import { validateTestPlan, validatePlan } from '../../../tools/mcp/src/tools/validate-plan';
 import {
   TEST_PLAN_SCHEMA_V1,
   REQUIREMENT_SCHEMA_V1,
@@ -282,5 +282,48 @@ test.describe('validate_plan Test Plan Contract Gate (Phase 4)', () => {
     const codes = result.diagnostics.map((d) => d.code);
     expect(codes).toContain('PLAN_UNREVIEWED_ASSUMPTION');
     expect(result.data?.assumptionsCount).toBe(1);
+  });
+
+  test('validates Markdown plan path directly via validatePlan()', () => {
+    const result = validatePlan({
+      testPlanPath: 'specs/_GOOD_EXAMPLE.md',
+      requirementPath: 'requirements/_GOOD_EXAMPLE.md',
+    });
+
+    expect(result.data?.valid).toBe(true);
+    expect(result.data?.plannedScenarios).toBe(5);
+  });
+
+  test('detects unknown AC reference in plan', () => {
+    const planWithUnknownAc: TestPlanContractV1 = {
+      schemaVersion: TEST_PLAN_SCHEMA_V1,
+      sourceRequirementPath: 'requirements/auth/login.md',
+      sourceRequirementHash: 'hash-req-123',
+      catalogEvidence: [],
+      scenarios: [
+        {
+          scenarioId: 'SC-01',
+          covers: ['AC-999'],
+          actor: 'finance',
+          authContext: '.auth/local/finance.json',
+          executionMode: 'automated',
+          dataSetup: [],
+          actions: ['Action'],
+          assertions: [{ description: 'Done', provenance: 'requirement' }],
+          locatorIntent: [],
+          networkExpectations: [],
+          artifactExpectations: [],
+          cleanup: [],
+          unknowns: [],
+        },
+      ],
+      coverageGaps: [],
+      diagnostics: [],
+    };
+
+    const result = validateTestPlan(planWithUnknownAc, sampleRequirement);
+    expect(result.status).toBe('error');
+    const codes = result.diagnostics.map((d) => d.code);
+    expect(codes).toContain('PLAN_UNKNOWN_AC');
   });
 });

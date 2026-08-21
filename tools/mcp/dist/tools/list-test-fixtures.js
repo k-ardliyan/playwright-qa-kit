@@ -39,7 +39,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listTestFixtures = listTestFixtures;
 const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
-const safety_1 = require("../utils/safety");
 const workspace_paths_1 = require("../utils/workspace-paths");
 function walk(dir, base, prefix, out) {
     if (!fs.existsSync(dir))
@@ -58,15 +57,8 @@ function walk(dir, base, prefix, out) {
     }
 }
 function listTestFixtures(args) {
-    const repoRoot = (0, safety_1.getRepoRoot)();
-    const primaryRoot = workspace_paths_1.mcpWorkspace.testDataDir;
-    const legacyRoot = path.join(repoRoot, 'test-fixtures');
-    const fixturesRoot = fs.existsSync(primaryRoot)
-        ? primaryRoot
-        : fs.existsSync(legacyRoot)
-            ? legacyRoot
-            : primaryRoot;
-    const prefix = fixturesRoot === primaryRoot ? workspace_paths_1.mcpWorkspace.testDataRel : 'test-fixtures';
+    const fixturesRoot = workspace_paths_1.mcpWorkspace.testDataDir;
+    const prefix = workspace_paths_1.mcpWorkspace.testDataRel;
     if (!fs.existsSync(fixturesRoot)) {
         return {
             status: 'success',

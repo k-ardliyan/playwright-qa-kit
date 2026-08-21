@@ -46,9 +46,7 @@ export function listArtifacts(): ListArtifactsOutput {
   const requirements = listRequirementFeatures();
   const specs = listFilesRecursive(mcpWorkspace.specsDir, '.md');
   const tests = listFilesRecursive(mcpWorkspace.testsDir, '.spec.ts');
-  const fixturesRoot = fs.existsSync(mcpWorkspace.testDataDir)
-    ? mcpWorkspace.testDataDir
-    : path.join(getRepoRoot(), 'test-fixtures');
+  const fixturesRoot = mcpWorkspace.testDataDir;
   const fixtures = listAllFixtureFiles(fixturesRoot);
 
   return {

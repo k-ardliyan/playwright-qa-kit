@@ -9,6 +9,13 @@ import * as path from 'node:path';
 import { getRepoRoot, isPipelineRequirementRelativePath } from '../utils/safety';
 import { mcpWorkspace } from '../utils/workspace-paths';
 
+export interface CoverageStateBreakdown {
+  design: 'planned' | 'unplanned';
+  automation: 'automated' | 'manual' | 'mixed' | 'unautomated';
+  execution: 'executed' | 'not-executed';
+  verification: 'passed' | 'failed' | 'healed' | 'unverified';
+}
+
 export interface RequirementStatusRow {
   requirementPath: string;
   module: string;
@@ -19,6 +26,7 @@ export interface RequirementStatusRow {
   hasTests: boolean;
   manualCount: number;
   lastStatus: string | null;
+  coverageState: CoverageStateBreakdown;
 }
 
 export interface FeatureSummary {
@@ -217,6 +225,28 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
 
     const module = resolveModuleFromRequirement(requirementPath);
     const feature = resolveFeatureFromRequirement(requirementPath);
+    const hasTests = testPaths.length > 0;
+    const lastStatus = lastStatusForTests(testPaths, statusByFile);
+
+    const design: 'planned' | 'unplanned' = hasPlan ? 'planned' : 'unplanned';
+    const automation: 'automated' | 'manual' | 'mixed' | 'unautomated' =
+      hasTests && manualCount > 0
+        ? 'mixed'
+        : hasTests
+          ? 'automated'
+          : manualCount > 0
+            ? 'manual'
+            : 'unautomated';
+    const execution: 'executed' | 'not-executed' =
+      lastStatus !== null ? 'executed' : 'not-executed';
+    const verification: 'passed' | 'failed' | 'healed' | 'unverified' =
+      lastStatus === 'passed'
+        ? 'passed'
+        : lastStatus === 'failed'
+          ? 'failed'
+          : lastStatus === 'healed'
+            ? 'healed'
+            : 'unverified';
 
     return {
       requirementPath,
@@ -225,9 +255,15 @@ export function listRequirementStatus(): ListRequirementStatusOutput {
       planPath,
       hasPlan,
       testPaths,
-      hasTests: testPaths.length > 0,
+      hasTests,
       manualCount,
-      lastStatus: lastStatusForTests(testPaths, statusByFile),
+      lastStatus,
+      coverageState: {
+        design,
+        automation,
+        execution,
+        verification,
+      },
     };
   });
 

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-LEGACY-001",
+  "title": "Legacy Auth Scenario Without Explicit AC IDs",
+  "sourcePath": "requirements/auth/sample-login-empty-fields.md",
+  "sourceHash": "e5f6a7b8c9d0e1f2",
+  "module": "auth",
+  "feature": "sample-login-empty-fields",
+  "priority": "medium",
+  "tags": ["auth", "legacy"],
+  "auth": {
+    "state": "unauthenticated"
+  },
+  "roles": [],
+  "accessMatrix": [],
+  "startPage": "/login",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "Form menolak submit ketika email kosong."
+    },
+    {
+      "id": "AC-02",
+      "description": "Form menolak submit ketika password kosong."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-LEGACY-001",
+      "title": "Submit Form Login dengan Field Kosong",
+      "type": "failure",
+      "capabilities": [],
+      "affectedLayers": ["FE"],
+      "covers": ["AC-01", "AC-02"],
+      "preconditions": ["Pengguna berada di /login"],
+      "inputData": [],
+      "steps": ["Biarkan field email dan password kosong", "Klik Masuk"],
+      "expectations": ["Form tidak submit", "Muncul validasi error"],
+      "automation": {
+        "automatable": true
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "REQ_LEGACY_AC_BULLET",
+      "severity": "warning",
+      "message": "Acceptance criterion authored without explicit ID. Assigned AC-01."
+    }
+  ]
+}

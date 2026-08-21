@@ -132,9 +132,14 @@ async function main(): Promise<void> {
   await fc.assert(
     fc.asyncProperty(
       fc.array(arbValidScenario, { minLength: 1, maxLength: 5 }).filter((scenarios) => {
-        // Ensure unique IDs to avoid duplicate detection
+        // Ensure unique IDs and distinct normalized content to avoid duplicate detection
         const ids = scenarios.map((s) => s.id);
-        return new Set(ids).size === ids.length;
+        const uniqueIds = new Set(ids).size === ids.length;
+        const keys = scenarios.map(
+          (s) => `${s.steps.toLowerCase().trim()}::${s.expectedResult.toLowerCase().trim()}`,
+        );
+        const uniqueKeys = new Set(keys).size === keys.length;
+        return uniqueIds && uniqueKeys;
       }),
       async (validScenarios) => {
         const plan: TestPlan = { scenarios: validScenarios };

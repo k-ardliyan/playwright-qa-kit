@@ -75,18 +75,10 @@ function findRepoRoot(start = process.cwd()) {
     }
     return path.resolve(start);
 }
-/** Absolute path under `tests/data/` (or legacy `test-fixtures/`). */
+/** Absolute path under `tests/data/`. */
 function fixturePath(...parts) {
     const root = findRepoRoot();
-    const candidate = path.join(root, 'tests', 'data', ...parts);
-    if (fs.existsSync(candidate)) {
-        return candidate;
-    }
-    const legacyCandidate = path.join(root, 'test-fixtures', ...parts);
-    if (fs.existsSync(legacyCandidate)) {
-        return legacyCandidate;
-    }
-    return candidate;
+    return path.join(root, 'tests', 'data', ...parts);
 }
 /** Detect common file kinds from magic bytes (envelope layer). */
 function detectMagic(buffer) {

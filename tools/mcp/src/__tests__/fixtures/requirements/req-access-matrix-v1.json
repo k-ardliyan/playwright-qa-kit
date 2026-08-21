@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-MATRIX-001",
+  "title": "Access Matrix Enforcement",
+  "sourcePath": "requirements/matrix.md",
+  "sourceHash": "c1d2e3f4a5b6c7d8e9f0123456789abcdef0123456789abcdef0123456789abc",
+  "priority": "high",
+  "auth": {
+    "state": "authenticated",
+    "defaultRole": "finance"
+  },
+  "roles": ["super-admin", "finance", "hrd"],
+  "accessMatrix": [
+    { "role": "super-admin", "access": "allow", "expectation": "Full access to approvals" },
+    { "role": "finance", "access": "allow", "expectation": "Can approve pending invoices" },
+    { "role": "hrd", "access": "deny", "expectation": "Access denied with 403" }
+  ],
+  "startPage": "/finance/invoices",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "Finance user can approve pending invoices",
+      "provenance": "explicit"
+    },
+    { "id": "AC-02", "description": "HRD user receives 403 forbidden", "provenance": "explicit" }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-MAT-001",
+      "title": "Finance approve invoice",
+      "type": "success",
+      "covers": ["AC-01"],
+      "actor": "finance",
+      "authContext": ".auth/local/finance.json",
+      "preconditions": ["Invoice in pending state"],
+      "inputData": [{ "key": "invoiceId", "source": "seed", "value": "invoice.pending" }],
+      "steps": ["Click approve button"],
+      "expectedResults": ["Status changes to approved"]
+    },
+    {
+      "id": "SC-02",
+      "testId": "TC-MAT-002",
+      "title": "HRD access denied",
+      "type": "access-restriction",
+      "covers": ["AC-02"],
+      "actor": "hrd",
+      "authContext": ".auth/local/hrd.json",
+      "preconditions": ["HRD account logged in"],
+      "inputData": [],
+      "steps": ["Navigate to /finance/invoices"],
+      "expectedResults": ["Access denied 403 is shown"]
+    }
+  ]
+}

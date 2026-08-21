@@ -67,9 +67,7 @@ function listArtifacts() {
     const requirements = listRequirementFeatures();
     const specs = listFilesRecursive(workspace_paths_1.mcpWorkspace.specsDir, '.md');
     const tests = listFilesRecursive(workspace_paths_1.mcpWorkspace.testsDir, '.spec.ts');
-    const fixturesRoot = fs.existsSync(workspace_paths_1.mcpWorkspace.testDataDir)
-        ? workspace_paths_1.mcpWorkspace.testDataDir
-        : path.join((0, safety_1.getRepoRoot)(), 'test-fixtures');
+    const fixturesRoot = workspace_paths_1.mcpWorkspace.testDataDir;
     const fixtures = listAllFixtureFiles(fixturesRoot);
     return {
         status: 'success',

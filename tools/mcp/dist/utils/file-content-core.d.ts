@@ -5,7 +5,7 @@
 export type FileKind = 'pdf' | 'xlsx' | 'zip' | 'png' | 'jpg' | 'gif' | 'csv' | 'txt' | 'unknown';
 /** Resolve repository root. */
 export declare function findRepoRoot(start?: string): string;
-/** Absolute path under `tests/data/` (or legacy `test-fixtures/`). */
+/** Absolute path under `tests/data/`. */
 export declare function fixturePath(...parts: string[]): string;
 /** Detect common file kinds from magic bytes (envelope layer). */
 export declare function detectMagic(buffer: Buffer): FileKind;

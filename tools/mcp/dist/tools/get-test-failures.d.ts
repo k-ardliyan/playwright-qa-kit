@@ -26,5 +26,6 @@ export interface GetTestFailuresOutput {
     message: string;
     sourceFile?: string;
 }
+export declare function inferFailureSource(errorMessage: string): 'app' | 'test' | 'requirement' | 'env' | 'ai_generation';
 export declare function getTestFailures(resultsDir?: string): GetTestFailuresOutput;
 //# sourceMappingURL=get-test-failures.d.ts.map

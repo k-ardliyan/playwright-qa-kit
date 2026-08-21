@@ -15,6 +15,7 @@ import {
   failureResult,
 } from '../contracts';
 import { compileRequirementFromText } from './compile-requirement';
+import { buildTestIndex } from '../utils/test-index';
 
 export interface TraceRequirementArgs {
   requirementPath?: unknown;
@@ -89,6 +90,7 @@ export function buildTraceabilityMatrix(
 
   const testCaseMap = loadSummaryTestCases(summaryPath);
   const allTests = listFilesRecursive(mcpWorkspace.testsDir, '.spec.ts');
+  const testIndex = buildTestIndex(mcpWorkspace.testsDir, repoRoot);
 
   // Find candidate spec files for this requirement
   const stem = path.posix.basename(requirementPath).replace(/\.md$/, '');
@@ -99,14 +101,23 @@ export function buildTraceabilityMatrix(
       return base === stem || base.startsWith(`${stem}-`);
     });
 
-  // Map Scenarios
+  // Map Scenarios with index-aware matching
   const scenarioNodes: TraceabilityScenarioNode[] = req.scenarios.map((sc) => {
-    let specFile: string | undefined;
-    if (sc.actor) {
-      specFile =
-        candidateSpecs.find((s) => s.includes(`-${sc.actor}.spec.ts`)) ?? candidateSpecs[0];
-    } else {
-      specFile = candidateSpecs[0];
+    // 1. Try finding exact match from test index
+    const indexMatch = testIndex.entries.find(
+      (e) =>
+        (e.scenarioId && e.scenarioId.toUpperCase() === sc.id.toUpperCase()) ||
+        (sc.testId && e.testId && e.testId.toUpperCase() === sc.testId.toUpperCase()),
+    );
+
+    let specFile: string | undefined = indexMatch?.specFile;
+    if (!specFile) {
+      if (sc.actor) {
+        specFile =
+          candidateSpecs.find((s) => s.includes(`-${sc.actor}.spec.ts`)) ?? candidateSpecs[0];
+      } else {
+        specFile = candidateSpecs[0];
+      }
     }
 
     let status: ExecutionStatus = 'not-generated';
@@ -117,8 +128,14 @@ export function buildTraceabilityMatrix(
       status = 'manual';
     } else if (specFile) {
       const matchKey = `${specFile}::${sc.title}`;
+      const indexTitleKey = indexMatch ? `${specFile}::${indexMatch.testTitle}` : undefined;
       const hit =
-        testCaseMap.get(matchKey) || testCaseMap.get(sc.title) || testCaseMap.get(specFile);
+        (indexTitleKey ? testCaseMap.get(indexTitleKey) : undefined) ||
+        testCaseMap.get(matchKey) ||
+        testCaseMap.get(sc.title) ||
+        (indexMatch ? testCaseMap.get(indexMatch.testTitle) : undefined) ||
+        testCaseMap.get(specFile);
+
       if (hit) {
         if (hit.status === 'passed') status = 'passed';
         else if (hit.status === 'failed') {
@@ -188,6 +205,10 @@ export function buildTraceabilityMatrix(
   const failingScenarios = scenarioNodes.filter(
     (s) => s.executionStatus === 'failed' || s.executionStatus === 'timedOut',
   ).length;
+  // GAP 4: healedScenarios — scenarios that were re-run and passed after Healer intervention.
+  // At trace time the healer result is not in the spec files; the orchestrator may patch this
+  // field from pipeline state before archiving the final report.
+  const healedScenarios = 0;
   const skippedScenarios = scenarioNodes.filter((s) => s.executionStatus === 'skipped').length;
   const manualScenarios = scenarioNodes.filter((s) => s.executionStatus === 'manual').length;
   const blockedScenarios = scenarioNodes.filter((s) => s.executionStatus === 'blocked').length;
@@ -209,6 +230,7 @@ export function buildTraceabilityMatrix(
       totalScenarios,
       passingScenarios,
       failingScenarios,
+      healedScenarios,
       skippedScenarios,
       manualScenarios,
       blockedScenarios,

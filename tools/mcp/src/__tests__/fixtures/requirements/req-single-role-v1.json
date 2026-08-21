@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "qa.requirement/v1",
+  "requirementId": "REQ-PROFILE-001",
+  "title": "User Profile Management",
+  "sourcePath": "requirements/account/profile.md",
+  "sourceHash": "b2c3d4e5f6a7b8c9",
+  "module": "account",
+  "feature": "profile-edit",
+  "priority": "high",
+  "tags": ["regression", "profile"],
+  "auth": {
+    "state": "authenticated",
+    "defaultRole": "user"
+  },
+  "roles": ["user"],
+  "accessMatrix": [
+    {
+      "role": "user",
+      "access": "allow",
+      "expectation": "Can update profile information"
+    }
+  ],
+  "startPage": "/account/profile",
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "User can update display name."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SC-01",
+      "testId": "TC-PROFILE-001",
+      "title": "Update Profile Display Name",
+      "type": "success",
+      "actor": "user",
+      "authContext": "user",
+      "capabilities": [],
+      "affectedLayers": ["FE", "BE"],
+      "covers": ["AC-01"],
+      "preconditions": ["Logged in as user"],
+      "inputData": [
+        {
+          "key": "displayName",
+          "source": "literal",
+          "value": "QA Verified User"
+        }
+      ],
+      "steps": ["Go to /account/profile", "Fill display name with QA Verified User", "Click Save"],
+      "expectations": ["Success toast notification appears", "Display name is updated"],
+      "automation": {
+        "automatable": true
+      }
+    }
+  ],
+  "diagnostics": []
+}

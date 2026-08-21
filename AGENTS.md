@@ -79,6 +79,7 @@ List every tool explicitly by server:
 - **playwright-qa**
   - `health_check` (run first)
   - `compile_requirement` (preferred: compile requirement into typed `RequirementContractV1`)
+  - `compile_test_plan` (compile Markdown test plan into canonical `TestPlanContractV1`)
   - `validate_plan` (validate test plan contract against requirement contract)
   - `trace_requirement` (build end-to-end `TraceabilityContractV1` graph and metrics)
   - `validate_requirement` (run after health_check, before Planner)

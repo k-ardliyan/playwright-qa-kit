@@ -151,5 +151,31 @@ Milestone saat ini adalah Contract Adoption & Harness Pipeline Closure. Implemen
 **Kenapa:**
 Fondasi kontrak (`qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, `qa.mcp-result/v1`) harus diadopsi secara konsisten di seluruh lapisan harness (`qa:run`, Planner, Generator, Healer, Reporter, CI, dan dokumentasi) agar eksekusi pipeline deterministik, versioned, resumable, dan bebas path drift sebelum antarmuka authoring grafis dibangun.
 
+---
+
+## D-12: Contract Closure v1 Hardening (v2.4)
+
+**Keputusan:**
+1. Contract Closure v1 adalah final core-framework hardening milestone sebelum beralih ke Prompt Studio. Tidak ada penambahan runtime abstraksi baru yang tidak bersumber dari requirement kontrak.
+2. Seluruh 21 MCP tool terdaftar dengan stabilitas (`stable`, `compat`, `experimental`), profil intent (`planner`, `generator`, `healer`, `reporter`, `author`, `debug`, `auth`, `visual`, `artifact`, `minimal`, `all`), dan flag `readOnly`.
+3. Validasi test plan menerima input Markdown langsung (`validate_plan({ testPlanPath, requirementPath })`) dan memverifikasi source hash, AC coverage, assertion provenance, dan mendeteksi ephemeral refs.
+4. Keterlacakan penuh ditutup dengan `TraceabilityContractV1` menghubungkan Requirement → AC → Skenario → Test ID → Spec → Execution Status → Artifact Evidence.
+
+**Kenapa:**
+Seluruh runtime, MCP registry, agent instructions, template requirements, harness runner (`qa:run`), dokumentasi arsitektur, dan quality gate CI harus 100% konsisten terhadap spesifikasi kontrak (`qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, `qa.mcp-result/v1`). Hal ini membekukan fondasi core sehingga value selanjutnya dibangun di atas antarmuka dan pengalaman authoring QA (Prompt Studio).
+
+---
+
+## D-13: Core Freeze v1 Gate & Long-Term Stability Policy (v2.5)
+
+**Keputusan:**
+1. **Core Freeze v1 Active**: Fondasi core framework Playwright QA Kit (arsitektur hybrid, schema versioning `qa.*/v1`, compiler requirement, compiler test plan, traceability matrix, MCP tool registry, failure classification, and pipeline state manager) dibekukan dan stabil.
+2. **Backward Compatibility Guarantee**: Schema kontrak `qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, dan `qa.mcp-result/v1` dijamin kompatibel ke belakang. Setiap perubahan non-breaking harus melalui field opsional; perubahan breaking memerlukan bump version ke `v2`.
+3. **No Legacy Path Drift**: Seluruh folder runtime, tests, tools, config, artifacts, requirements, specs, dan docs tunduk pada validasi `tools/validators/architecture.ts` (ARCH-001 hingga ARCH-013).
+4. **Readiness for Prompt Studio**: Dengan selesainya seluruh 14 fase Contract Closure v1, repository dinyatakan siap untuk pengembangan antarmuka authoring grafis Prompt Studio.
+
+**Kenapa:**
+Memberikan kepastian arsitektur dan stabilitas jangka panjang bagi tim QA dan automasi, memastikan pipeline deterministik dan bebas regresi saat beroperasi dalam skala besar.
+
 
 

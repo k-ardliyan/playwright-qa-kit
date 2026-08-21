@@ -233,17 +233,17 @@ Notable warn rules: `observable_result`, `precondition_recommended`, `manual_rea
 
 ## MCP pipeline environment overrides
 
-Optional variables in `environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
+Optional variables in `config/environments/{APP_ENV}.env` (read by the playwright-qa MCP server process):
 
-| Variable                            | Default                              | Purpose                                                                                                   |
-| ----------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `PLAYWRIGHT_TEST_ROOT`              | `src/tests`                          | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
-| `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`               | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
-| `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_              | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
-| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
-| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts` | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
-| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`       | Required import path for specs under adapter test root                                                    |
-| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `test-results/erpku-results.json`    | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
+| Variable                            | Default                                     | Purpose                                                                                                   |
+| ----------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `PLAYWRIGHT_TEST_ROOT`              | `tests`                                     | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
+| `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`                      | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
+| `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_                     | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
+| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                       | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
+| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts`        | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
+| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`              | Required import path for specs under adapter test root                                                    |
+| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `artifacts/test-results/erpku-results.json` | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
 
 **Config → JSON mapping** (when `PLAYWRIGHT_RESULTS_JSON` is unset): uses `PLAYWRIGHT_ADAPTER_CONFIG` and `PLAYWRIGHT_ADAPTER_RESULTS_JSON` defaults (ERPKU reference values above).
 
@@ -259,6 +259,7 @@ PLAYWRIGHT_TEST_ROOT=example/erpku/tests
 Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT` or `PLAYWRIGHT_ADAPTER_TEST_ROOT`.
 
 **Forks that delete `example/erpku/`:** unset or replace all `PLAYWRIGHT_ADAPTER_*` vars if you add a different reference adapter, or leave defaults unused if you have no adapter specs.
+
 
 ---
 
@@ -712,6 +713,186 @@ Structure dump for xlsx under `tests/data/` or `artifacts/test-results/`: sheet 
   "sampleRows": [["a1", "b1", "c1"]],
   "message": "Structure dump only..."
 }
+---
+
+## Tool: `compile_requirement`
+
+Canonical compiler converting requirement markdown into typed `RequirementContractV1` (`qa.requirement/v1`). Includes metadata extraction, access matrix parsing, scenario parsing with provenance, and deterministic source hashing.
+
+### Input
+
+```json
+{
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
+}
+```
+
+Or:
+
+```json
+{
+  "requirementsText": "# REQ-01: Feature\n## Metadata\n..."
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "data": {
+    "schemaVersion": "qa.requirement/v1",
+    "id": "REQ-AUTH-002",
+    "title": "Validasi Field Kosong",
+    "module": "auth",
+    "feature": "login",
+    "sourceHash": "sha256-hex...",
+    "rolesInScope": ["super-admin", "finance"],
+    "accessMatrix": [
+      { "role": "super-admin", "access": "allow", "expectation": "Bisa login" }
+    ],
+    "acceptanceCriteria": [
+      { "id": "AC-01", "description": "Pesan error saat username kosong" }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-01",
+        "name": "Submit kosong",
+        "covers": ["AC-01"],
+        "actor": "user",
+        "steps": ["..."],
+        "expectedResult": "...",
+        "automatable": true
+      }
+    ]
+  },
+  "diagnostics": []
+}
+```
+
+---
+
+## Tool: `compile_test_plan`
+
+Compiles Markdown test plan documents into canonical `TestPlanContractV1` (`qa.test-plan/v1`).
+
+### Input
+
+```json
+{
+  "testPlanPath": "specs/auth/sample-login-empty-fields-test-plan.md",
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "data": {
+    "schemaVersion": "qa.test-plan/v1",
+    "id": "PLAN-AUTH-002",
+    "sourceRequirementHash": "sha256-req-hash...",
+    "scenarios": [
+      {
+        "scenarioId": "SC-01",
+        "testId": "TEST-AUTH-002-01",
+        "name": "Empty field validation",
+        "covers": ["AC-01"],
+        "actor": "user",
+        "authContext": "unauthenticated",
+        "steps": ["..."],
+        "expectedResult": "...",
+        "assertionProvenance": "requirement",
+        "type": "negative"
+      }
+    ]
+  },
+  "diagnostics": []
+}
+```
+
+---
+
+## Tool: `validate_plan`
+
+Validates test plan contracts against requirement contracts. Supports Markdown paths directly or structured in-memory contract objects.
+
+### Input
+
+```json
+{
+  "testPlanPath": "specs/auth/sample-login-empty-fields-test-plan.md",
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md"
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "planId": "PLAN-AUTH-002",
+  "scenariosPlanned": 4,
+  "coverageGaps": 0,
+  "diagnostics": [],
+  "message": "Test plan is valid and consistent with requirement."
+}
+```
+
+Diagnostic codes emitted on drift: `PLAN_STALE_REQUIREMENT`, `PLAN_AC_UNCOVERED`, `PLAN_UNKNOWN_AC`, `PLAN_SCENARIO_MISSING`, `PLAN_EPHEMERAL_REF_DETECTED`, `PLAN_UNKNOWN_PROVENANCE`, `PLAN_UNREVIEWED_ASSUMPTION`.
+
+---
+
+## Tool: `trace_requirement`
+
+Builds an end-to-end closed-loop `TraceabilityContractV1` (`qa.traceability/v1`) graph and 4-dimensional coverage metrics.
+
+### Input
+
+```json
+{
+  "requirementPath": "requirements/auth/sample-login-empty-fields.md",
+  "testPlanPath": "specs/auth/sample-login-empty-fields-test-plan.md",
+  "summaryPath": "artifacts/reports/test-summary.json"
+}
+```
+
+### Output
+
+```json
+{
+  "status": "success",
+  "data": {
+    "schemaVersion": "qa.traceability/v1",
+    "requirementId": "REQ-AUTH-002",
+    "metrics": {
+      "plannedScenarioCoverage": 100,
+      "automationCoverage": 100,
+      "executionCoverage": 100,
+      "verifiedAcceptanceCoverage": 100,
+      "manualCoverage": 0,
+      "blockedCoverage": 0
+    },
+    "scenarios": [...]
+  }
+}
+```
+
+---
+
+## Tool: `archive_report`
+
+Archives pipeline run artifacts (summary, dashboard, state, traces) to `artifacts/reports/archive/<runId>/`.
+
+### Input
+
+```json
+{
+  "runId": "run-2026-08-21-001",
+  "reportPath": "artifacts/reports/pipeline-report-run-2026-08-21-001.md"
+}
 ```
 
 ---
@@ -719,33 +900,36 @@ Structure dump for xlsx under `tests/data/` or `artifacts/test-results/`: sheet 
 ## Agent pipeline checklist
 
 1. `health_check` (playwright-qa)
-2. `validate_requirement` — fix errors before planning
-3. `parse_requirement_scenarios` + `normalize_requirements` (Planner)
-4. Generate specs under `tests/` + `validate_generated_tests`
-5. `run_tests` (playwright-test) — writes JSON reporter output at the active config-mapped path (`getJsonResultsPath()`; default `artifacts/test-results/results.json`)
-6. `get_test_failures` → Healer → `validate_generated_tests` → `run_tests` (scoped)
-7. `get_test_summary` (Report)
+2. `compile_requirement` — compile and validate requirement contract before planning
+3. `compile_test_plan` + `validate_plan` (Planner) — validate plan against requirement source hash
+4. Generate specs under `tests/` with `setTestMetadata()` + `validate_generated_tests`
+5. `run_tests` (playwright-test) — writes JSON reporter output to config-mapped path (default `artifacts/test-results/results.json`)
+6. `get_test_failures` → Healer (consumes failure source + traceability + catalog evidence) → `validate_generated_tests` → `run_tests` (scoped)
+7. `trace_requirement` + `get_test_summary` + `archive_report` (Reporter)
 
 ## CI tool matrix
 
 | Tool / script                                   | `quality.yml` (PR)   | `e2e.yml` (main/manual) | Agent pre-flight |
 | ----------------------------------------------- | -------------------- | ----------------------- | ---------------- |
 | `npm run health:check` / `health_check`         | yes                  | optional                | yes              |
-| `validate_requirement`                          | example file via CLI | no                      | yes              |
+| `compile_requirement` / `validate_requirement`  | example file via CLI | no                      | yes              |
+| `validate_plan` / `validate:test-plan`          | yes                  | no                      | yes              |
 | `validate_generated_tests` / `npm run validate` | yes                  | no                      | yes              |
 | `npm run test:property`                         | yes                  | no                      | no               |
+| `npm run test:contract`                         | yes                  | no                      | no               |
 | `get_test_failures`                             | no                   | post-fail               | yes              |
-| `parse_requirement_scenarios`                   | via property tests   | no                      | planner          |
+| `trace_requirement`                             | yes                  | yes                     | reporter         |
 | `run_tests`                                     | no                   | yes                     | yes              |
 
-CLI wrappers: `npm run validate`, `npm run validate:requirement`, `npm run health:check`.
+CLI wrappers: `npm run validate`, `npm run validate:requirement`, `npm run health:check`, `npm run test:contract`.
 
 ## Governance Rule
 
 When any MCP tool is added or changed:
 
-1. Update `mcp-server/src/` implementation.
+1. Update `tools/mcp/src/` implementation.
 2. Update this `CUSTOM-MCP.md`.
 3. Update `.github/agents/*.agent.md` and `.github/AGENTS.md` if agents consume the tool.
 
 `CUSTOM-MCP.md` is the authoritative reference for **playwright-qa** tool contracts.
+

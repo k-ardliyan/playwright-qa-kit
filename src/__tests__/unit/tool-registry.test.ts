@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { TOOL_REGISTRY, getToolEntry } from '../../../tools/mcp/src/tools/registry';
+import {
+  TOOL_REGISTRY,
+  getToolEntry,
+  getToolsForProfile,
+  validateProfileRegistry,
+  CRITICAL_PROFILES,
+} from '../../../tools/mcp/src/tools/registry';
 
 test.describe('MCP Tool Registry & Backward Compatibility (Phase 8)', () => {
   test('all baseline tools remain registered with unchanged schemas', () => {
@@ -22,6 +28,10 @@ test.describe('MCP Tool Registry & Backward Compatibility (Phase 8)', () => {
     expect(compileReq).toBeDefined();
     expect(compileReq?.name).toBe('compile_requirement');
 
+    const compilePlan = getToolEntry('compile_test_plan');
+    expect(compilePlan).toBeDefined();
+    expect(compilePlan?.name).toBe('compile_test_plan');
+
     const validatePln = getToolEntry('validate_plan');
     expect(validatePln).toBeDefined();
     expect(validatePln?.name).toBe('validate_plan');
@@ -29,6 +39,10 @@ test.describe('MCP Tool Registry & Backward Compatibility (Phase 8)', () => {
     const traceReq = getToolEntry('trace_requirement');
     expect(traceReq).toBeDefined();
     expect(traceReq?.name).toBe('trace_requirement');
+
+    const archiveRep = getToolEntry('archive_report');
+    expect(archiveRep).toBeDefined();
+    expect(archiveRep?.name).toBe('archive_report');
   });
 
   test('registry contains at least 19 tools without duplicates', () => {
@@ -36,5 +50,17 @@ test.describe('MCP Tool Registry & Backward Compatibility (Phase 8)', () => {
     const names = TOOL_REGISTRY.map((t) => t.name);
     const unique = new Set(names);
     expect(unique.size).toBe(names.length);
+  });
+
+  test('validates profile registry integrity and critical agent profiles (CC-1109)', () => {
+    const validation = validateProfileRegistry();
+    expect(validation.ok).toBe(true);
+    expect(validation.errors).toHaveLength(0);
+    expect(validation.criticalProfilesCovered).toBe(true);
+
+    for (const profile of CRITICAL_PROFILES) {
+      const tools = getToolsForProfile(profile);
+      expect(tools.length).toBeGreaterThan(0);
+    }
   });
 });

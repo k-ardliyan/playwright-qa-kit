@@ -29,18 +29,26 @@ export type DiagnosticCode =
   // Test plan diagnostics (PLAN_*)
   | 'PLAN_SCENARIO_MISSING'
   | 'PLAN_AC_UNCOVERED'
+  | 'PLAN_UNKNOWN_AC'
   | 'PLAN_ROLE_DRIFT'
   | 'PLAN_AUTH_DRIFT'
   | 'PLAN_EXPECTATION_DRIFT'
   | 'PLAN_UNREVIEWED_ASSUMPTION'
+  | 'PLAN_UNKNOWN_PROVENANCE'
   | 'PLAN_STALE_REQUIREMENT'
+  | 'PLAN_STALE'
+  | 'PLAN_EPHEMERAL_REF'
   | 'PLAN_EPHEMERAL_REF_DETECTED'
   | 'PLAN_INVALID_EXECUTION_MODE'
 
-  // Staleness & Traceability diagnostics
+  // Staleness, State & Traceability diagnostics
   | 'SPEC_STALE'
   | 'TEST_STALE'
+  | 'PIPELINE_STATE_STALE'
+  | 'GENERATED_TEST_MODIFIED'
+  | 'CATALOG_DRIFT'
   | 'TRACEABILITY_STALE'
+  | 'TRACE_HEURISTIC_LINK_USED'
 
   // Workspace & Environment diagnostics
   | 'WORKSPACE_PATH_DRIFT'

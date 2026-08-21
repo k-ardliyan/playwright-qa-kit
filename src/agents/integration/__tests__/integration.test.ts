@@ -60,24 +60,33 @@ function createMockExecutor(options?: {
 }
 
 /** Backup and restore the pipeline state file around tests. */
-const STATE_FILE = path.resolve('reports/pipeline-state.json');
+const STATE_FILES = [
+  path.resolve('artifacts/reports/pipeline-state.json'),
+  path.resolve('reports/pipeline-state.json'),
+];
 const EVENTS_FILE = path.resolve('reports/pipeline-events.jsonl');
 
-function backupStateFile(): string | null {
-  if (fs.existsSync(STATE_FILE)) {
-    const backup = STATE_FILE + '.bak';
-    fs.copyFileSync(STATE_FILE, backup);
-    return backup;
+function backupStateFile(): Record<string, string> {
+  const backups: Record<string, string> = {};
+  for (const file of STATE_FILES) {
+    if (fs.existsSync(file)) {
+      const backup = file + '.bak';
+      fs.copyFileSync(file, backup);
+      backups[file] = backup;
+    }
   }
-  return null;
+  return backups;
 }
 
-function restoreStateFile(backup: string | null): void {
-  if (backup && fs.existsSync(backup)) {
-    fs.copyFileSync(backup, STATE_FILE);
-    fs.unlinkSync(backup);
-  } else if (fs.existsSync(STATE_FILE)) {
-    fs.unlinkSync(STATE_FILE);
+function restoreStateFile(backups: Record<string, string>): void {
+  for (const file of STATE_FILES) {
+    const backup = backups[file];
+    if (backup && fs.existsSync(backup)) {
+      fs.copyFileSync(backup, file);
+      fs.unlinkSync(backup);
+    } else if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+    }
   }
 }
 
@@ -86,7 +95,7 @@ function restoreStateFile(backup: string | null): void {
 // ---------------------------------------------------------------------------
 
 test.describe('Automatic Pipeline Run', () => {
-  let stateBackup: string | null;
+  let stateBackup: Record<string, string>;
 
   test.beforeEach(() => {
     stateBackup = backupStateFile();
@@ -157,7 +166,7 @@ test.describe('Automatic Pipeline Run', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Resume Workflow', () => {
-  let stateBackup: string | null;
+  let stateBackup: Record<string, string>;
 
   test.beforeEach(() => {
     stateBackup = backupStateFile();
@@ -253,8 +262,10 @@ test.describe('Resume Workflow', () => {
 
   test('resume with no state file returns error', () => {
     // Ensure no state file exists
-    if (fs.existsSync(STATE_FILE)) {
-      fs.unlinkSync(STATE_FILE);
+    for (const f of STATE_FILES) {
+      if (fs.existsSync(f)) {
+        fs.unlinkSync(f);
+      }
     }
 
     const resumeResult = resumeState();
@@ -413,7 +424,7 @@ test.describe('Agent Validation', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Protocol Handler Routing', () => {
-  let stateBackup: string | null;
+  let stateBackup: Record<string, string>;
 
   test.beforeEach(() => {
     stateBackup = backupStateFile();
@@ -499,8 +510,10 @@ test.describe('Protocol Handler Routing', () => {
 
   test('resume without state file returns error', async () => {
     // Ensure no state file
-    if (fs.existsSync(STATE_FILE)) {
-      fs.unlinkSync(STATE_FILE);
+    for (const f of STATE_FILES) {
+      if (fs.existsSync(f)) {
+        fs.unlinkSync(f);
+      }
     }
 
     const executor = createMockExecutor();

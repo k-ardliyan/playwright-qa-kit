@@ -260,29 +260,40 @@ function validateRequirementFile(repoRoot: string, relPath: string): ValidationR
   }
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { validateRequirement } = require('../mcp/src/tools/validate-requirement') as {
-    validateRequirement: (args: { requirementPath?: string }) => {
+  const { compileRequirementFromText } = require('../mcp/src/tools/compile-requirement') as {
+    compileRequirementFromText: (
+      text: string,
+      path?: string,
+    ) => {
       status: string;
-      violations: Array<{
-        ruleName: string;
+      data?: {
+        diagnostics?: Array<{
+          code: string;
+          severity: 'error' | 'warning' | 'info';
+          message: string;
+          scenarioId?: string;
+        }>;
+      };
+      diagnostics: Array<{
+        code: string;
         severity: 'error' | 'warning' | 'info';
         message: string;
-        suggestion?: string;
-        scenarioName?: string;
+        scenarioId?: string;
       }>;
-      score: number;
     };
   };
 
-  const output = validateRequirement({ requirementPath: normRel });
+  const rawText = fs.readFileSync(reqAbs, 'utf-8');
+  const output = compileRequirementFromText(rawText, normRel);
 
+  const allDiagnostics = [...(output.diagnostics ?? []), ...(output.data?.diagnostics ?? [])];
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  for (const v of output.violations) {
-    const sc = v.scenarioName ? ` [${v.scenarioName}]` : '';
-    const formatted = `${v.ruleName}${sc}: ${v.message}`;
-    if (v.severity === 'error') {
+  for (const d of allDiagnostics) {
+    const sc = d.scenarioId ? ` [${d.scenarioId}]` : '';
+    const formatted = `${d.code}${sc}: ${d.message}`;
+    if (d.severity === 'error') {
       errors.push(formatted);
     } else {
       warnings.push(formatted);
@@ -293,7 +304,7 @@ function validateRequirementFile(repoRoot: string, relPath: string): ValidationR
 
   return {
     ok,
-    score: output.score ?? (ok ? 100 : 0),
+    score: ok ? (warnings.length === 0 ? 100 : Math.max(70, 100 - warnings.length * 5)) : 0,
     errors,
     warnings,
   };

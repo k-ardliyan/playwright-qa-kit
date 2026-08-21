@@ -6,11 +6,11 @@ You convert a Planner scenario table into Playwright TypeScript test files.
 
 > **TL;DR — Key constraints (read before generating):**
 >
-> - Import test from `@/fixtures/base.fixture` — NEVER from `@playwright/test` directly
+> - Import test from `./fixtures` (or `@/public`) — NEVER from `@playwright/test` directly
 > - Auth: `test.use({ storageState: authStatePath('<role>') })` — NEVER hardcode `.auth/` path
-> - One spec file per role: `src/tests/<feature>-<role>.spec.ts`
+> - One spec file per role: `tests/<feature>-<role>.spec.ts`
 > - Call `setTestMetadata(test, ...)` as first statement in every test body
-> - Unknown selector → call `browser_snapshot` first; NEVER guess
+> - Unknown selector → call `browser_snapshot` or check catalog first; NEVER guess
 > - Blocked scenario → `test.skip(true, '<reason>')`, NEVER delete
 
 ## Golden Examples
@@ -19,7 +19,7 @@ Read these before generating — they are the canonical output shape:
 
 - Requirement: `requirements/auth/sample-login-empty-fields.md`
 - Test plan: `specs/sample-login-empty-fields-test-plan.md`
-- Inline locator pattern: `src/tests/demo/demo-pw-power.spec.ts`
+- Inline locator pattern: `tests/demo/demo-pw-power.spec.ts`
 
 ## Input Format
 
@@ -41,39 +41,41 @@ Also read per-scenario fields:
 - `Role` — which **business** role this scenario runs as, or `"general"` for **pipeline mode general** (non-role-aware).  
   **Auth for `"general"`:** use default account **`user`** (`.auth/{APP_ENV}/user.json` / `TEST_USER_*`). Never invent a credential role named `general`.
 - `Auth Context` — storage state path (e.g. `.auth/{APP_ENV}/finance.json` or `authStatePath('finance')`) or `unauthenticated`
-- `Seed` — always `src/tests/seed.spec.ts`
+- `Seed` — always `tests/seed.spec.ts`
 
-Also read metadata from the source requirement via `normalize_requirements` when available.
+Also read metadata from the source requirement via `compile_requirement` (or `normalize_requirements`) when available.
 
 ## MCP Dependencies
 
 | Server          | Tool                       | Purpose                                                            |
 | --------------- | -------------------------- | ------------------------------------------------------------------ |
 | `playwright-qa` | `compile_requirement`      | Read typed RequirementContractV1 metadata including roles and auth |
-| `playwright-qa` | `normalize_requirements`   | Read requirement metadata including role scope and auth state      |
+| `playwright-qa` | `compile_test_plan`        | Read canonical TestPlanContractV1 metadata                         |
 | `playwright-qa` | `validate_generated_tests` | Validate generated spec files after generation                     |
 | `playwright-qa` | `snapshot_page`            | Capture ARIA + selector catalog for a specific page                |
+| `playwright-qa` | `list_test_fixtures`       | List test fixture bank files under tests/data/                     |
+| `playwright-qa` | `inspect_file`             | Inspect test fixture envelope details                              |
 
 ### POM Decision (Before Generating Spec)
 
 Check if `metadata.pomRequired` lists a POM. If yes:
 
-1. Check if `src/pages/<PomName>.ts` exists
+1. Check if `tests/pages/<PomName>.ts` exists
    - Exists → import and use it (current behavior)
    - Missing:
-     a. Check if `selector-catalog/<feature>/<page>.json` exists
+     a. Check if `artifacts/selector-catalog/<feature>/<page>.json` exists
      b. If catalog exists → call `generate_page_object` tool → warn QA to review scaffold + register fixture
      c. If catalog missing → call `snapshot_page` first, then `generate_page_object`
-     d. Output: "⚠️ POM scaffold created. Review TODOs and register in src/fixtures/project.fixture.ts before running."
+     d. Output: "⚠️ POM scaffold created. Review TODOs and register in tests/fixtures.ts before running."
 2. If no `pomRequired` → generate with inline locators (default behavior)
 
 ### Selector Catalog Reuse (Token-Efficient Locator Discovery)
 
-Before calling `browser_snapshot` for live verification, check `selector-catalog/<featureName>/<pageName>.json`. The MCP `snapshot_page` tool already extracted and prioritised selectors using the Playwright 2026 best-practice order (`getByRole(name, exact)` → `getByLabel` → `getByText` → `getByTestId` → CSS fallback).
+Before calling `browser_snapshot` for live verification, check `artifacts/selector-catalog/<featureName>/<pageName>.json`. The MCP `snapshot_page` tool already extracted and prioritised selectors using the Playwright 2026 best-practice order (`getByRole(name, exact)` → `getByLabel` → `getByText` → `getByTestId` → CSS fallback).
 
 **Reuse flow:**
 
-1. **Read the JSON index** at `selector-catalog/<featureName>/<pageName>.json`.
+1. **Read the JSON index** at `artifacts/selector-catalog/<featureName>/<pageName>.json`.
 2. For each element in `elements[]`, copy the `primary` expression into the POM method body. If `primary` is `null`, fall back to the first non-CSS candidate in `candidates[]`.
 3. **Skip `browser_snapshot` entirely** when the catalog hash matches the live page (no DOM drift).
 4. **Only call `browser_snapshot`** when:
@@ -94,7 +96,7 @@ Before committing generated test code:
 
 1. **Decision**: Check `shouldExploreLive()` — if fresh catalog and verified POM exist, skip live browser launch.
 2. **Live Execution**: If live exploration is needed:
-   - Launch MCP in isolated `author` profile (`npx tsx scripts/playwright-mcp-launch.ts --profile=author`).
+   - Launch MCP in isolated `author` profile (`npx tsx tools/scripts/playwright-mcp-launch.ts --profile=author`).
    - Use `browser_generate_locator` to discover semantic locators (`getByRole`, `getByLabel`, `getByPlaceholder`, `getByTestId`).
    - Assert expected acceptance criteria live via `browser_verify_element_visible` / `browser_verify_text_visible`.
    - Reconcile candidates using `resolveLocatorPriority()`.

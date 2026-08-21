@@ -49,7 +49,10 @@ const logger_1 = require("../utils/logger");
  * leaving the optional fields undefined.
  */
 function loadSummaryAnnotationMap(repoRoot) {
-    const summaryPath = path.resolve(repoRoot, 'reports', 'test-summary.json');
+    let summaryPath = path.resolve(repoRoot, 'artifacts', 'reports', 'test-summary.json');
+    if (!fs.existsSync(summaryPath)) {
+        summaryPath = path.resolve(repoRoot, 'reports', 'test-summary.json');
+    }
     if (!fs.existsSync(summaryPath))
         return new Map();
     try {

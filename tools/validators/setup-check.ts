@@ -53,9 +53,9 @@ const CHECKS: Array<{ label: string; path: string; hint: string }> = [
     hint: 'restore docs/GUIDE.md from repo',
   },
   {
-    label: 'test-fixtures bank (file upload/download)',
-    path: path.join('test-fixtures', 'README.md'),
-    hint: 'restore test-fixtures/ from repo (fixture-first uploads)',
+    label: 'tests/data fixture bank (file upload/download)',
+    path: path.join('tests', 'data', 'README.md'),
+    hint: 'restore tests/data/ from repo (fixture-first uploads)',
   },
   {
     label: 'file content helpers',

@@ -60,7 +60,7 @@ Golden test plan: [`specs/sample-login-empty-fields-test-plan.md`](../../specs/s
 For public sites without authentication, prefer **`discover_pages`** over manual `browser_snapshot` exploration:
 
 1. Call `discover_pages` with `rootUrl`, `featureName`, `maxDepth`, `excludePatterns`, and `respectRobots`.
-2. Read the resulting `selector-catalog/<featureName>/page-map.json` to enumerate every URL, title, element count, and content hash.
+2. Read the resulting `artifacts/selector-catalog/<featureName>/page-map.json` to enumerate every URL, title, element count, and content hash.
 3. For pages that need detailed steps, call `snapshot_page` for that specific URL to get the structured selector catalog.
 4. **Skip** pages listed in `skipped[]` (login wall, robots disallow, exclude pattern). Document them in the spec as `@manual` if the requirement covers them.
 5. Fall back to `browser_navigate` + `browser_snapshot` only when the catalog is stale (hash mismatch) or the page is authenticated.
@@ -183,7 +183,7 @@ Combinations are valid: `(@failure @network)`, `(@success @network-assert)`, `(@
 
 After `snapshot_page` / `discover_pages`:
 
-1. If `selector-catalog/<feature>/<page>.aria.yml` exists for a page under test, **prefer** adding an `(@aria)` structural scenario (or capability column `aria`) for that page's smoke/list view.
+1. If `artifacts/selector-catalog/<feature>/<page>.aria.yml` exists for a page under test, **prefer** adding an `(@aria)` structural scenario (or capability column `aria`) for that page's smoke/list view.
 2. Put the catalog path in scenario notes / Expected Result so Generator can call `expectAriaMatchesCatalog`.
 3. If catalog is missing, either call `snapshot_page` first or use a small inline `expectAriaSnapshot` baseline — do not invent a large YAML tree.
 
@@ -194,7 +194,7 @@ When the requirement mentions download, upload, or PDF/Excel **content** checks,
 | Signal in requirement                                           | Tag                        | Plan fields to populate                                                                                                                 |
 | --------------------------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Download / export / unduh file                                  | `(@download)`              | Steps name the trigger control; Expected Result may include filename/ext/size/magic                                                     |
-| Upload / pilih file / lampiran                                  | `(@upload)`                | **Input Data** lists fixture path under `test-fixtures/` (e.g. `fixture: test-fixtures/pdf/sample-text.pdf`)                            |
+| Upload / pilih file / lampiran                                  | `(@upload)`                | **Input Data** lists fixture path under `tests/data/` (e.g. `fixture: tests/data/pdf/sample-text.pdf`)                                  |
 | PDF/Excel text, headers, cells, or file magic/envelope          | `(@file-content)`          | **Expected Result** / **Input Data** list **expected tokens or headers copied from Hasil yang Diharapkan** — never invent domain fields |
 | PDF **layout** only (margin, logo placement, typography beauty) | `(@manual)` or `(@visual)` | Do **not** tag `@file-content`; list under Manual Notes                                                                                 |
 
@@ -213,7 +213,7 @@ Populate plan **Capabilities** from title tags and metadata `#network #network-a
 
 ## Planning Rules
 
-1. Read and parse the requirement using `parse_requirement_scenarios` — it now returns `roleScope`, `scenarioType`, and `authContext` per scenario.
+1. Read and parse the requirement using `compile_requirement` (or `parse_requirement_scenarios`).
 2. If `Role scope` metadata exists, generate one scenario group per role.
 3. For each role in `Access expectation` that is restricted, generate an `(@access-restriction)` scenario.
 4. Mark CAPTCHA, OTP, biometric, or non-automatable flows as `(@manual)`.
@@ -224,8 +224,8 @@ Populate plan **Capabilities** from title tags and metadata `#network #network-a
 9. When failure depends on HTTP status / offline, mark `(@network)` and name the URL glob (mock only).
 10. When Hasil/Expected mentions request payload fields, response body/status from backend after a UI action, or “cek network/payload API”, mark `(@network-assert)` and put method + urlIncludes + expected status/keys (or contract path) in Input Data — do **not** invent endpoints; do **not** use `@network` for live observe.
     - If endpoint unknown: Coverage Gap or Manual Notes “discover Network once (DevTools / browser_network_requests), then freeze path+keys into Input Data” — do not plan invented URLs.
-11. When `selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
-12. When requirement mentions download/export, mark `(@download)`. When it mentions upload/pilih file, mark `(@upload)` and put the `test-fixtures/` path in Input Data.
+11. When `artifacts/selector-catalog/**/*.aria.yml` exists for the page, recommend `(@aria)` in Coverage Gap if the requirement omitted it.
+12. When requirement mentions download/export, mark `(@download)`. When it mentions upload/pilih file, mark `(@upload)` and put the `tests/data/` path in Input Data.
 13. When Hasil/Expected Result includes PDF text, Excel headers/cells, or file magic/envelope checks, mark `(@file-content)` and copy those **scenario tokens** into Expected Result / Input Data — do not invent fields.
 14. PDF **layout-only** stays `(@manual)` or `(@visual)`; do not over-manual textual PDF/Excel content checks.
 

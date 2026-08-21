@@ -18,15 +18,17 @@ import { computeSourceHash } from '@/contracts';
  */
 const PHASE_SEQUENCE: PipelinePhase[] = ['plan', 'generate', 'execute', 'heal', 'report'];
 
-/**
- * Default path for the active pipeline state file.
- */
-const STATE_FILE_PATH = path.resolve('reports/pipeline-state.json');
+function resolveStateFilePath(): string {
+  const preferred = path.resolve('artifacts/reports/pipeline-state.json');
+  const legacy = path.resolve('reports/pipeline-state.json');
+  if (fs.existsSync(legacy) && !fs.existsSync(preferred)) {
+    return legacy;
+  }
+  return preferred;
+}
 
-/**
- * Default directory for archived pipeline state files.
- */
-const ARCHIVE_DIR = path.resolve('reports/archive');
+const STATE_FILE_PATH = path.resolve('artifacts/reports/pipeline-state.json');
+const ARCHIVE_DIR = path.resolve('artifacts/reports/archive');
 
 /**
  * Persistent state for a pipeline run.
@@ -70,10 +72,11 @@ export function saveState(state: PipelineState): void {
  * Returns `null` if the state file does not exist.
  */
 export function loadState(): PipelineState | null {
-  if (!fs.existsSync(STATE_FILE_PATH)) {
+  const filePath = resolveStateFilePath();
+  if (!fs.existsSync(filePath)) {
     return null;
   }
-  const content = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
+  const content = fs.readFileSync(filePath, 'utf-8');
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);

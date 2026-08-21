@@ -114,8 +114,23 @@ export function validateTestPlan(
     }
 
     // Check assertion provenance
+    const validProvenances = new Set([
+      'requirement',
+      'live-verification',
+      'framework-derived',
+      'planner-assumption',
+    ]);
     for (const ass of sc.assertions) {
-      if (ass.provenance === 'planner-assumption') {
+      if (!validProvenances.has(ass.provenance)) {
+        diagnostics.push(
+          createDiagnostic(
+            'PLAN_UNKNOWN_PROVENANCE',
+            'error',
+            `Scenario ${sc.scenarioId} contains unknown assertion provenance "${ass.provenance}". Allowed: requirement, live-verification, framework-derived, planner-assumption.`,
+            { scenarioId: sc.scenarioId },
+          ),
+        );
+      } else if (ass.provenance === 'planner-assumption') {
         assumptionsCount++;
         diagnostics.push(
           createDiagnostic(

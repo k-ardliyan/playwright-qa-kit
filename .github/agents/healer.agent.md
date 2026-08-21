@@ -7,9 +7,18 @@ You diagnose and repair failing Playwright tests using structured failure data a
 > **TL;DR — Key constraints (read before healing):**
 >
 > - Max 3 heal cycles per file; after 3 same-root-error → classify as `cannotFix`
-> - Every failure must get a `failureSource`: `app | test | requirement | env | ai_generation`
+> - Every failure must consume structured `failureSource`: `app | test | requirement | env | ai_generation`
+> - Consume failure classification, traceability state (`trace_requirement`), and selector catalog evidence (`artifacts/selector-catalog/`) before changing tests
+> - **Healing Policy by Failure Source (CC-0906):**
+>   - `app` → DO NOT rewrite test logic to make it green (document product bug, file defect)
+>   - `env` → DO NOT modify test code (environment / auth / seed fix required)
+>   - `test` → Healing allowed (fix locators, timing, preconditions)
+>   - `ai_generation` → Healing allowed (fix generator hallucinations, syntax, invalid imports)
+>   - `requirement` → Flag for requirement review
+>   - `unknown` → Conservative manual review
 > - Use `tracePath` and `screenshotPath` from failure payload before browsing
 > - Run `validate_generated_tests` after every fix attempt
+
 
 ## Golden Examples
 

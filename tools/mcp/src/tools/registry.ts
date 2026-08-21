@@ -35,7 +35,24 @@ export interface JsonSchemaObject {
   required?: string[];
 }
 
-export type IntentProfile = 'author' | 'debug' | 'auth' | 'visual' | 'artifact' | 'minimal' | 'all';
+export type ToolStability = 'stable' | 'experimental' | 'deprecated' | 'compat';
+
+export type ToolProfile =
+  | 'planner'
+  | 'generator'
+  | 'healer'
+  | 'reporter'
+  | 'discovery'
+  | 'admin'
+  | 'author'
+  | 'debug'
+  | 'auth'
+  | 'visual'
+  | 'artifact'
+  | 'minimal'
+  | 'all';
+
+export type IntentProfile = ToolProfile;
 
 export interface ToolEntry {
   name: string;
@@ -46,13 +63,16 @@ export interface ToolEntry {
   /** Optional override; default checks `payload.status === 'error'`. */
   isError?: (payload: unknown) => boolean;
   /** Profiles where this tool is active. Defaults to all if omitted. */
-  profiles?: IntentProfile[];
+  profiles?: ToolProfile[];
+  stability?: ToolStability;
+  replacement?: string;
+  readOnly?: boolean;
 }
 
-export function getToolsForProfile(profile: IntentProfile = 'all'): ToolEntry[] {
+export function getToolsForProfile(profile: ToolProfile | string = 'all'): ToolEntry[] {
   if (profile === 'all') return TOOL_REGISTRY;
   return TOOL_REGISTRY.filter(
-    (t) => !t.profiles || t.profiles.includes('all') || t.profiles.includes(profile),
+    (t) => !t.profiles || t.profiles.includes('all') || t.profiles.includes(profile as ToolProfile),
   );
 }
 
@@ -91,7 +111,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Verify Node, Playwright packages, MCP build, environment files, `.auth/{APP_ENV}/` storage state, and test result artifacts before running the agent pipeline.',
     inputSchema: { type: 'object', properties: {} },
-    profiles: ['all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['admin', 'all'],
     handler: () => healthCheck(),
   },
   {
@@ -99,7 +121,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       "Get Playwright test failures from the caller's resultsDir (or artifacts/test-results/ by default). Includes trace and screenshot paths when available.",
     inputSchema: GET_TEST_FAILURES_INPUT,
-    profiles: ['debug', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['healer', 'debug', 'all'],
     handler: (args) => {
       const raw = typeof args?.resultsDir === 'string' ? args.resultsDir : undefined;
       if (raw !== undefined) {
@@ -117,14 +141,18 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Read machine-readable pass/fail summary from artifacts/reports/test-summary.json.',
     inputSchema: { type: 'object', properties: {} },
-    profiles: ['debug', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['reporter', 'debug', 'all'],
     handler: () => getTestSummary(),
   },
   {
     name: 'list_artifacts',
     description: 'List requirement, spec, and generated test files under allowed project paths.',
     inputSchema: { type: 'object', properties: {} },
-    profiles: ['debug', 'author', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['reporter', 'author', 'debug', 'all'],
     handler: () => listArtifacts(),
   },
   {
@@ -132,7 +160,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Coverage map: each pipeline requirement with hasPlan, hasTests, manual scenario count, and last run status from test-summary when available.',
     inputSchema: { type: 'object', properties: {} },
-    profiles: ['author', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['planner', 'reporter', 'author', 'all'],
     handler: () => listRequirementStatus(),
   },
   {
@@ -140,7 +170,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Compile requirement markdown into canonical RequirementContractV1 (qa.requirement/v1) with typed diagnostics, deterministic sourceHash, acceptance criteria, scenarios, actor and access matrix.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
-    profiles: ['author', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['planner', 'author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -154,7 +186,10 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Parse requirement markdown into structured contract with acceptance criteria and optional test scenarios.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
-    profiles: ['author', 'all'],
+    stability: 'compat',
+    replacement: 'compile_requirement',
+    readOnly: true,
+    profiles: ['planner', 'author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -168,7 +203,10 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Extract ### scenarios with Langkah/Hasil sections from requirement markdown (Indonesian or English).',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
-    profiles: ['author', 'all'],
+    stability: 'compat',
+    replacement: 'compile_requirement',
+    readOnly: true,
+    profiles: ['planner', 'author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -191,7 +229,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
       },
     },
-    profiles: ['author', 'debug', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['generator', 'healer', 'author', 'debug', 'all'],
     handler: (args) => {
       const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
       return validateGeneratedTests(filePath);
@@ -202,7 +242,10 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     description:
       'Validate requirement markdown structure before Planner runs. Checks title, scenarios, observable results, and @manual conventions.',
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
-    profiles: ['author', 'all'],
+    stability: 'compat',
+    replacement: 'compile_requirement',
+    readOnly: true,
+    profiles: ['planner', 'author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -227,7 +270,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         requirementPath: { type: 'string', description: 'Optional path under requirements/.' },
       },
     },
-    profiles: ['author', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['planner', 'author', 'all'],
     handler: (args) => validatePlan(args),
   },
   {
@@ -251,7 +296,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
       },
     },
-    profiles: ['author', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['planner', 'generator', 'author', 'all'],
     handler: (args) => {
       const testPlanPath = typeof args?.testPlanPath === 'string' ? args.testPlanPath : undefined;
       const testPlanText = typeof args?.testPlanText === 'string' ? args.testPlanText : undefined;
@@ -285,7 +332,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
       },
     },
-    profiles: ['author', 'debug', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['planner', 'healer', 'reporter', 'author', 'debug', 'all'],
     handler: (args) => traceRequirement(args),
   },
   {
@@ -333,7 +382,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['url', 'featureName', 'pageName'],
     },
-    profiles: ['author', 'visual', 'all'],
+    stability: 'stable',
+    readOnly: false,
+    profiles: ['discovery', 'planner', 'author', 'visual', 'all'],
     handler: (args) => snapshotPage(args),
   },
   {
@@ -377,7 +428,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['rootUrl', 'featureName'],
     },
-    profiles: ['author', 'minimal', 'all'],
+    stability: 'stable',
+    readOnly: false,
+    profiles: ['discovery', 'planner', 'author', 'minimal', 'all'],
     handler: (args) => discoverPages(args),
   },
   {
@@ -402,7 +455,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['runId', 'reportPath'],
     },
-    profiles: ['author', 'debug', 'all'],
+    stability: 'stable',
+    readOnly: false,
+    profiles: ['reporter', 'author', 'debug', 'all'],
     handler: (args) =>
       archiveReport(args as { runId: string; reportPath: string; jsonReportPath?: string }),
   },
@@ -436,7 +491,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['featureName', 'pageName'],
     },
-    profiles: ['author', 'all'],
+    stability: 'experimental',
+    readOnly: false,
+    profiles: ['generator', 'author', 'all'],
     handler: (args) => generatePageObject(args),
   },
   {
@@ -453,7 +510,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['filePath'],
     },
-    profiles: ['debug', 'artifact', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['generator', 'debug', 'artifact', 'all'],
     handler: (args) => inspectFile(args),
   },
   {
@@ -474,6 +533,8 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['filePath'],
     },
+    stability: 'stable',
+    readOnly: true,
     profiles: ['debug', 'artifact', 'all'],
     handler: (args) => extractPdfTextTool(args),
   },
@@ -499,6 +560,8 @@ export const TOOL_REGISTRY: ToolEntry[] = [
       },
       required: ['filePath'],
     },
+    stability: 'stable',
+    readOnly: true,
     profiles: ['debug', 'artifact', 'all'],
     handler: (args) => readExcelSummaryTool(args),
   },
@@ -515,7 +578,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         },
       },
     },
-    profiles: ['author', 'debug', 'all'],
+    stability: 'stable',
+    readOnly: true,
+    profiles: ['generator', 'author', 'debug', 'all'],
     handler: (args) => listTestFixtures(args),
   },
 ];
@@ -541,3 +606,76 @@ export const MCP_TOOL_DEFINITIONS = TOOL_REGISTRY.map((t) => ({
 export const TOOL_ROUTES: Record<string, string> = Object.fromEntries(
   TOOL_REGISTRY.map((t) => [`/tools/${t.name}`, t.name]),
 );
+
+export const KNOWN_PROFILES: readonly ToolProfile[] = [
+  'planner',
+  'generator',
+  'healer',
+  'reporter',
+  'discovery',
+  'admin',
+  'author',
+  'debug',
+  'auth',
+  'visual',
+  'artifact',
+  'minimal',
+  'all',
+] as const;
+
+export const CRITICAL_PROFILES: readonly ToolProfile[] = [
+  'planner',
+  'generator',
+  'healer',
+  'reporter',
+] as const;
+
+export interface ProfileRegistryValidationResult {
+  ok: boolean;
+  toolCount: number;
+  criticalProfilesCovered: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export function validateProfileRegistry(): ProfileRegistryValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // 1. Tool entry schema and stability integrity
+  for (const tool of TOOL_REGISTRY) {
+    if (!tool.name || tool.name.trim() === '') {
+      errors.push('Found tool with empty name.');
+    }
+    if (!tool.handler) {
+      errors.push(`Tool ${tool.name} is missing an execution handler.`);
+    }
+    if (tool.stability === 'deprecated' && !tool.replacement) {
+      errors.push(`Deprecated tool ${tool.name} must specify a replacement tool.`);
+    }
+
+    if (tool.profiles) {
+      for (const p of tool.profiles) {
+        if (!KNOWN_PROFILES.includes(p)) {
+          errors.push(`Tool ${tool.name} specifies unknown profile: "${String(p)}".`);
+        }
+      }
+    }
+  }
+
+  // 2. Critical profiles must have at least one tool mapped
+  for (const criticalProfile of CRITICAL_PROFILES) {
+    const tools = getToolsForProfile(criticalProfile);
+    if (tools.length === 0) {
+      errors.push(`Critical profile "${criticalProfile}" has no active tools mapped.`);
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    toolCount: TOOL_REGISTRY.length,
+    criticalProfilesCovered: CRITICAL_PROFILES.every((p) => getToolsForProfile(p).length > 0),
+    errors,
+    warnings,
+  };
+}

@@ -357,6 +357,21 @@ const workspacePathDriftPatterns = [
     message:
       'Forbidden path literal "src/pages" — Page Objects must resolve to tests/pages from workspace manifest',
   },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*\([^)]*['"]src['"],\s*['"]tests['"]/,
+    message:
+      'Forbidden path literal "src/tests" — Test specs must resolve to tests/ from workspace manifest',
+  },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*\([^)]*['"]src\/tests['"]/,
+    message:
+      'Forbidden path literal "src/tests" — Test specs must resolve to tests/ from workspace manifest',
+  },
+  {
+    pattern: /(?:path\.join|path\.resolve)\s*\([^)]*['"]mcp-server['"]/,
+    message:
+      'Forbidden path literal "mcp-server" — MCP server must resolve to tools/mcp from workspace manifest',
+  },
 ];
 
 function scanForWorkspacePathDrift(dir: string, ext: string[]): void {

@@ -11,7 +11,7 @@ This document defines governance for framework agents:
 ## Requirement Template
 
 All requirement files must follow [`requirements/_TEMPLATE.md`](../requirements/_TEMPLATE.md).
-QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/writing-requirements.md`](../docs/writing-requirements.md).
+QA documentation: [`docs/GUIDE.md`](../docs/GUIDE.md), [`docs/WRITING-REQUIREMENTS.md`](../docs/WRITING-REQUIREMENTS.md).
 
 ## MCP Servers (three-server hybrid)
 
@@ -67,13 +67,13 @@ Coordinates the full pipeline:
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `health_check`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`, `snapshot_page`, `discover_pages`, `list_test_fixtures`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `archive_report`, `generate_page_object`
+- `playwright-qa`: `health_check`, `compile_requirement`, `compile_test_plan`, `validate_plan`, `trace_requirement`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `validate_generated_tests`, `get_test_failures`, `get_test_summary`, `list_artifacts`, `list_requirement_status`, `snapshot_page`, `discover_pages`, `list_test_fixtures`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `archive_report`, `generate_page_object`
 - `playwright-test`: `run_tests`
 - `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`, `browser_file_upload`; see root [`AGENTS.md`](../AGENTS.md)
 
 ### Example Prompt
 
-- "Run pipeline for `requirements/sample-login-empty-fields.md` and include unresolved failures."
+- "Run pipeline for `requirements/auth/sample-login-empty-fields.md` and include unresolved failures."
 
 ---
 
@@ -96,23 +96,26 @@ Transforms requirement files into structured scenario plans.
 Hybrid Markdown test plan written to:
 `specs/<feature-name>-test-plan.md`
 
-Includes Application Overview, per-scenario `### SC-XX` sections, **Seed:** `src/tests/seed.spec.ts`, and a table per scenario with columns:
+Includes Application Overview, per-scenario `### SC-XX` sections, **Seed:** `tests/seed.spec.ts`, and a table per scenario with columns:
 
 - `Scenario Name`
 - `Steps`
 - `Expected Result`
+- `Role`
+- `Auth Context`
+- `Type`
 
 Golden sample: [`specs/sample-login-empty-fields-test-plan.md`](../specs/sample-login-empty-fields-test-plan.md).
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`, `list_test_fixtures`, `discover_pages`, `snapshot_page`
-- `playwright-test`: `run_tests` (seed bootstrap: `src/tests/seed.spec.ts`)
+- `playwright-qa`: `compile_requirement`, `compile_test_plan`, `validate_plan`, `validate_requirement`, `normalize_requirements`, `parse_requirement_scenarios`, `list_artifacts`, `list_test_fixtures`, `discover_pages`, `snapshot_page`
+- `playwright-test`: `run_tests` (seed bootstrap: `tests/seed.spec.ts`)
 - `playwright`: `browser_navigate`, `browser_snapshot`
 
 ### Example Prompt
 
-- "Plan tests from `requirements/sample-login-empty-fields.md` and write `specs/sample-login-empty-fields-test-plan.md`."
+- "Plan tests from `requirements/auth/sample-login-empty-fields.md` and write `specs/sample-login-empty-fields-test-plan.md`."
 
 ---
 
@@ -129,16 +132,19 @@ Planner table with columns:
 - `Scenario Name`
 - `Steps`
 - `Expected Result`
+- `Role`
+- `Auth Context`
+- `Type`
 
 ### Output Format
 
-- Generated files under `src/tests/`
+- Generated files under `tests/` (`tests/<feature>-<role>.spec.ts` or `tests/<feature>.spec.ts`)
 - Mapping of scenario → file
 - Skipped scenarios with reason
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `validate_generated_tests`, `snapshot_page` (catalog reuse), `list_test_fixtures`, `generate_page_object`
+- `playwright-qa`: `compile_test_plan`, `validate_generated_tests`, `snapshot_page` (catalog reuse), `list_test_fixtures`, `inspect_file`, `generate_page_object`
 - `playwright-test`: `run_tests` (live verification loop, iterate until pass)
 - `playwright`: `browser_navigate`, `browser_snapshot`, `browser_file_upload`
 
@@ -150,7 +156,7 @@ See [`.github/agents/generator.agent.md`](agents/generator.agent.md) for `metada
 
 ### Example Prompt
 
-- "Generate tests from `specs/sample-login-empty-fields-test-plan.md` into `src/tests/login-empty-fields.spec.ts`."
+- "Generate tests from `specs/sample-login-empty-fields-test-plan.md` into `tests/login-empty-fields.spec.ts`."
 
 ---
 
@@ -166,11 +172,11 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "failures": [
     {
-      "filePath": "src/tests/example.spec.ts",
+      "filePath": "tests/example.spec.ts",
       "lineNumber": 42,
       "errorMessage": "Timeout 30000ms exceeded...",
-      "tracePath": "optional",
-      "screenshotPath": "optional"
+      "tracePath": "artifacts/test-results/.../trace.zip",
+      "screenshotPath": "artifacts/test-results/.../screenshot.png"
     }
   ]
 }
@@ -182,13 +188,13 @@ Diagnoses and repairs failing tests using structured failure payloads.
 {
   "fixes": [
     {
-      "filePath": "src/tests/example.spec.ts",
+      "filePath": "tests/example.spec.ts",
       "updatedContent": "..."
     }
   ],
   "cannotFix": [
     {
-      "filePath": "src/tests/other.spec.ts",
+      "filePath": "tests/other.spec.ts",
       "reason": "Missing reproducible selector context"
     }
   ]
@@ -197,7 +203,7 @@ Diagnoses and repairs failing tests using structured failure payloads.
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `get_test_failures`, `validate_generated_tests`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`
+- `playwright-qa`: `get_test_failures`, `validate_generated_tests`, `inspect_file`, `extract_pdf_text`, `read_excel_summary`, `list_test_fixtures`, `trace_requirement`
 - `playwright-test`: `run_tests`
 - `playwright`: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_fill_form`, `browser_wait_for`, `browser_take_screenshot`; see root [`AGENTS.md`](../AGENTS.md)
 
@@ -215,16 +221,16 @@ Aggregates test execution results, healing outcomes, and coverage metrics into s
 
 ### Input Format
 
-Pipeline context from Orchestrator plus `get_test_summary` and `get_test_failures` tool outputs.
+Pipeline context from Orchestrator plus `get_test_summary`, `trace_requirement`, and `get_test_failures` tool outputs.
 
 ### Output Format
 
-- Structured JSON `PipelineReport` with summary, coverage, and unresolved failures
-- Markdown report at `reports/pipeline-report-<runId>.md`
+- Structured JSON `PipelineReport` with summary, coverage, `summaryByRole`, and unresolved failures
+- Markdown report at `artifacts/reports/pipeline-report-<runId>.md`
 
 ### MCP Tools Consumed
 
-- `playwright-qa`: `get_test_summary`, `get_test_failures`
+- `playwright-qa`: `trace_requirement`, `get_test_summary`, `get_test_failures`, `list_requirement_status`, `archive_report`, `list_artifacts`
 
 ### Orchestration Mode Behavior
 
@@ -233,4 +239,5 @@ Pipeline context from Orchestrator plus `get_test_summary` and `get_test_failure
 
 ### Example Prompt
 
-- "Generate the pipeline report for the current run and write it to `reports/pipeline-report-<runId>.md`."
+- "Generate the pipeline report for the current run and write it to `artifacts/reports/pipeline-report-<runId>.md`."
+

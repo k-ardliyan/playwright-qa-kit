@@ -31,7 +31,10 @@ interface TestSummaryFile {
  * leaving the optional fields undefined.
  */
 function loadSummaryAnnotationMap(repoRoot: string): Map<string, SummaryTestCase> {
-  const summaryPath = path.resolve(repoRoot, 'reports', 'test-summary.json');
+  let summaryPath = path.resolve(repoRoot, 'artifacts', 'reports', 'test-summary.json');
+  if (!fs.existsSync(summaryPath)) {
+    summaryPath = path.resolve(repoRoot, 'reports', 'test-summary.json');
+  }
   if (!fs.existsSync(summaryPath)) return new Map();
 
   try {

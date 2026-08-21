@@ -59,7 +59,9 @@ function resolveAttachmentSourcePath(relativeOrAbs: string): string | null {
   } else {
     candidates.push(path.resolve(REPORT_DIR, normalized));
     candidates.push(path.resolve(process.cwd(), normalized));
-    // Common Playwright output sitting beside reports/
+    candidates.push(
+      path.resolve(process.cwd(), 'artifacts', 'test-results', path.basename(normalized)),
+    );
     candidates.push(path.resolve(process.cwd(), 'test-results', path.basename(normalized)));
     // Already-materialized path re-run safety
     if (normalized.startsWith('attachments/')) {
@@ -551,27 +553,50 @@ export default class CustomReporter implements Reporter {
       fs.writeFileSync(DASHBOARD_PATH, html, 'utf-8');
       fs.writeFileSync(SUMMARY_PATH, JSON.stringify(summary, null, 2), 'utf-8');
 
+      // Mirror to artifacts/reports/ if artifacts directory exists
+      try {
+        const artifactsReportDir = path.resolve(process.cwd(), 'artifacts', 'reports');
+        if (
+          fs.existsSync(artifactsReportDir) ||
+          fs.existsSync(path.resolve(process.cwd(), 'artifacts'))
+        ) {
+          if (!fs.existsSync(artifactsReportDir))
+            fs.mkdirSync(artifactsReportDir, { recursive: true });
+          fs.writeFileSync(path.join(artifactsReportDir, 'custom-dashboard.html'), html, 'utf-8');
+          fs.writeFileSync(
+            path.join(artifactsReportDir, 'test-summary.json'),
+            JSON.stringify(summary, null, 2),
+            'utf-8',
+          );
+        }
+      } catch {
+        // Non-blocking mirror
+      }
+
       // Write .latest-run marker so archive:save can detect the latest run
       try {
         const latestRunMarker = path.join(REPORT_DIR, '.latest-run');
-        fs.writeFileSync(
-          latestRunMarker,
-          JSON.stringify({
-            timestamp: summary.timestamp,
-            summaryPath: path.relative(process.cwd(), SUMMARY_PATH),
-            total: summary.total,
-            passed: summary.passed,
-            failed: summary.failed,
-            skipped: summary.skipped,
-            passRate: summary.passRate,
-            reportMode,
-            // archive:save fallback fields — without these, saves from a shell
-            // without APP_ENV set mislabel the env and lose totalDurationMs.
-            appEnv: runMeta.appEnv,
-            totalDurationMs: runMeta.totalDurationMs,
-          }),
-          'utf-8',
-        );
+        const markerPayload = JSON.stringify({
+          timestamp: summary.timestamp,
+          summaryPath: path.relative(process.cwd(), SUMMARY_PATH),
+          total: summary.total,
+          passed: summary.passed,
+          failed: summary.failed,
+          skipped: summary.skipped,
+          passRate: summary.passRate,
+          reportMode,
+          // archive:save fallback fields — without these, saves from a shell
+          // without APP_ENV set mislabel the env and lose totalDurationMs.
+          appEnv: runMeta.appEnv,
+          totalDurationMs: runMeta.totalDurationMs,
+        });
+        fs.writeFileSync(latestRunMarker, markerPayload, 'utf-8');
+
+        // Also mirror .latest-run into artifacts/reports if present
+        const artifactsReportDir = path.resolve(process.cwd(), 'artifacts', 'reports');
+        if (fs.existsSync(artifactsReportDir)) {
+          fs.writeFileSync(path.join(artifactsReportDir, '.latest-run'), markerPayload, 'utf-8');
+        }
       } catch {
         // Non-blocking
       }

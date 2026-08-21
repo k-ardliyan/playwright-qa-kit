@@ -27,7 +27,10 @@ export interface ToolEntry {
     replacement?: string;
     readOnly?: boolean;
 }
+export declare function setActiveMcpProfile(profile?: ToolProfile | string): void;
+export declare function getActiveMcpProfile(): ToolProfile;
 export declare function getToolsForProfile(profile?: ToolProfile | string): ToolEntry[];
+export declare function isToolAllowedForProfile(name: string, profile?: ToolProfile | string): boolean;
 export declare const TOOL_REGISTRY: ToolEntry[];
 export declare function getToolEntry(name: string): ToolEntry | undefined;
 export declare function isToolError(name: string, payload: unknown): boolean;

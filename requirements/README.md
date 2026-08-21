@@ -13,7 +13,7 @@ Folder ini untuk **file requirement fitur** yang dibaca Planner / pipeline Herme
 
 Locator **berbeda per website**. Pipeline setup awal wajib:
 
-1. `snapshot_page` → `selector-catalog/auth/login.json` (atau path setara)
+1. `snapshot_page` → `artifacts/selector-catalog/auth/login.json` (atau path setara)
 2. Plan → Generate (Path A: inline locator dari catalog)
 3. Execute → Heal → Report
 

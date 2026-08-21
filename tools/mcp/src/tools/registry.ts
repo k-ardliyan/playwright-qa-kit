@@ -69,11 +69,56 @@ export interface ToolEntry {
   readOnly?: boolean;
 }
 
+let activeMcpProfileOverride: ToolProfile | undefined;
+
+export function setActiveMcpProfile(profile?: ToolProfile | string): void {
+  if (!profile || profile === 'all') {
+    activeMcpProfileOverride = undefined;
+    return;
+  }
+  if (!KNOWN_PROFILES.includes(profile as ToolProfile)) {
+    throw new Error(
+      `[mcp-profile] Invalid profile "${profile}". Allowed profiles: ${KNOWN_PROFILES.join(', ')}`,
+    );
+  }
+  activeMcpProfileOverride = profile as ToolProfile;
+}
+
+export function getActiveMcpProfile(): ToolProfile {
+  if (activeMcpProfileOverride) {
+    return activeMcpProfileOverride;
+  }
+  const envVal = process.env.MCP_PROFILE?.trim();
+  if (!envVal || envVal === 'all') {
+    return 'all';
+  }
+  if (!KNOWN_PROFILES.includes(envVal as ToolProfile)) {
+    throw new Error(
+      `[mcp-profile] Unknown MCP_PROFILE='${envVal}'. Allowed profiles: ${KNOWN_PROFILES.join(', ')}`,
+    );
+  }
+  return envVal as ToolProfile;
+}
+
 export function getToolsForProfile(profile: ToolProfile | string = 'all'): ToolEntry[] {
   if (profile === 'all') return TOOL_REGISTRY;
-  return TOOL_REGISTRY.filter(
-    (t) => !t.profiles || t.profiles.includes('all') || t.profiles.includes(profile as ToolProfile),
-  );
+  if (!KNOWN_PROFILES.includes(profile as ToolProfile)) {
+    throw new Error(
+      `[mcp-profile] Unknown profile "${profile}". Allowed profiles: ${KNOWN_PROFILES.join(', ')}`,
+    );
+  }
+  return TOOL_REGISTRY.filter((t) => !t.profiles || t.profiles.includes(profile as ToolProfile));
+}
+
+export function isToolAllowedForProfile(
+  name: string,
+  profile: ToolProfile | string = getActiveMcpProfile(),
+): boolean {
+  if (profile === 'all') return TOOL_MAP.has(name);
+  const entry = TOOL_MAP.get(name);
+  if (!entry) return false;
+  if (!entry.profiles) return true;
+  return entry.profiles.includes(profile as ToolProfile);
 }
 
 function isStatusError(payload: unknown): boolean {
@@ -123,7 +168,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     inputSchema: GET_TEST_FAILURES_INPUT,
     stability: 'stable',
     readOnly: true,
-    profiles: ['healer', 'debug', 'all'],
+    profiles: ['healer', 'reporter', 'debug', 'all'],
     handler: (args) => {
       const raw = typeof args?.resultsDir === 'string' ? args.resultsDir : undefined;
       if (raw !== undefined) {
@@ -172,7 +217,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     inputSchema: REQUIREMENTS_TEXT_OR_PATH,
     stability: 'stable',
     readOnly: true,
-    profiles: ['planner', 'author', 'all'],
+    profiles: ['planner', 'generator', 'author', 'all'],
     handler: (args) => {
       const requirementsText =
         typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
@@ -384,7 +429,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
     },
     stability: 'stable',
     readOnly: false,
-    profiles: ['discovery', 'planner', 'author', 'visual', 'all'],
+    profiles: ['discovery', 'planner', 'generator', 'healer', 'author', 'visual', 'all'],
     handler: (args) => snapshotPage(args),
   },
   {

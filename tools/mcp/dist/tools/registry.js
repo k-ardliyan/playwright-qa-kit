@@ -8,7 +8,10 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CRITICAL_PROFILES = exports.KNOWN_PROFILES = exports.TOOL_ROUTES = exports.MCP_TOOL_DEFINITIONS = exports.TOOL_REGISTRY = void 0;
+exports.setActiveMcpProfile = setActiveMcpProfile;
+exports.getActiveMcpProfile = getActiveMcpProfile;
 exports.getToolsForProfile = getToolsForProfile;
+exports.isToolAllowedForProfile = isToolAllowedForProfile;
 exports.getToolEntry = getToolEntry;
 exports.isToolError = isToolError;
 exports.validateProfileRegistry = validateProfileRegistry;
@@ -34,10 +37,47 @@ const compile_test_plan_1 = require("./compile-test-plan");
 const validate_plan_1 = require("./validate-plan");
 const trace_requirement_1 = require("./trace-requirement");
 const safety_1 = require("../utils/safety");
+let activeMcpProfileOverride;
+function setActiveMcpProfile(profile) {
+    if (!profile || profile === 'all') {
+        activeMcpProfileOverride = undefined;
+        return;
+    }
+    if (!exports.KNOWN_PROFILES.includes(profile)) {
+        throw new Error(`[mcp-profile] Invalid profile "${profile}". Allowed profiles: ${exports.KNOWN_PROFILES.join(', ')}`);
+    }
+    activeMcpProfileOverride = profile;
+}
+function getActiveMcpProfile() {
+    if (activeMcpProfileOverride) {
+        return activeMcpProfileOverride;
+    }
+    const envVal = process.env.MCP_PROFILE?.trim();
+    if (!envVal || envVal === 'all') {
+        return 'all';
+    }
+    if (!exports.KNOWN_PROFILES.includes(envVal)) {
+        throw new Error(`[mcp-profile] Unknown MCP_PROFILE='${envVal}'. Allowed profiles: ${exports.KNOWN_PROFILES.join(', ')}`);
+    }
+    return envVal;
+}
 function getToolsForProfile(profile = 'all') {
     if (profile === 'all')
         return exports.TOOL_REGISTRY;
-    return exports.TOOL_REGISTRY.filter((t) => !t.profiles || t.profiles.includes('all') || t.profiles.includes(profile));
+    if (!exports.KNOWN_PROFILES.includes(profile)) {
+        throw new Error(`[mcp-profile] Unknown profile "${profile}". Allowed profiles: ${exports.KNOWN_PROFILES.join(', ')}`);
+    }
+    return exports.TOOL_REGISTRY.filter((t) => !t.profiles || t.profiles.includes(profile));
+}
+function isToolAllowedForProfile(name, profile = getActiveMcpProfile()) {
+    if (profile === 'all')
+        return TOOL_MAP.has(name);
+    const entry = TOOL_MAP.get(name);
+    if (!entry)
+        return false;
+    if (!entry.profiles)
+        return true;
+    return entry.profiles.includes(profile);
 }
 function isStatusError(payload) {
     if (typeof payload !== 'object' || payload === null)
@@ -80,7 +120,7 @@ exports.TOOL_REGISTRY = [
         inputSchema: GET_TEST_FAILURES_INPUT,
         stability: 'stable',
         readOnly: true,
-        profiles: ['healer', 'debug', 'all'],
+        profiles: ['healer', 'reporter', 'debug', 'all'],
         handler: (args) => {
             const raw = typeof args?.resultsDir === 'string' ? args.resultsDir : undefined;
             if (raw !== undefined) {
@@ -126,7 +166,7 @@ exports.TOOL_REGISTRY = [
         inputSchema: REQUIREMENTS_TEXT_OR_PATH,
         stability: 'stable',
         readOnly: true,
-        profiles: ['planner', 'author', 'all'],
+        profiles: ['planner', 'generator', 'author', 'all'],
         handler: (args) => {
             const requirementsText = typeof args?.requirementsText === 'string' ? args.requirementsText : undefined;
             const requirementPath = typeof args?.requirementPath === 'string' ? args.requirementPath : undefined;
@@ -320,7 +360,7 @@ exports.TOOL_REGISTRY = [
         },
         stability: 'stable',
         readOnly: false,
-        profiles: ['discovery', 'planner', 'author', 'visual', 'all'],
+        profiles: ['discovery', 'planner', 'generator', 'healer', 'author', 'visual', 'all'],
         handler: (args) => (0, snapshot_page_1.snapshotPage)(args),
     },
     {

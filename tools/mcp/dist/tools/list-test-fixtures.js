@@ -1,6 +1,6 @@
 "use strict";
 /**
- * MCP: list_test_fixtures — list files under test-fixtures/ for Input Data paths.
+ * MCP: list_test_fixtures — list files under tests/data/ for Input Data paths.
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;

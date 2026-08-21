@@ -195,7 +195,7 @@ Detail: [AUTH-CONTEXT-CONVENTION.md](AUTH-CONTEXT-CONVENTION.md).
 
 1. Pastikan `mcp:build` sukses:
    ```bash
-   ls mcp-server/dist/index-mcp.js  # harus ada
+   ls tools/mcp/dist/index-mcp.js  # harus ada
    # Jika tidak ada:
    npm run mcp:build
    ```

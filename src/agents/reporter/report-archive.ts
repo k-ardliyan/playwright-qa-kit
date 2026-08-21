@@ -134,11 +134,17 @@ export interface ArchiveSaveResult {
 // Lazy accessors: read env vars at call time so unit tests can inject a custom
 // archive path via QA_ARCHIVE_DIR / QA_REPORT_DIR without worrying about
 // module import order or caching.
-function archiveDir(): string {
-  return process.env['QA_ARCHIVE_DIR'] ?? path.resolve('reports', 'archive');
-}
 function reportDir(): string {
-  return process.env['QA_REPORT_DIR'] ?? path.resolve('reports');
+  if (process.env['QA_REPORT_DIR']) return process.env['QA_REPORT_DIR'];
+  const artifactsReport = path.resolve('artifacts', 'reports');
+  if (fs.existsSync(artifactsReport) || fs.existsSync(path.resolve('artifacts'))) {
+    return artifactsReport;
+  }
+  return path.resolve('reports');
+}
+function archiveDir(): string {
+  if (process.env['QA_ARCHIVE_DIR']) return process.env['QA_ARCHIVE_DIR'];
+  return path.join(reportDir(), 'archive');
 }
 function summaryPath(): string {
   return path.join(reportDir(), 'test-summary.json');

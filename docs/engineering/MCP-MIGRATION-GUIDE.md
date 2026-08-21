@@ -9,7 +9,7 @@
 
 | Area                  | Before (Legacy)                               | After (Modernized)                                                         |
 | --------------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
-| **Server Invocation** | `npx -y @playwright/mcp@0.0.78 --headless`    | `npx tsx scripts/playwright-mcp-launch.ts`                                 |
+| **Server Invocation** | `npx -y @playwright/mcp@0.0.78 --headless`    | `npx tsx tools/scripts/playwright-mcp-launch.ts`                           |
 | **Capability Config** | Manual `--caps=network` in `.vscode/mcp.json` | Automatic intent routing (`author`, `debug`, `auth`, `visual`, `artifact`) |
 | **Session Isolation** | Default persistent browser session            | Default isolated session per scenario                                      |
 | **Authentication**    | Manual browser login                          | Automated storage state resolution (`authStatePath`)                       |
@@ -30,17 +30,17 @@ Ensure your `.mcp.json` uses the launcher:
     {
       "name": "playwright",
       "command": "npx",
-      "args": ["tsx", "scripts/playwright-mcp-launch.ts"]
+      "args": ["tsx", "tools/scripts/playwright-mcp-launch.ts"]
     },
     {
       "name": "playwright-test",
       "command": "npx",
-      "args": ["tsx", "scripts/playwright-test-mcp-launch.ts"]
+      "args": ["tsx", "tools/scripts/playwright-test-mcp-launch.ts"]
     },
     {
       "name": "playwright-qa",
       "command": "node",
-      "args": ["mcp-server/dist/index-mcp.js"]
+      "args": ["tools/mcp/dist/index-mcp.js"]
     }
   ]
 }
@@ -56,13 +56,13 @@ Ensure your `.mcp.json` uses the launcher:
   ```
 - **Launch MCP in author mode with role:**
   ```bash
-  npx tsx scripts/playwright-mcp-launch.ts --profile=author --role=finance
+  npx tsx tools/scripts/playwright-mcp-launch.ts --profile=author --role=finance
   ```
 - **Launch MCP in debug mode with devtools & network:**
   ```bash
-  npx tsx scripts/playwright-mcp-launch.ts --profile=debug
+  npx tsx tools/scripts/playwright-mcp-launch.ts --profile=debug
   ```
 - **Interactive Auth Assist (SSO/2FA):**
   ```bash
-  npx tsx scripts/playwright-mcp-launch.ts --profile=auth --role=super-admin --headed
+  npx tsx tools/scripts/playwright-mcp-launch.ts --profile=auth --role=super-admin --headed
   ```

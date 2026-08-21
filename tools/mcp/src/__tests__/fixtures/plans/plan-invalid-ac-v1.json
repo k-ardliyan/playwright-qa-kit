@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "qa.test-plan/v1",
+  "sourceRequirementPath": "requirements/finance/approve-invoice.md",
+  "sourceRequirementHash": "c3d4e5f6a7b8c9d0",
+  "planPath": "specs/finance-approve-invoice.plan.json",
+  "planHash": "f1e2d3c4b5a60718",
+  "seed": "seed:invoice.pending",
+  "module": "finance",
+  "feature": "invoice-approval",
+  "catalogEvidence": [],
+  "scenarios": [
+    {
+      "scenarioId": "SC-01",
+      "testId": "TC-INV-001",
+      "covers": ["AC-NON-EXISTENT-99"],
+      "actor": "finance",
+      "authContext": "finance",
+      "executionMode": "automated",
+      "dataSetup": [],
+      "actions": ["navigate to /finance"],
+      "assertions": [
+        {
+          "description": "Invoice status changes to Approved",
+          "provenance": "requirement"
+        }
+      ],
+      "locatorIntent": [],
+      "networkExpectations": [],
+      "artifactExpectations": [],
+      "cleanup": [],
+      "unknowns": []
+    }
+  ],
+  "coverageGaps": [],
+  "diagnostics": []
+}

@@ -1,4 +1,11 @@
-import { getToolEntry, isToolError, MCP_TOOL_DEFINITIONS } from './registry';
+import {
+  getToolEntry,
+  isToolError,
+  isToolAllowedForProfile,
+  getActiveMcpProfile,
+  type ToolProfile,
+  MCP_TOOL_DEFINITIONS,
+} from './registry';
 
 export interface ToolDispatchResult {
   payload: unknown;
@@ -8,13 +15,28 @@ export interface ToolDispatchResult {
 export async function dispatchTool(
   name: string,
   args: Record<string, unknown> | undefined,
+  profile?: ToolProfile | string,
 ): Promise<ToolDispatchResult> {
+  const activeProfile = profile ?? getActiveMcpProfile();
   const entry = getToolEntry(name);
   if (!entry) {
     return {
       payload: {
         status: 'error',
         error: { code: 'UNKNOWN_TOOL', message: `Unknown tool: ${name}` },
+      },
+      isError: true,
+    };
+  }
+
+  if (!isToolAllowedForProfile(name, activeProfile)) {
+    return {
+      payload: {
+        status: 'error',
+        error: {
+          code: 'MCP_TOOL_NOT_ALLOWED_FOR_PROFILE',
+          message: `Tool "${name}" is not permitted under MCP_PROFILE="${activeProfile}". Allowed profiles: ${entry.profiles?.join(', ') || 'all'}`,
+        },
       },
       isError: true,
     };

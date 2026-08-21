@@ -1,7 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { dispatchTool, MCP_TOOL_DEFINITIONS } from './tools/dispatch';
+import { dispatchTool } from './tools/dispatch';
+import { getActiveMcpProfile, getToolsForProfile } from './tools/registry';
 import { bootstrapMcpEnvironment } from './utils/mcp-env-bootstrap';
 import { logger } from './utils/logger';
 
@@ -18,9 +19,11 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  logger.info('ListTools request received.');
+  const activeProfile = getActiveMcpProfile();
+  logger.info('ListTools request received.', { profile: activeProfile });
+  const activeTools = getToolsForProfile(activeProfile);
   return {
-    tools: MCP_TOOL_DEFINITIONS.map((tool) => ({
+    tools: activeTools.map((tool) => ({
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema,

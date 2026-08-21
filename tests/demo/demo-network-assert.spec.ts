@@ -32,7 +32,7 @@ test.describe(
         inputData: {
           endpoint: 'POST /api/demo/submit',
           name: 'QA-KIT-NETWORK-OK',
-          contract: 'test-fixtures/network/contracts/demo/submit-success.json',
+          contract: 'tests/data/network/contracts/demo/submit-success.json',
         },
       });
 
@@ -84,7 +84,7 @@ test.describe(
               request: { requiredKeys: ['name', 'qty'] },
               response: { matchObject: { ok: true } },
             },
-            contract: 'test-fixtures/network/contracts/demo/submit-success.json',
+            contract: 'tests/data/network/contracts/demo/submit-success.json',
           },
           async () => {
             await page.getByRole('button', { name: 'Submit' }).click();

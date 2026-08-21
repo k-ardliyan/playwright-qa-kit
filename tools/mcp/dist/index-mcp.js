@@ -4,6 +4,7 @@ const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const dispatch_1 = require("./tools/dispatch");
+const registry_1 = require("./tools/registry");
 const mcp_env_bootstrap_1 = require("./utils/mcp-env-bootstrap");
 const logger_1 = require("./utils/logger");
 const server = new index_js_1.Server({
@@ -15,9 +16,11 @@ const server = new index_js_1.Server({
     },
 });
 server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => {
-    logger_1.logger.info('ListTools request received.');
+    const activeProfile = (0, registry_1.getActiveMcpProfile)();
+    logger_1.logger.info('ListTools request received.', { profile: activeProfile });
+    const activeTools = (0, registry_1.getToolsForProfile)(activeProfile);
     return {
-        tools: dispatch_1.MCP_TOOL_DEFINITIONS.map((tool) => ({
+        tools: activeTools.map((tool) => ({
             name: tool.name,
             description: tool.description,
             inputSchema: tool.inputSchema,

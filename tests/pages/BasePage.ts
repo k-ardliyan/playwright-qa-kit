@@ -95,7 +95,7 @@ export class BasePage {
 
   /**
    * Mengunggah file ke input secara aman.
-   * Prefer `uploadFixture` from `@/support/pw` for paths under test-fixtures/.
+   * Prefer `uploadFixture` from `@/support/pw` for paths under tests/data/.
    */
   async uploadFile(locator: Locator, filePath: string): Promise<void> {
     await locator.setInputFiles(filePath);

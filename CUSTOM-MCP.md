@@ -240,8 +240,8 @@ Optional variables in `config/environments/{APP_ENV}.env` (read by the playwrigh
 | `PLAYWRIGHT_TEST_ROOT`              | `tests`                                     | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
 | `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`                      | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
 | `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_                     | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
-| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `example/erpku/tests`                       | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
-| `PLAYWRIGHT_ADAPTER_CONFIG`         | `example/erpku/playwright.config.ts`        | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
+| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `examples/erpku/tests`                      | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
+| `PLAYWRIGHT_ADAPTER_CONFIG`         | `examples/erpku/playwright.config.ts`       | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
 | `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`              | Required import path for specs under adapter test root                                                    |
 | `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `artifacts/test-results/erpku-results.json` | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
 
@@ -252,13 +252,13 @@ Optional variables in `config/environments/{APP_ENV}.env` (read by the playwrigh
 **ERPKU adapter profile example:**
 
 ```bash
-PLAYWRIGHT_CONFIG=example/erpku/playwright.config.ts
-PLAYWRIGHT_TEST_ROOT=example/erpku/tests
+PLAYWRIGHT_CONFIG=examples/erpku/playwright.config.ts
+PLAYWRIGHT_TEST_ROOT=examples/erpku/tests
 ```
 
 Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT` or `PLAYWRIGHT_ADAPTER_TEST_ROOT`.
 
-**Forks that delete `example/erpku/`:** unset or replace all `PLAYWRIGHT_ADAPTER_*` vars if you add a different reference adapter, or leave defaults unused if you have no adapter specs.
+**Forks that delete `examples/erpku/`:** unset or replace all `PLAYWRIGHT_ADAPTER_*` vars if you add a different reference adapter, or leave defaults unused if you have no adapter specs.
 
 
 ---
@@ -290,7 +290,7 @@ Lists files under allowed paths: `requirements/*.md`, `specs/*.md`, generated te
 
 ## Tool: `list_requirement_status`
 
-Coverage map for QA: each pipeline requirement (nested OK) with plan/test presence, `@manual` count, and last status from `reports/test-summary.json` when available.
+Coverage map for QA: each pipeline requirement (nested OK) with plan/test presence, `@manual` count, and last status from `artifacts/reports/test-summary.json` when available.
 
 ### Input
 
@@ -308,7 +308,7 @@ Coverage map for QA: each pipeline requirement (nested OK) with plan/test presen
       "requirementPath": "requirements/auth/sample-login-empty-fields.md",
       "planPath": "specs/auth/sample-login-empty-fields-test-plan.md",
       "hasPlan": true,
-      "testPaths": ["src/tests/auth/sample-login-empty-fields.spec.ts"],
+      "testPaths": ["tests/auth/sample-login-empty-fields.spec.ts"],
       "hasTests": true,
       "manualCount": 1,
       "lastStatus": "passed"
@@ -326,7 +326,7 @@ Use after preflight or when asking “mana yang sudah diplan / punya test?”.
 
 Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo, example adapter), and capability tags (`@network` / `@network-assert` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
 
-Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `src/tests`).
+Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `tests`).
 
 ### Input
 
@@ -338,7 +338,7 @@ Or single file:
 
 ```json
 {
-  "filePath": "example/erpku/tests/ui/auth/login.spec.ts"
+  "filePath": "examples/erpku/tests/ui/auth/login.spec.ts"
 }
 ```
 
@@ -349,14 +349,14 @@ Or single file:
 Resolves Playwright JSON results in this order:
 
 1. **`getJsonResultsPath()`** — config-aware path from `PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`
-2. Latest `.json` by mtime under `resultsDir` (default `test-results/`)
-3. Legacy `test-results/results.json` fallback
+2. Latest `.json` by mtime under `resultsDir` (default `artifacts/test-results/`)
+3. Legacy `artifacts/test-results/results.json` fallback
 
 ### Input
 
 ```json
 {
-  "resultsDir": "test-results"
+  "resultsDir": "artifacts/test-results"
 }
 ```
 
@@ -368,7 +368,7 @@ Resolves Playwright JSON results in this order:
   "failures": [
     {
       "testTitle": "...",
-      "filePath": "src/tests/...",
+      "filePath": "tests/...",
       "errorMessage": "...",
       "duration": 0,
       "lineNumber": 42,
@@ -376,7 +376,7 @@ Resolves Playwright JSON results in this order:
       "screenshotPath": "optional"
     }
   ],
-  "sourceFile": "test-results/results.json or config-mapped JSON path",
+  "sourceFile": "artifacts/test-results/results.json or config-mapped JSON path",
   "message": "..."
 }
 ```
@@ -385,7 +385,7 @@ Resolves Playwright JSON results in this order:
 
 ## Tool: `get_test_summary`
 
-Reads `reports/test-summary.json` from the custom reporter. Builds per-role and per-module breakdowns (Opsi B nested: module → features) from `testCases` in the summary file when available.
+Reads `artifacts/reports/test-summary.json` from the custom reporter. Builds per-role and per-module breakdowns (Opsi B nested: module → features) from `testCases` in the summary file when available.
 
 ### Input
 
@@ -439,7 +439,7 @@ Reads `reports/test-summary.json` from the custom reporter. Builds per-role and 
 
 ## Tool: `snapshot_page`
 
-Navigate to a URL with a headless Chromium, capture the ARIA snapshot, and persist a structured selector catalog under `selector-catalog/<featureName>/<pageName>.{aria.yml,json}`. The MCP response is a compact summary (path, element count, hash) so AI agents do not need to parse the full ARIA tree in-band.
+Navigate to a URL with a headless Chromium, capture the ARIA snapshot, and persist a structured selector catalog under `artifacts/selector-catalog/<featureName>/<pageName>.{aria.yml,json}`. The MCP response is a compact summary (path, element count, hash) so AI agents do not need to parse the full ARIA tree in-band.
 
 ### Why this tool exists
 
@@ -482,9 +482,9 @@ QA non-coders and AI agents both need resilient, semantically-meaningful locator
   "hash": "sha256-hex...",
   "elementCount": 12,
   "truncated": false,
-  "ariaYmlPath": "selector-catalog/login/login-form.aria.yml",
-  "selectorsJsonPath": "selector-catalog/login/login-form.json",
-  "message": "Captured 12 element(s) → selector-catalog/login/login-form.json"
+  "ariaYmlPath": "artifacts/selector-catalog/login/login-form.aria.yml",
+  "selectorsJsonPath": "artifacts/selector-catalog/login/login-form.json",
+  "message": "Captured 12 element(s) → artifacts/selector-catalog/login/login-form.json"
 }
 ```
 
@@ -522,7 +522,7 @@ If a fresh catalog already exists for the same URL, the tool returns `skipped: t
 
 ### Safety
 
-- Files are written only under `selector-catalog/<featureName>/`.
+- Files are written only under `artifacts/selector-catalog/<featureName>/`.
 - Path traversal in `featureName` is rejected by `safety.resolveAllowedPath`.
 - Hard cap of 100 files per feature (env `SELECTOR_CATALOG_MAX_FILES` to override). Returns `CAP_EXCEEDED` when exceeded.
 
@@ -530,7 +530,7 @@ If a fresh catalog already exists for the same URL, the tool returns `skipped: t
 
 ## Tool: `discover_pages`
 
-BFS auto-crawl a public site from a single entry point. For each unique same-origin URL the tool persists an ARIA + selector catalog (via the shared `_internal/snapshot-core.ts`) and appends the page metadata to `selector-catalog/<featureName>/page-map.json`. Respects `robots.txt`, applies a politeness delay, and writes a `.discover-state.json` checkpoint every 5 pages so a crashed crawl can resume.
+BFS auto-crawl a public site from a single entry point. For each unique same-origin URL the tool persists an ARIA + selector catalog (via the shared `_internal/snapshot-core.ts`) and appends the page metadata to `artifacts/selector-catalog/<featureName>/page-map.json`. Respects `robots.txt`, applies a politeness delay, and writes a `.discover-state.json` checkpoint every 5 pages so a crashed crawl can resume.
 
 ### Input
 
@@ -568,7 +568,7 @@ BFS auto-crawl a public site from a single entry point. For each unique same-ori
   "pagesDiscovered": 8,
   "skippedCount": 3,
   "errorCount": 0,
-  "pageMapPath": "selector-catalog/public-pages/page-map.json",
+  "pageMapPath": "artifacts/selector-catalog/public-pages/page-map.json",
   "durationMs": 12450,
   "message": "Discovered 8 page(s) under public-pages/ (skipped 3, errors 0)."
 }

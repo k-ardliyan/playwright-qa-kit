@@ -6,6 +6,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Core Freeze v1 — 2026-08-21
+
+- **MCP Runtime Profile Enforcement (RC-1)**
+  - Enforced active tool profiles (`planner`, `generator`, `healer`, `reporter`, `discovery`, `admin`, `all`) at runtime.
+  - Dynamic `ListTools` filtering and strict profile authorization during tool dispatch (`MCP_TOOL_NOT_ALLOWED_FOR_PROFILE`).
+  - Added unit test suite for profile filtering, unauthorized invocation blocking, and configuration resolution.
+- **Traceability Convergence (RC-2)**
+  - Prioritized exact identifier linkage (`testId` -> `scenarioId` -> `requirementId` -> heuristic fallback).
+  - Emitted `TRACE_HEURISTIC_LINK_USED` diagnostic with reason and confidence score for fallback matching.
+  - Integrated 4D coverage state model (`design`, `automation`, `execution`, `verification`) across scenario nodes and root contract.
+  - Enforced strict AC coverage rules: non-executed / planned tests never marked as `covered`.
+  - Reused shared failure classifier for structured root cause attribution (`app`, `test`, `env`, `ai_generation`, `unknown`).
+- **Contract CI Closure (RC-3)**
+  - Resolved npm script drift in `package.json` for `validate:test-plan` and `test:mcp-profiles`.
+  - Enforced offline contract suite guarantee across all schema validators and golden contract fixtures.
+  - Added golden fixtures for stale plans, invalid AC plans, unexecuted traces, and profile snapshots.
+- **Documentation Parity (RC-4)**
+  - Synchronized `README.md`, `CUSTOM-MCP.md`, and agent guidance documents with canonical tool names and 21 registered tools.
+  - Eliminated legacy paths across documentation (`test-fixtures/`, `mcp-server/`, un-prefixed `selector-catalog/`).
+- **Core Framework Freeze**
+  - Formally established `Core Freeze v1` in `docs/architecture/DECISIONS.md` (D-13).
+  - Defined Prompt Studio v1 integration boundary and contracts in `docs/architecture/PROMPT-STUDIO-INTEGRATION-BOUNDARY.md`.
+
 ## [0.2.0-alpha.1] - 2026-08-21
 
 ### Added

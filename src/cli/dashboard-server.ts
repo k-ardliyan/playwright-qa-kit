@@ -57,8 +57,14 @@ import { deriveDisplayName } from '../support/custom-dashboard/domain/run';
 
 const DEFAULT_PORT = 4567;
 const HEARTBEAT_TIMEOUT_MS = 20_000; // server shuts down if no heartbeat for 20s
-const REPORT_DIR = path.resolve(process.cwd(), 'reports');
-const SUMMARY_PATH = path.join(REPORT_DIR, 'test-summary.json');
+
+function getSummaryPath(): string {
+  const artifactsSummary = path.resolve(process.cwd(), 'artifacts', 'reports', 'test-summary.json');
+  if (fs.existsSync(artifactsSummary)) return artifactsSummary;
+  const legacySummary = path.resolve(process.cwd(), 'reports', 'test-summary.json');
+  if (fs.existsSync(legacySummary)) return legacySummary;
+  return artifactsSummary;
+}
 
 // ─── Arg parsing ─────────────────────────────────────────────────────────────
 
@@ -226,9 +232,10 @@ function renderDashboardOverviewPage(): string {
   const latestRunArchived = isLatestRunArchived();
 
   let latestSummary: Record<string, unknown> | null = null;
-  if (fs.existsSync(SUMMARY_PATH)) {
+  const summaryPath = getSummaryPath();
+  if (fs.existsSync(summaryPath)) {
     try {
-      latestSummary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+      latestSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
     } catch {
       // ignore
     }
@@ -298,8 +305,9 @@ function renderLatestDetailPage(): string {
   let collectedTests: import('../support/custom-dashboard/types').CollectedTestData[] = [];
 
   try {
-    if (fs.existsSync(SUMMARY_PATH)) {
-      const raw = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+    const summaryPath = getSummaryPath();
+    if (fs.existsSync(summaryPath)) {
+      const raw = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
       summary = raw;
       collectedTests = Array.isArray(raw.testCases) ? normalizeTestCases(raw.testCases) : [];
     }
@@ -408,8 +416,9 @@ export function buildDashboard(): string {
   let collectedTests: object[] = [];
 
   try {
-    if (fs.existsSync(SUMMARY_PATH)) {
-      const raw = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+    const summaryPath = getSummaryPath();
+    if (fs.existsSync(summaryPath)) {
+      const raw = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
       summary = raw;
       collectedTests = Array.isArray(raw.testCases) ? normalizeTestCases(raw.testCases) : [];
     }
@@ -728,9 +737,10 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
     const latestRun = getLatestRunInfo();
     const latestRunArchived = isLatestRunArchived();
     let latestSummary: Record<string, unknown> | null = null;
-    if (fs.existsSync(SUMMARY_PATH)) {
+    const summaryPath = getSummaryPath();
+    if (fs.existsSync(summaryPath)) {
       try {
-        latestSummary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+        latestSummary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
       } catch {
         // ignore
       }
@@ -768,12 +778,13 @@ export async function handleRequest(req: http.IncomingMessage, res: http.ServerR
 
   // ── GET /api/runs/latest ─────────────────────────────────────────────────
   if (pathname === '/api/runs/latest' && method === 'GET') {
-    if (!fs.existsSync(SUMMARY_PATH)) {
+    const summaryPath = getSummaryPath();
+    if (!fs.existsSync(summaryPath)) {
       jsonResponse(res, 404, { error: 'No latest run found' });
       return;
     }
     try {
-      const summary = JSON.parse(fs.readFileSync(SUMMARY_PATH, 'utf-8'));
+      const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
       const latestRun = getLatestRunInfo();
       jsonResponse(res, 200, {
         summary,

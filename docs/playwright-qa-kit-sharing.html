@@ -671,7 +671,7 @@ requirements/login.md</div>
               <li><span class="dot">•</span> Path A: inline locator dari catalog</li>
               <li><span class="dot">•</span> Path B: POM via generate_page_object</li>
               <li><span class="dot">•</span> setTestMetadata + annotations (TC-ID, priority, layer)</li>
-              <li><span class="dot">•</span> Output: <code>src/tests/&lt;feature&gt;*&lt;role&gt;.spec.ts</code></li>
+              <li><span class="dot">•</span> Output: <code>tests/&lt;feature&gt;*&lt;role&gt;.spec.ts</code></li>
               <li><span class="dot">•</span> <code>validate_generated_tests</code> otomatis</li>
             </ul>
             <div class="code-block mt-3">// annotations otomatis
@@ -847,7 +847,7 @@ HRD_EMAIL=...
         </div>
       </div>
       <div class="card-soft mt-4 text-sm muted">
-        <p class="mb-2"><strong>Konvensi file:</strong> <code>src/tests/&lt;feature&gt;-&lt;role&gt;.spec.ts</code> + <code>test.use({ storageState: '.auth/finance.json' })</code></p>
+        <p class="mb-2"><strong>Konvensi file:</strong> <code>tests/&lt;feature&gt;-&lt;role&gt;.spec.ts</code> + <code>test.use({ storageState: '.auth/finance.json' })</code></p>
         <p>Day-2 ganti password: <code>npm run env:edit</code> (decrypt → edit → encrypt, dotenvx-safe)</p>
       </div>
       <div class="terms">

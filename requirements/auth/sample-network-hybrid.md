@@ -90,7 +90,7 @@
 - **Prioritas skenario:** `medium`
 - **Layer terdampak:** `FE`
 
-**Prekondisi:** Catalog `selector-catalog/finance/invoices.aria.yml` tersedia (jalankan `snapshot_page` dulu) ATAU gunakan baseline inline kecil
+**Prekondisi:** Catalog `artifacts/selector-catalog/finance/invoices.aria.yml` tersedia (jalankan `snapshot_page` dulu) ATAU gunakan baseline inline kecil
 
 **Langkah:**
 

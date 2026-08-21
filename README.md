@@ -52,7 +52,7 @@
 | 📊  | **Custom Dashboard**       | Triage Table/Accordion, SOURCE cause, filter columns     |
 | 👥  | **Multi-role Auth**        | Role-based storage + OTP/CAPTCHA assist                  |
 | 🗺️ | **Coverage Map**           | `list_requirement_status`: req → plan → tests → status   |
-| 🔌  | **19 MCP Tools**           | Validate, snapshot, POM, health check, coverage          |
+| 🔌  | **21 MCP Tools**           | Validate, compile, snapshot, POM, health check, coverage |
 | 🌍  | **Multi-environment**      | Local/staging/production matrix, `APP_ENV` control       |
 | 🏷️ | **Capability Tags**        | `@upload` `@download` `@file-content` `@network-assert`  |
 | ✅   | **Quality Gates**          | Format/lint/typecheck/unit/property/file-content/network |
@@ -337,7 +337,7 @@ npm run mcp:build          # build custom QA server
 npm run mcp:config         # generate config semua platform
 ```
 
-> 19 tool lengkap → [CUSTOM-MCP.md](CUSTOM-MCP.md)
+> 21 tool lengkap → [CUSTOM-MCP.md](CUSTOM-MCP.md)
 
 ---
 

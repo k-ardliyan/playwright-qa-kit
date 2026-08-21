@@ -14,7 +14,7 @@ Metadata alternative: `#upload #download`.
 
 ## Fixture bank
 
-Committed samples live under `tests/data/` (or `test-fixtures/` aliases):
+Committed samples live under `tests/data/`:
 
 | Path                                   | Use                         |
 | -------------------------------------- | --------------------------- |

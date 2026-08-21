@@ -9,6 +9,8 @@ import {
   type TraceabilityScenarioNode,
   type ExecutionStatus,
   type FailureRootCause,
+  type CoverageStateBreakdown,
+  type Diagnostic,
   createDiagnostic,
   type McpResult,
   successResult,
@@ -16,6 +18,7 @@ import {
 } from '../contracts';
 import { compileRequirementFromText } from './compile-requirement';
 import { buildTestIndex } from '../utils/test-index';
+import { classifyFailureError } from '../utils/failure-classifier';
 
 export interface TraceRequirementArgs {
   requirementPath?: unknown;
@@ -81,6 +84,7 @@ export function buildTraceabilityMatrix(
   const compiled = compileRequirementFromText(requirementText, requirementPath);
   const req = compiled.data!;
   const repoRoot = mcpWorkspace.rootDir;
+  const diagnostics: Diagnostic[] = [];
 
   const summaryPath =
     summaryFilePath ||
@@ -101,14 +105,41 @@ export function buildTraceabilityMatrix(
       return base === stem || base.startsWith(`${stem}-`);
     });
 
-  // Map Scenarios with index-aware matching
+  // Map Scenarios with exact identity first (CF-201, CF-202)
   const scenarioNodes: TraceabilityScenarioNode[] = req.scenarios.map((sc) => {
-    // 1. Try finding exact match from test index
-    const indexMatch = testIndex.entries.find(
-      (e) =>
-        (e.scenarioId && e.scenarioId.toUpperCase() === sc.id.toUpperCase()) ||
-        (sc.testId && e.testId && e.testId.toUpperCase() === sc.testId.toUpperCase()),
-    );
+    let linkageType:
+      'exact-test-id' | 'exact-scenario-id' | 'requirement-id' | 'heuristic-fallback' | undefined;
+    let heuristicDiagnostic: { reason: string; confidence: number } | undefined;
+
+    // 1. Exact testId match
+    let indexMatch = sc.testId
+      ? testIndex.entries.find(
+          (e) => e.testId && e.testId.toUpperCase() === sc.testId!.toUpperCase(),
+        )
+      : undefined;
+
+    if (indexMatch) {
+      linkageType = 'exact-test-id';
+    } else {
+      // 2. Exact scenarioId match
+      indexMatch = testIndex.entries.find(
+        (e) => e.scenarioId && e.scenarioId.toUpperCase() === sc.id.toUpperCase(),
+      );
+      if (indexMatch) {
+        linkageType = 'exact-scenario-id';
+      } else {
+        // 3. Requirement ID match
+        indexMatch = testIndex.entries.find(
+          (e) =>
+            e.requirementPath &&
+            (e.requirementPath === requirementPath ||
+              e.requirementPath.endsWith(path.posix.basename(requirementPath))),
+        );
+        if (indexMatch) {
+          linkageType = 'requirement-id';
+        }
+      }
+    }
 
     let specFile: string | undefined = indexMatch?.specFile;
     if (!specFile) {
@@ -118,6 +149,22 @@ export function buildTraceabilityMatrix(
       } else {
         specFile = candidateSpecs[0];
       }
+
+      if (specFile) {
+        linkageType = 'heuristic-fallback';
+        heuristicDiagnostic = {
+          reason: `Matched via file stem or actor fallback (${specFile}) without explicit testId/scenarioId in test metadata`,
+          confidence: 0.65,
+        };
+        diagnostics.push(
+          createDiagnostic(
+            'TRACE_HEURISTIC_LINK_USED',
+            'info',
+            `Scenario ${sc.id} linked using heuristic fallback to ${specFile}. Add explicit testId or scenarioId in setTestMetadata for deterministic linkage.`,
+            { scenarioId: sc.id, path: specFile },
+          ),
+        );
+      }
     }
 
     let status: ExecutionStatus = 'not-generated';
@@ -126,6 +173,8 @@ export function buildTraceabilityMatrix(
 
     if (sc.type === 'manual') {
       status = 'manual';
+    } else if (sc.type === ('blocked' as string)) {
+      status = 'blocked';
     } else if (specFile) {
       const matchKey = `${specFile}::${sc.title}`;
       const indexTitleKey = indexMatch ? `${specFile}::${indexMatch.testTitle}` : undefined;
@@ -137,14 +186,18 @@ export function buildTraceabilityMatrix(
         testCaseMap.get(specFile);
 
       if (hit) {
-        if (hit.status === 'passed') status = 'passed';
-        else if (hit.status === 'failed') {
+        if (hit.status === 'passed') {
+          status = 'passed';
+        } else if (hit.status === 'failed') {
           status = 'failed';
-          failureSource = 'app';
+          const classified = classifyFailureError(hit.error);
+          failureSource = classified.source;
           errorMessage = hit.error;
         } else if (hit.status === 'timedOut') {
           status = 'timedOut';
-          failureSource = 'app';
+          const classified = classifyFailureError(hit.error || 'Timeout 30000ms exceeded');
+          failureSource = classified.source;
+          errorMessage = hit.error;
         } else if (hit.status === 'skipped') {
           status = 'skipped';
         }
@@ -152,6 +205,37 @@ export function buildTraceabilityMatrix(
         status = 'not-executed';
       }
     }
+
+    // Derive 4D coverageState per scenario (CF-203)
+    const coverageState: CoverageStateBreakdown = {
+      design: 'planned',
+      automation:
+        sc.type === 'manual'
+          ? 'manual'
+          : status === 'blocked'
+            ? 'blocked'
+            : specFile
+              ? 'generated'
+              : 'not-generated',
+      execution:
+        status === 'passed'
+          ? 'passed'
+          : status === 'failed'
+            ? 'failed'
+            : status === 'timedOut'
+              ? 'timed-out'
+              : status === 'skipped'
+                ? 'skipped'
+                : 'not-executed',
+      verification:
+        status === 'passed'
+          ? 'verified-pass'
+          : status === 'failed' || status === 'timedOut'
+            ? 'verified-fail'
+            : sc.type === 'manual'
+              ? 'manual-verification-required'
+              : 'unverified',
+    };
 
     return {
       scenarioId: sc.id,
@@ -162,12 +246,15 @@ export function buildTraceabilityMatrix(
       authContext: sc.authContext,
       specFile,
       executionStatus: status,
+      coverageState,
+      linkageType,
+      heuristicDiagnostic,
       failureSource,
       errorMessage,
     };
   });
 
-  // Map Acceptance Criteria
+  // Map Acceptance Criteria (CF-204: Remove ambiguous 'covered')
   const acNodes: TraceabilityAcNode[] = req.acceptanceCriteria.map((ac) => {
     const coveringScenarios = scenarioNodes.filter((sc) => sc.coversAcIds.includes(ac.id));
     const scIds = coveringScenarios.map((s) => s.scenarioId);
@@ -176,14 +263,17 @@ export function buildTraceabilityMatrix(
     if (coveringScenarios.length > 0) {
       const allPassed = coveringScenarios.every((s) => s.executionStatus === 'passed');
       const anyPassed = coveringScenarios.some((s) => s.executionStatus === 'passed');
-      const anyFailed = coveringScenarios.some((s) => s.executionStatus === 'failed');
+      const anyFailed = coveringScenarios.some(
+        (s) => s.executionStatus === 'failed' || s.executionStatus === 'timedOut',
+      );
 
       if (allPassed) {
         status = 'covered';
       } else if (anyPassed || anyFailed) {
         status = 'partially-covered';
       } else {
-        status = 'covered'; // Planned/generated but not executed yet
+        // Planned or generated but not yet verified passing is uncovered
+        status = 'uncovered';
       }
     }
 
@@ -205,13 +295,32 @@ export function buildTraceabilityMatrix(
   const failingScenarios = scenarioNodes.filter(
     (s) => s.executionStatus === 'failed' || s.executionStatus === 'timedOut',
   ).length;
-  // GAP 4: healedScenarios — scenarios that were re-run and passed after Healer intervention.
-  // At trace time the healer result is not in the spec files; the orchestrator may patch this
-  // field from pipeline state before archiving the final report.
   const healedScenarios = 0;
   const skippedScenarios = scenarioNodes.filter((s) => s.executionStatus === 'skipped').length;
   const manualScenarios = scenarioNodes.filter((s) => s.executionStatus === 'manual').length;
   const blockedScenarios = scenarioNodes.filter((s) => s.executionStatus === 'blocked').length;
+
+  const matrixCoverageState: CoverageStateBreakdown = {
+    design: 'planned',
+    automation:
+      manualScenarios === totalScenarios
+        ? 'manual'
+        : scenarioNodes.every((s) => s.coverageState?.automation === 'generated')
+          ? 'automated'
+          : scenarioNodes.some((s) => s.coverageState?.automation === 'generated')
+            ? 'mixed'
+            : 'unautomated',
+    execution:
+      passingScenarios > 0 || failingScenarios > 0 || skippedScenarios > 0
+        ? 'executed'
+        : 'not-executed',
+    verification:
+      passingScenarios === totalScenarios && totalScenarios > 0
+        ? 'passed'
+        : failingScenarios > 0
+          ? 'failed'
+          : 'unverified',
+  };
 
   return {
     schemaVersion: TRACEABILITY_SCHEMA_V1,
@@ -235,6 +344,8 @@ export function buildTraceabilityMatrix(
       manualScenarios,
       blockedScenarios,
     },
+    coverageState: matrixCoverageState,
+    diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     generatedAt: new Date().toISOString(),
   };
 }

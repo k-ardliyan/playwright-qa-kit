@@ -166,16 +166,21 @@ Seluruh runtime, MCP registry, agent instructions, template requirements, harnes
 
 ---
 
-## D-13: Core Freeze v1 Gate & Long-Term Stability Policy (v2.5)
+## D-13: Core Freeze v1 Established & Long-Term Stability Policy (v2.5)
 
 **Keputusan:**
-1. **Core Freeze v1 Active**: Fondasi core framework Playwright QA Kit (arsitektur hybrid, schema versioning `qa.*/v1`, compiler requirement, compiler test plan, traceability matrix, MCP tool registry, failure classification, and pipeline state manager) dibekukan dan stabil.
+> `Core Freeze v1` established. Requirement, Plan, MCP, harness launcher, traceability, and workspace contracts are considered stable. Future core changes require a concrete product need or proven QA workflow issue.
+
+1. **Core Freeze v1 Active**: Fondasi core framework Playwright QA Kit (arsitektur hybrid, schema versioning `qa.*/v1`, compiler requirement, compiler test plan, traceability matrix with exact ID primary lookup and heuristic diagnostics, MCP tool registry with runtime profile filtering, failure classification, and pipeline state manager) dibekukan dan stabil.
 2. **Backward Compatibility Guarantee**: Schema kontrak `qa.requirement/v1`, `qa.test-plan/v1`, `qa.traceability/v1`, dan `qa.mcp-result/v1` dijamin kompatibel ke belakang. Setiap perubahan non-breaking harus melalui field opsional; perubahan breaking memerlukan bump version ke `v2`.
-3. **No Legacy Path Drift**: Seluruh folder runtime, tests, tools, config, artifacts, requirements, specs, dan docs tunduk pada validasi `tools/validators/architecture.ts` (ARCH-001 hingga ARCH-013).
-4. **Readiness for Prompt Studio**: Dengan selesainya seluruh 14 fase Contract Closure v1, repository dinyatakan siap untuk pengembangan antarmuka authoring grafis Prompt Studio.
+3. **Freeze Rules (Allowed vs Not Allowed)**:
+   - **Allowed**: bug fixes, security fixes, compatibility fixes, changes required by Prompt Studio, changes justified by real QA usage.
+   - **Not Allowed**: speculative architecture, new contract version without need, MCP tool expansion without workflow need, directory redesign.
+4. **Readiness for Prompt Studio**: Dengan selesainya 4 closure gate (MCP Profile Enforcement, Traceability Convergence, Contract CI Closure, Documentation Parity), repository siap untuk pengembangan antarmuka authoring grafis Prompt Studio.
 
 **Kenapa:**
 Memberikan kepastian arsitektur dan stabilitas jangka panjang bagi tim QA dan automasi, memastikan pipeline deterministik dan bebas regresi saat beroperasi dalam skala besar.
+
 
 
 

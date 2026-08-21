@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "qa.traceability/v1",
+  "requirementId": "REQ-INVOICE-001",
+  "requirementTitle": "Invoice Approval Workflow",
+  "requirementPath": "requirements/finance/approve-invoice.md",
+  "requirementHash": "c3d4e5f6a7b8c9d0",
+  "module": "finance",
+  "feature": "invoice-approval",
+  "acceptanceCriteria": [
+    {
+      "acId": "AC-01",
+      "description": "Finance role can approve an eligible invoice.",
+      "coveredByScenarioIds": ["SC-01"],
+      "status": "uncovered"
+    },
+    {
+      "acId": "AC-02",
+      "description": "HRD role is restricted from approving invoices.",
+      "coveredByScenarioIds": ["SC-02"],
+      "status": "uncovered"
+    }
+  ],
+  "scenarios": [
+    {
+      "scenarioId": "SC-01",
+      "testId": "TC-INV-001",
+      "title": "Finance Approves Invoice",
+      "coversAcIds": ["AC-01"],
+      "role": "finance",
+      "authContext": "finance",
+      "specFile": "tests/finance-approve-invoice.spec.ts",
+      "executionStatus": "not-executed"
+    },
+    {
+      "scenarioId": "SC-02",
+      "testId": "TC-INV-002",
+      "title": "HRD Denied From Approval",
+      "coversAcIds": ["AC-02"],
+      "role": "hrd",
+      "authContext": "hrd",
+      "specFile": "tests/finance-approve-invoice.spec.ts",
+      "executionStatus": "not-executed"
+    }
+  ],
+  "metrics": {
+    "totalAcs": 2,
+    "coveredAcs": 0,
+    "uncoveredAcs": 2,
+    "totalScenarios": 2,
+    "passingScenarios": 0,
+    "failingScenarios": 0,
+    "healedScenarios": 0,
+    "skippedScenarios": 0,
+    "manualScenarios": 0,
+    "blockedScenarios": 0
+  },
+  "generatedAt": "2026-08-21T07:00:00.000Z"
+}

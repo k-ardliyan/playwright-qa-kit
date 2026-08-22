@@ -141,7 +141,8 @@ function parseRequirementFile(filePath: string): RequirementManual | null {
     }
 
     // Collect Hasil content for reason extraction
-    if (currentScenario && /^\*\*Hasil:\*\*/.test(line)) {
+    // Label yang dikenali: `**Hasil:**` (legacy) dan `**Hasil yang Diharapkan:**` (template saat ini)
+    if (currentScenario && /^\*\*(Hasil|Hasil yang Diharapkan):\*\*/.test(line)) {
       currentHasilLines = [];
     } else if (currentScenario && currentHasilLines !== null && line.trim()) {
       currentHasilLines.push(line);

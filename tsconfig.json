@@ -15,8 +15,7 @@
     "plugins": [{ "name": "@kitajs/ts-html-plugin" }],
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*"],
-      "@erpku/*": ["./examples/erpku/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [

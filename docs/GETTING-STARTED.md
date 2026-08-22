@@ -58,20 +58,20 @@ Tunggu sampai selesai (1-3 menit tergantung koneksi internet).
 npm run setup:wizard
 ```
 
-Wizard akan memandu Anda melalui **7 fase**:
+Wizard interaktif memandu Anda melalui **6 langkah**:
 
-| Fase                         | Apa yang terjadi                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **0. Welcome**               | Cek prasyarat, cek Node.js version                                                                                                         |
-| **1. Project + Environment** | Pilih **APP_ENV** dulu (`local`/`dev`/`staging`/…), lalu **BASE_URL untuk env itu** (URL beda per env). File: `environments/{APP_ENV}.env` |
-| **2. Kredensial**            | Masukkan akun test ke file env aktif. Nilai dienkripsi otomatis.                                                                           |
-| **3. Install**               | Install browser Chromium + build MCP server                                                                                                |
-| **4. MCP + Hermes**          | Verifikasi koneksi MCP di Hermes (cek: MCP ● 3 servers)                                                                                    |
-| **5. Auth Setup**            | Generate `src/support/auth.setup.ts`, jalankan login test                                                                                  |
-| **6. Verify**                | Run `setup:check` + `health:check` + enkripsi `environments/{APP_ENV}.env`                                                                 |
-| **7. Pipeline Conductor**    | Generate `requirements/login.md` + cetak prompt Hermes Agent                                                                               |
+| Langkah                       | Apa yang terjadi                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **1. Deteksi konfigurasi**    | Cek apakah `config/environments/{APP_ENV}.env` sudah ada (tanya update/skip)                                                               |
+| **2. APP_ENV**                | Pilih environment (`local`/`staging`/…)                                                                                                    |
+| **3. BASE_URL**               | Masukkan BASE_URL untuk env itu + verifikasi reachable                                                                                      |
+| **4. Role kredensial**        | Pilih role (mis. `user`, `finance`, `super-admin`) + isi EMAIL/USERNAME/PHONE + PASSWORD per role                                            |
+| **5. AUTH_CHALLENGE_MODE**    | Pilih mode challenge (`none`/`otp-browser`/`otp-stdin`/`captcha-browser`/`auto`)                                                            |
+| **6. Verify + Summary**       | Tulis `config/environments/{APP_ENV}.env`, validasi setup, tampilkan ringkasan                                                               |
 
-> **💡 Tip:** Wizard menyimpan progress ke `.wizard-state.json`. Jika terputus di tengah, jalankan ulang dan pilih **"Lanjut dari Phase X"**.
+File yang dihasilkan: `config/environments/{APP_ENV}.env` (fallback legacy: `environments/{APP_ENV}.env`).
+
+**Yang TIDAK dilakukan wizard ini:** wizard tidak menginstall browser/MCP server, tidak menjalankan auth setup, tidak mengenkripsi nilai secara otomatis, dan tidak membuat `requirements/login.md`. Langkah-langkah itu dilakukan terpisah (lihat di bawah). Enkripsi file env dilakukan lewat `npm run env:edit` (re-encrypt) atau `npx @dotenvx/dotenvx encrypt -f config/environments/{APP_ENV}.env`.
 
 ---
 
@@ -98,7 +98,7 @@ npm run auth:setup                 # refresh session
 npm run auth:setup:headed          # OTP/CAPTCHA (browser terlihat)
 ```
 
-**Catatan:** Setiap environment punya file sendiri (`environments/local.env`, `dev.env`, …) dengan **BASE_URL dan kredensial sendiri**. Jangan mengasumsikan URL sama di semua env.
+**Catatan:** Setiap environment punya file sendiri (`config/environments/local.env`, `config/environments/staging.env`, …) dengan **BASE_URL dan kredensial sendiri**. Jangan mengasumsikan URL sama di semua env.
 
 Detail: **[CREDENTIALS.md](CREDENTIALS.md)**.
 
@@ -106,17 +106,23 @@ Detail: **[CREDENTIALS.md](CREDENTIALS.md)**.
 
 ## 🎯 Mulai Testing
 
-Setelah wizard Phase 7 selesai, **framework sudah generate `requirements/login.md`**
-untuk **website kamu** (BASE_URL, path login, roles dari wizard) — **bukan** file sample.
+Setelah env aktif terisi kredensial, buat requirement untuk website kamu. Mulai dari template:
+
+```bash
+cp requirements/_TEMPLATE.md requirements/login.md
+# isi: judul, Metadata (module/feature/tags), Kriteria Penerimaan, Skenario Uji
+```
+
+> `requirements/login.md` **tidak** dibuat otomatis oleh wizard — buat sendiri dari template (contoh isi: [requirements/_GOOD_EXAMPLE.md](../requirements/_GOOD_EXAMPLE.md)).
 
 | Langkah    | Yang terjadi                                                                   |
 | ---------- | ------------------------------------------------------------------------------ |
 | **Lihat**  | Buka `requirements/login.md` — requirement REAL project                        |
-| **Paste**  | Prompt Phase 7 ke Hermes (wajib `snapshot_page` dulu — locator beda tiap site) |
+| **Paste**  | Jalankan pipeline via `npm run qa:run` atau prompt Hermes (wajib `snapshot_page` dulu — locator beda tiap site) |
 | **Tunggu** | Plan → Generate → Execute → Heal → Report                                      |
 | **Baca**   | [docs/POST-PIPELINE.md](POST-PIPELINE.md) untuk failureSource + keputusan QA   |
 
-**Prompt yang dicetak Phase 7 (inti):**
+**Prompt inti (sama dengan output `qa:run`):**
 
 ```
 Run full pipeline in automatic mode for requirements/login.md
@@ -131,7 +137,7 @@ Atau via CLI:
 npm run qa:run -- requirements/login.md
 ```
 
-> **ℹ️** `requirements/sample-*.md` = sample format saja. Setup awal = `login.md`.
+> **ℹ️** `requirements/sample-*.md` = sample format saja. Requirement produksi = file sendiri (mis. `login.md`).
 > **ℹ️** `qa:run` = preflight + prompt helper (prompt dinamis per Auth state / Halaman awal) — pipeline penuh di Hermes.
 > **ℹ️** Cek coverage plan/tests: Hermes tool `list_requirement_status` (playwright-qa).
 

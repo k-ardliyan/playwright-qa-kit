@@ -270,7 +270,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
         filePath: {
           type: 'string',
           description:
-            'Optional single file under PLAYWRIGHT_TEST_ROOT (default tests/) or PLAYWRIGHT_ADAPTER_TEST_ROOT (default examples/erpku/tests). Validates all specs when omitted.',
+            'Optional single file under PLAYWRIGHT_TEST_ROOT (default tests/) or PLAYWRIGHT_ADAPTER_TEST_ROOT (default adapter-tests/ when no adapter is configured). Validates all specs when omitted.',
         },
       },
     },

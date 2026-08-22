@@ -36,7 +36,7 @@
 | `src/agents/reporter/`          | Pipeline report builder + history + comparison | `index.ts`, `report-builder.ts`, `report-archive.ts`                                                                                                                |
 | `src/executor/`                 | Test runner wrapper (multi-browser, sharding)  | `index.ts`                                                                                                                                                          |
 | `src/fixtures/`                 | Playwright fixture chain internals             | `base.fixture.ts`, `framework.fixture.ts`, `project.fixture.ts`                                                                                                     |
-| `src/observability/`            | Tracing, logging, and evidence collectors      | `tracer.ts`, `logger.ts`                                                                                                                                            |
+| `src/observability/`            | Tracing, logging, and evidence collectors      | `error-classifier.ts`, `metrics-collector.ts`                                                                                                                      |
 | `src/setup/`                    | Setup wizard & bootstrap engine                | `index.ts`, `wizard.ts`                                                                                                                                             |
 | `src/shared/types/`             | Shared TypeScript schemas                      | `index.ts` ← always import from here                                                                                                                                |
 | `src/shared/workspace-paths.ts` | Canonical workspace path resolver              | `workspace` instance                                                                                                                                                |
@@ -81,8 +81,8 @@
 
 ---
 
-## 6. Examples & Reference Implementations (`examples/`)
+## 6. Examples & Reference Implementations
 
-| Path              | Peran                                                  |
-| ----------------- | ------------------------------------------------------ |
-| `examples/erpku/` | ERPku reference application integration & POM examples |
+| Path | Peran |
+| ---- | ----- |
+| _(tidak ada — adapter contoh dihapus 2026-08-22)_ | Framework bersifat generic; fork menyediakan adapter sendiri via `PLAYWRIGHT_ADAPTER_*` env |

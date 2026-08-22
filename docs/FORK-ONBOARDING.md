@@ -2,7 +2,7 @@
 
 Each QA project gets its own Git repository forked or copied from the `playwright-qa-kit` template core.
 
-> **🚀 QA baru?** Setelah clone, langsung jalankan `npm run setup:wizard` — wizard memandu setup lengkap (kredensial, install, build MCP, auth setup, enkripsi) dalam ~10 menit. Panduan detail: [GETTING-STARTED.md](GETTING-STARTED.md).
+> **🚀 QA baru?** Setelah clone, jalankan `npm run setup:wizard` (konfigurasi env + kredensial), lalu `npm install && npx playwright install chromium && npm run mcp:build` untuk dependency/browser/MCP, `npm run auth:setup` untuk session login, dan `npm run env:edit` untuk enkripsi kredensial. Panduan detail: [GETTING-STARTED.md](GETTING-STARTED.md).
 
 ---
 
@@ -76,7 +76,6 @@ Prefer merging `upstream/main` on a schedule (e.g. monthly) rather than letting 
 | `config/environments/*.env`                  | **Fork** (gitignored)                         | Never committed; copy new keys from `*.env.example` manually                              |
 | `config/environments/*.env.example`          | **Shared**                                    | Accept upstream generic keys; keep your extra keys                                        |
 | `requirements/`, `specs/`, `tests/`          | **Fork**                                      | Keep yours; upstream should not touch these                                               |
-| `examples/erpku/`                            | **Template sample**                           | Accept upstream updates or delete if unused                                               |
 | `.github/agents/`, `tools/mcp/`, `AGENTS.md` | **Upstream**                                  | Prefer upstream — these are framework core                                                |
 
 ---
@@ -84,8 +83,6 @@ Prefer merging `upstream/main` on a schedule (e.g. monthly) rather than letting 
 ## 5. Customization — tests/fixtures.ts
 
 Saat mulai pakai repo hasil fork, register Page Object Models di [`tests/fixtures.ts`](../tests/fixtures.ts).
-
-Use [`examples/erpku/playwright.config.ts`](../examples/erpku/playwright.config.ts) as a reference for multi-tenant adapter projects.
 
 Template starting point:
 
@@ -132,13 +129,11 @@ cp config/environments/local.env.example config/environments/local.env
 
 ```typescript
 loadEnvironment({
-  adapterEnv: { dir: 'examples/erpku/environments', name: 'erpku' },
+  adapterEnv: { dir: 'packages/my-adapter/environments', name: 'my-adapter' },
 });
 ```
 
 Core credentials in `config/environments/local.env` win — overlay only fills missing keys. Optional local override: `{dir}/{name}.env` (gitignored).
-
-See [`examples/erpku/environments/erpku.env.example`](../examples/erpku/environments/erpku.env.example) for ERPKU reference values.
 
 **Never commit** `config/environments/*.env` files containing real credentials.
 
@@ -152,22 +147,16 @@ npm run test:quality     # same gate as CI PR (no live app required)
 npm test                 # template core — seed spec
 ```
 
-If you keep the ERPKU reference adapter and have a running app + credentials:
-
-```bash
-npm run test:erpku-example -- --project=smoke
-```
-
 ---
 
-## 8. Optional — remove ERPKU example adapter
+## 8. Optional — add your own Reference Adapter
 
-If your project does not need the ERPKU reference:
+The template no longer bundles an example adapter. If your project needs one:
 
-1. Delete `example/erpku/`.
-2. Remove `@erpku/*` from `tsconfig.json` paths if nothing else references it.
-3. Clear or replace `PLAYWRIGHT_ADAPTER_*` env defaults in `environments/local.env` if you use MCP validation on adapter specs (see [CUSTOM-MCP.md](../CUSTOM-MCP.md)).
-4. Update [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) to run your own smoke/regression commands instead of `npm run test:erpku-example`.
+1. Create your adapter layout (e.g. `packages/my-adapter/` with its own `playwright.config.ts` + `tests/`).
+2. Point the adapter envs in `config/environments/local.env` (`PLAYWRIGHT_ADAPTER_CONFIG`, `PLAYWRIGHT_ADAPTER_TEST_ROOT`, …) — see [CUSTOM-MCP.md](../CUSTOM-MCP.md).
+3. Use `loadEnvironment({ adapterEnv })` in the adapter config for non-secret overlays.
+4. Update [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) to run your own smoke/regression commands.
 
 The template core (`src/`) remains generic without the example folder.
 
@@ -237,7 +226,7 @@ Add minimum secrets in your CI provider (repo **Settings → Secrets and variabl
 - `TEST_USER_EMAIL` (or `TEST_USER_USERNAME` / `TEST_USER_PHONE`)
 - `TEST_USER_PASSWORD`
 
-Workflows materialize a **plaintext** `environments/{APP_ENV}.env` each job from those secrets. Do not rely on encrypted local `.env` files or dotenvx keys in CI.
+Workflows materialize a **plaintext** `config/environments/{APP_ENV}.env` each job from those secrets (plus legacy mirror `environments/{APP_ENV}.env`). Do not rely on encrypted local `.env` files or dotenvx keys in CI.
 
 Add other secrets as your app domain requires.
 

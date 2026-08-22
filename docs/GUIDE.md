@@ -8,7 +8,7 @@ Panduan setup, pipeline, dan troubleshooting tim QA.
 >
 > **▶️ Baru selesai setup wizard?** Setelah pipeline pertama jalan, baca [POST-PIPELINE.md](POST-PIPELINE.md) untuk failureSource + 6 keputusan QA.
 
-Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [ENVIRONMENT-GUIDE.md](ENVIRONMENT-GUIDE.md) · [SAMPLE-E2E-Pipeline.md](SAMPLE-E2E-Pipeline.md) · [AGENTS.md](../AGENTS.md)
+Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-STARTED.md) · [ENVIRONMENT-GUIDE.md](ENVIRONMENT-GUIDE.md) · [SAMPLE-E2E-PIPELINE.md](SAMPLE-E2E-PIPELINE.md) · [AGENTS.md](../AGENTS.md)
 
 ---
 
@@ -16,8 +16,8 @@ Referensi cepat: [CHEATSHEET.md](CHEATSHEET.md) · [GETTING-STARTED.md](GETTING-
 
 | Langkah                           | Dokumen                                                                                                                  |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Tulis requirement                 | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [writing-requirements.md](writing-requirements.md)          |
-| Rapikan catatan (ChatGPT/Gemini)  | [writing-requirements.md → Prompt untuk AI eksternal](writing-requirements.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
+| Tulis requirement                 | [requirements/\_TEMPLATE.md](../requirements/_TEMPLATE.md) · [WRITING-REQUIREMENTS.md](WRITING-REQUIREMENTS.md)          |
+| Rapikan catatan (ChatGPT/Gemini)  | [WRITING-REQUIREMENTS.md → Prompt untuk AI eksternal](WRITING-REQUIREMENTS.md#prompt-untuk-ai-eksternal-chatgpt--gemini) |
 | Pipeline AI                       | Section **Prompt Siap Pakai** di dokumen ini                                                                             |
 | Contoh requirement valid (sample) | [requirements/auth/sample-login-empty-fields.md](../requirements/auth/sample-login-empty-fields.md)                      |
 
@@ -47,11 +47,11 @@ npm run setup:check         # verify setup setelah selesai
 | `playwright-test` | Menjalankan tes (`run_tests`)                                                                                                                             |
 | `playwright-qa`   | Requirement, validasi, coverage map (`list_requirement_status`), kegagalan, ringkasan, archive, `snapshot_page`, `discover_pages`, `generate_page_object` |
 
-**Hermes:** `.mcp.json` di root project dibaca langsung oleh Hermes. Tidak perlu generate config tambahan. `generate-mcp-config.ts` sudah support multi-platform tapi tidak di-surface ke QA di alur default.
+**Hermes:** `.mcp.json` di root project dibaca langsung oleh Hermes. Tidak perlu generate config tambahan. `npm run mcp:config` sudah support multi-platform (claude/cursor/kiro) tapi tidak di-surface ke QA di alur default.
 
 **Cursor / Kiro / VS Code + Copilot (advanced, bukan alur default):** Settings → MCP → pastikan ketiga server connected.
 
-**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `environments/{APP_ENV}.env` (default `playwright.config.ts`; untuk ERPKU adapter gunakan `example/erpku/playwright.config.ts`). Cek env aktif: `npm run env:status`. Setelah mengubah env, restart MCP server di IDE.
+**Playwright profile:** set `PLAYWRIGHT_CONFIG` di `config/environments/{APP_ENV}.env` (default `playwright.config.ts`). Cek env aktif: `npm run env:status`. Setelah mengubah env, restart MCP server di IDE.
 
 ---
 
@@ -98,8 +98,10 @@ Semua helper di atas diimpor dari `@/support/pw` (lihat `src/support/pw/files.ts
 **Visual baselines:**
 
 ```bash
-npx playwright test --update-snapshots tests/demo/demo-visual.spec.ts
+npx playwright test --update-snapshots tests/demo/demo-pw-power-extended.spec.ts
 ```
+
+> Catatan: `tests/demo/demo-visual.spec.ts` tidak ada di repo — contoh visual ada di `demo-pw-power-extended.spec.ts` (folder `-snapshots/` berisi baseline PNG).
 
 Jangan update snapshot hanya untuk menutupi product bug.
 
@@ -363,7 +365,7 @@ Detail tool: [CUSTOM-MCP.md](../CUSTOM-MCP.md).
 | `mcp_build`       | fail      | `npm run mcp:build`                              |
 | `playwright_mcp`  | fail      | `npm install`                                    |
 | `playwright_test` | warn/fail | Upgrade `@playwright/test` >= 1.56               |
-| `environment`     | fail/warn | Buat `environments/{APP_ENV}.env` dari template  |
+| `environment`     | fail/warn | Buat `config/environments/{APP_ENV}.env` dari template  |
 | `base_url`        | warn      | Set `BASE_URL` di file env                       |
 | `auth_storage`    | warn      | `.auth/{APP_ENV}/` kosong — `npm run auth:setup` |
 | `json_results`    | warn      | Normal sebelum tes pertama — jalankan `npm test` |
@@ -419,11 +421,11 @@ CI mengabaikan pin (`CI=true`). Setelah `env:use`, restart MCP servers.
 
 ## Batasan Normal (Bukan Bug)
 
-- **Halaman baru** tanpa POM → Generator pakai inline locators dari selector-catalog. POM opsional — lihat [Path A vs Path B](writing-requirements.md#path-a-vs-path-b-kapan-pakai-pom).
+- **Halaman baru** tanpa POM → Generator pakai inline locators dari selector-catalog. POM opsional — lihat [Path A vs Path B](WRITING-REQUIREMENTS.md#path-a-vs-path-b-kapan-pakai-pom).
 - **`(@manual)`** → tes di-skip otomatis (CAPTCHA, email nyata, biometric).
 - **Healer** → menggunakan prioritization berbasis pattern; tidak ada cap arbitrer.
 - **Role auth file** → `.auth/{APP_ENV}/<role>.json` harus dibuat dulu via `npm run auth:setup`.
-- **Environment** → tiap QA pakai file `environments/{APP_ENV}.env` sendiri (BASE_URL + kredensial per env).
+- **Environment** → tiap QA pakai file `config/environments/{APP_ENV}.env` sendiri (BASE_URL + kredensial per env).
 - **Selector catalog** → di-cache per-hash. `snapshot_page` skip re-capture kalau UI tidak berubah — aman di-run berulang.
 
 ---

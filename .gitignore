@@ -75,6 +75,7 @@ mcp-server/dist/
 # Generated platform MCP configs (regenerable via `npm run mcp:config`)
 claude_desktop_config.json
 .cursor/mcp.json
+.kiro/
 
 # Generated capability manifest (regenerable via `npm run manifest:generate`)
 agent-manifest.json

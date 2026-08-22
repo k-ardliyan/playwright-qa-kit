@@ -18,9 +18,9 @@ Register and use these **three** servers. **Project source of truth:** [`.mcp.js
    - Launcher: `npx tsx tools/scripts/playwright-test-mcp-launch.ts` (loads `config/environments/local.env`, honors `PLAYWRIGHT_CONFIG`)
    - Requires `@playwright/test` >= 1.56
 
-3. **Custom QA MCP** (`playwright-qa`) — project-specific QA tools
+3. **Custom QA MCP (`playwright-qa`)**:
    - Build: `npm run mcp:build`
-   - Run: `node tools/mcp/dist/index-mcp.js` (bootstraps env at startup via `tools/scripts/mcp-bootstrap.ts`)
+   - Run: `node tools/mcp/dist/index-mcp.js` (bootstraps env at startup via `tools/mcp/src/utils/mcp-env-bootstrap.ts`)
 
 ### Intent Profiles & Capability Router
 
@@ -75,6 +75,8 @@ Common check names: `node`, `mcp_build`, `playwright_mcp`, `playwright_test`, `e
 ## Tool: `normalize_requirements`
 
 Parses requirement markdown into a structured contract (acceptance criteria, metadata, optional scenarios, tags).
+
+> **Stability: `compat`** — dipertahankan untuk kompatibilitas; tool canonical adalah `compile_requirement` (replacement).
 
 Template reference: [`requirements/_TEMPLATE.md`](requirements/_TEMPLATE.md).
 
@@ -132,6 +134,8 @@ Or:
 Extracts `###` scenarios with step/result sections from markdown.
 
 **Indonesian labels:** `**Langkah:**`, `**Hasil:**`, `**Prekondisi:**`
+
+> **Stability: `compat`** — dipertahankan untuk kompatibilitas; tool canonical adalah `compile_requirement` (replacement).
 
 **English aliases:** `**Steps:**`, `**Expected Result:**`, `**Precondition:**`, `**Given:**`
 
@@ -193,6 +197,8 @@ Or:
 
 Validates requirement markdown structure before the Planner runs. Returns a score and violation list.
 
+> **Stability: `compat`** — dipertahankan untuk kompatibilitas; tool canonical adalah `compile_requirement` (replacement).
+
 ### Input
 
 ```json
@@ -237,28 +243,28 @@ Optional variables in `config/environments/{APP_ENV}.env` (read by the playwrigh
 
 | Variable                            | Default                                     | Purpose                                                                                                   |
 | ----------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `PLAYWRIGHT_TEST_ROOT`              | `tests`                                     | Root for `list_artifacts` tests and bulk `validate_generated_tests` scan                                  |
+| `PLAYWRIGHT_TEST_ROOT`              | `tests`                                     | Root untuk bulk `validate_generated_tests` scan (single-file validation juga menerima path di bawah root ini). `list_artifacts` memakai `mcpWorkspace.testsDir` dari `config/qa-kit.workspace.json`, bukan env ini. |
 | `PLAYWRIGHT_CONFIG`                 | `playwright.config.ts`                      | Active Playwright config; validated by `health_check`; set by launcher/env and overridable from local env |
 | `PLAYWRIGHT_RESULTS_JSON`           | _(derived from config)_                     | Override JSON reporter path for Healer / `get_test_failures` fallback                                     |
-| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `examples/erpku/tests`                      | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
-| `PLAYWRIGHT_ADAPTER_CONFIG`         | `examples/erpku/playwright.config.ts`       | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
-| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `@erpku/fixtures/base.fixture`              | Required import path for specs under adapter test root                                                    |
-| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `artifacts/test-results/erpku-results.json` | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
+| `PLAYWRIGHT_ADAPTER_TEST_ROOT`      | `adapter-tests`                             | Adapter spec allowlist + traceability exempt prefix for `validate_generated_tests`                        |
+| `PLAYWRIGHT_ADAPTER_CONFIG`         | `playwright.config.ts`                      | Adapter config key for JSON results mapping when `PLAYWRIGHT_CONFIG` points at adapter                    |
+| `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` | `tests/fixtures`                            | Required import path for specs under adapter test root                                                    |
+| `PLAYWRIGHT_ADAPTER_RESULTS_JSON`   | `artifacts/test-results/results.json`       | JSON reporter output when adapter config is active (unless `PLAYWRIGHT_RESULTS_JSON` set)                 |
 
-**Config → JSON mapping** (when `PLAYWRIGHT_RESULTS_JSON` is unset): uses `PLAYWRIGHT_ADAPTER_CONFIG` and `PLAYWRIGHT_ADAPTER_RESULTS_JSON` defaults (ERPKU reference values above).
+**Config → JSON mapping** (when `PLAYWRIGHT_RESULTS_JSON` is unset): uses `PLAYWRIGHT_ADAPTER_CONFIG` and `PLAYWRIGHT_ADAPTER_RESULTS_JSON` defaults (core workspace values above).
 
 `health_check` validates that `PLAYWRIGHT_CONFIG` points to an existing file and warns when the matching JSON results file is missing.
 
-**ERPKU adapter profile example:**
+**Adapter profile example** (set envs only when your fork defines an adapter):
 
 ```bash
-PLAYWRIGHT_CONFIG=examples/erpku/playwright.config.ts
-PLAYWRIGHT_TEST_ROOT=examples/erpku/tests
+PLAYWRIGHT_CONFIG=packages/my-adapter/playwright.config.ts
+PLAYWRIGHT_TEST_ROOT=packages/my-adapter/tests
 ```
 
 Single-file `validate_generated_tests` accepts paths under `PLAYWRIGHT_TEST_ROOT` or `PLAYWRIGHT_ADAPTER_TEST_ROOT`.
 
-**Forks that delete `examples/erpku/`:** unset or replace all `PLAYWRIGHT_ADAPTER_*` vars if you add a different reference adapter, or leave defaults unused if you have no adapter specs.
+**No adapter is bundled.** The default adapter root is the sentinel `adapter-tests/`, so without `PLAYWRIGHT_ADAPTER_*` envs nothing matches it and core specs are validated with core rules.
 
 
 ---
@@ -324,7 +330,7 @@ Use after preflight or when asking “mana yang sudah diplan / punya test?”.
 
 ## Tool: `validate_generated_tests`
 
-Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `@erpku/fixtures/base.fixture` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo, example adapter), and capability tags (`@network` / `@network-assert` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
+Validates `.spec.ts` files for fixture import (`@/fixtures/base.fixture` for generator output; `PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT` for adapter specs), `test.describe`, `test.step`, traceability headers (exempt: seed, demo), and capability tags (`@network` / `@network-assert` / `@hybrid` / `@aria` / `@visual` / `@download` / `@upload` / `@file-content` must use matching APIs).
 
 Bulk scan root: `PLAYWRIGHT_TEST_ROOT` env (default `tests`).
 
@@ -338,7 +344,7 @@ Or single file:
 
 ```json
 {
-  "filePath": "examples/erpku/tests/ui/auth/login.spec.ts"
+  "filePath": "tests/ui/auth/login.spec.ts"
 }
 ```
 
@@ -348,9 +354,9 @@ Or single file:
 
 Resolves Playwright JSON results in this order:
 
-1. **`getJsonResultsPath()`** — config-aware path from `PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`
-2. Latest `.json` by mtime under `resultsDir` (default `artifacts/test-results/`)
-3. Legacy `artifacts/test-results/results.json` fallback
+1. **`getJsonResultsPath()`** — config-aware path dari `PLAYWRIGHT_CONFIG` / `PLAYWRIGHT_RESULTS_JSON`
+2. Latest `.json` by mtime under `resultsDir` (default `test-results/` di repo root — bukan `artifacts/test-results/`)
+3. Legacy `artifacts/test-results/results.json` fallback (config-mapped)
 
 ### Input
 
@@ -431,7 +437,7 @@ Reads `artifacts/reports/test-summary.json` from the custom reporter. Builds per
 }
 ```
 
-- `byRole` — only present when test files follow `*-<role>.spec.ts` naming convention.
+- `byRole` — di-derive dari field `role` per test case di `test-summary.json` (fallback legacy: pola nama file `*-<role>.spec.ts`).
 - `byModule` — nested structure (Opsi B): each module contains `passing`, `failing`, and `features` (per-feature breakdown). Only present when `testCases` with `module`/`feature` fields are found in `test-summary.json`.
 - Both fields are best-effort; absent if no role/module data can be derived.
 
@@ -530,7 +536,7 @@ If a fresh catalog already exists for the same URL, the tool returns `skipped: t
 
 ## Tool: `discover_pages`
 
-BFS auto-crawl a public site from a single entry point. For each unique same-origin URL the tool persists an ARIA + selector catalog (via the shared `_internal/snapshot-core.ts`) and appends the page metadata to `artifacts/selector-catalog/<featureName>/page-map.json`. Respects `robots.txt`, applies a politeness delay, and writes a `.discover-state.json` checkpoint every 5 pages so a crashed crawl can resume.
+BFS auto-crawl a public site from a single entry point. For each unique same-origin URL the tool persists an ARIA + selector catalog (via the shared `_internal/snapshot-core.ts`) and appends the page metadata to `artifacts/selector-catalog/<featureName>/page-map.json`. Respects `robots.txt`, applies a politeness delay, and writes a `.discover-state.json` checkpoint every 5 pages (checkpoint dihapus saat crawl selesai; berfungsi sebagai *status log*, belum ada logic resume otomatis dari checkpoint).
 
 ### Input
 
@@ -609,8 +615,8 @@ A URL is rejected (and recorded in `skipped[]`) when any of the following holds:
 
 ### Safety
 
-- No authentication, no login wall traversal. Login redirects are detected (URL ends with `/login` or contains `/auth`) and skipped.
-- Checkpoint file `.discover-state.json` is removed on successful completion.
+- No authentication, no login wall traversal. Login-style URLs should be excluded via `excludePatterns` (mis. `/login$`, `/auth/`) — tidak ada deteksi otomatis redirect login.
+- Checkpoint file `.discover-state.json` ditulis setiap 5 halaman dan dihapus pada keberhasilan. Catatan: belum ada resume logic — checkpoint saat ini bersifat status/log, bukan recovery point.
 
 ---
 
@@ -742,12 +748,16 @@ Or:
   "status": "success",
   "data": {
     "schemaVersion": "qa.requirement/v1",
-    "id": "REQ-AUTH-002",
+    "requirementId": "REQ-AUTH-002",
     "title": "Validasi Field Kosong",
+    "sourcePath": "requirements/auth/sample-login-empty-fields.md",
+    "sourceHash": "sha256-hex...",
     "module": "auth",
     "feature": "login",
-    "sourceHash": "sha256-hex...",
-    "rolesInScope": ["super-admin", "finance"],
+    "priority": "high",
+    "tags": ["auth", "ui"],
+    "auth": { "state": "unauthenticated" },
+    "roles": ["super-admin", "finance"],
     "accessMatrix": [
       { "role": "super-admin", "access": "allow", "expectation": "Bisa login" }
     ],
@@ -757,18 +767,26 @@ Or:
     "scenarios": [
       {
         "id": "SC-01",
-        "name": "Submit kosong",
-        "covers": ["AC-01"],
+        "title": "Submit kosong",
+        "type": "general",
         "actor": "user",
+        "authContext": "unauthenticated",
+        "capabilities": [],
+        "affectedLayers": [],
+        "covers": ["AC-01"],
+        "preconditions": [],
+        "inputData": [],
         "steps": ["..."],
-        "expectedResult": "...",
-        "automatable": true
+        "expectations": ["..."],
+        "automation": { "automatable": true }
       }
     ]
   },
   "diagnostics": []
 }
 ```
+
+> Field contract mengikuti `RequirementContractV1` (source of truth: `tools/mcp/src/contracts/requirement-contract.ts`). Perhatikan: identitas di `requirementId` (bukan `id`), daftar role di `roles` (bukan `rolesInScope`), judul skenario di `title` (bukan `name`), dan hasil yang diharapkan di `expectations` dengan objek `automation` bersarang (bukan `expectedResult`/`automatable` top-level).
 
 ---
 
@@ -792,26 +810,40 @@ Compiles Markdown test plan documents into canonical `TestPlanContractV1` (`qa.t
   "status": "success",
   "data": {
     "schemaVersion": "qa.test-plan/v1",
-    "id": "PLAN-AUTH-002",
+    "sourceRequirementPath": "requirements/auth/sample-login-empty-fields.md",
     "sourceRequirementHash": "sha256-req-hash...",
+    "planPath": "specs/auth/sample-login-empty-fields-test-plan.md",
+    "planHash": "sha256-plan-hash...",
+    "module": "auth",
+    "feature": "login",
+    "catalogEvidence": [],
     "scenarios": [
       {
         "scenarioId": "SC-01",
         "testId": "TEST-AUTH-002-01",
-        "name": "Empty field validation",
         "covers": ["AC-01"],
         "actor": "user",
         "authContext": "unauthenticated",
-        "steps": ["..."],
-        "expectedResult": "...",
-        "assertionProvenance": "requirement",
-        "type": "negative"
+        "executionMode": "automated",
+        "dataSetup": [],
+        "actions": ["..."],
+        "assertions": [
+          { "description": "...", "provenance": "requirement" }
+        ],
+        "locatorIntent": [],
+        "networkExpectations": [],
+        "artifactExpectations": [],
+        "cleanup": [],
+        "unknowns": []
       }
-    ]
-  },
-  "diagnostics": []
+    ],
+    "coverageGaps": [],
+    "diagnostics": []
+  }
 }
 ```
+
+> Field contract mengikuti `TestPlanContractV1` (source of truth: `tools/mcp/src/contracts/test-plan-contract.ts`). Tidak ada field `id`; identitas plan dilacak lewat `planPath`/`planHash`. Skenario memakai `actions` (bukan `steps`), `assertions[{description, provenance}]` (bukan `assertionProvenance` flat), dan `executionMode` (bukan `type`).
 
 ---
 
@@ -832,16 +864,24 @@ Validates test plan contracts against requirement contracts. Supports Markdown p
 
 ```json
 {
+  "schemaVersion": "qa.mcp-result/v1",
   "status": "success",
-  "planId": "PLAN-AUTH-002",
-  "scenariosPlanned": 4,
-  "coverageGaps": 0,
+  "data": {
+    "valid": true,
+    "plannedScenarios": 4,
+    "coveredAcs": 3,
+    "uncoveredAcs": 0,
+    "assumptionsCount": 0,
+    "coverageGapsCount": 0
+  },
   "diagnostics": [],
-  "message": "Test plan is valid and consistent with requirement."
+  "message": "Test plan passed all contract validation gates (4 scenarios, 3 ACs covered)."
 }
 ```
 
-Diagnostic codes emitted on drift: `PLAN_STALE_REQUIREMENT`, `PLAN_AC_UNCOVERED`, `PLAN_UNKNOWN_AC`, `PLAN_SCENARIO_MISSING`, `PLAN_EPHEMERAL_REF_DETECTED`, `PLAN_UNKNOWN_PROVENANCE`, `PLAN_UNREVIEWED_ASSUMPTION`.
+`status` bisa `success` (valid), `warning` (0 error, ada warning), atau `error` (ada error). Semua field hasil berada di dalam `data` — tidak ada `planId`/`scenariosPlanned`/`coverageGaps` flat.
+
+Diagnostic codes emitted on drift: `PLAN_STALE_REQUIREMENT`, `PLAN_AC_UNCOVERED`, `PLAN_UNKNOWN_AC`, `PLAN_SCENARIO_MISSING`, `PLAN_EPHEMERAL_REF_DETECTED`, `PLAN_UNKNOWN_PROVENANCE`, `PLAN_UNREVIEWED_ASSUMPTION`, `PLAN_ROLE_DRIFT`, `PLAN_AUTH_DRIFT`, `PLAN_MANUAL_CONVERTED_WITHOUT_REASON`.
 
 ---
 
@@ -854,10 +894,20 @@ Builds an end-to-end closed-loop `TraceabilityContractV1` (`qa.traceability/v1`)
 ```json
 {
   "requirementPath": "requirements/auth/sample-login-empty-fields.md",
-  "testPlanPath": "specs/auth/sample-login-empty-fields-test-plan.md",
   "summaryPath": "artifacts/reports/test-summary.json"
 }
 ```
+
+Atau tanpa file requirement:
+
+```json
+{
+  "requirementsText": "# REQ-01: Feature\n## Metadata\n...",
+  "resultsDir": "artifacts/test-results"
+}
+```
+
+> Argumen yang didukung: `requirementPath`, `requirementsText`, `resultsDir`, `summaryPath` (trace-requirement.ts `TraceRequirementArgs`). Tidak ada argumen `testPlanPath` — graf traceability dibangun dari requirement + summary test, bukan dari test plan markdown.
 
 ### Output
 
@@ -867,18 +917,95 @@ Builds an end-to-end closed-loop `TraceabilityContractV1` (`qa.traceability/v1`)
   "data": {
     "schemaVersion": "qa.traceability/v1",
     "requirementId": "REQ-AUTH-002",
+    "requirementTitle": "Validasi Field Kosong",
+    "requirementPath": "requirements/auth/sample-login-empty-fields.md",
+    "requirementHash": "sha256-hex...",
+    "module": "auth",
+    "feature": "login",
+    "acceptanceCriteria": [
+      { "acId": "AC-01", "description": "...", "coveredByScenarioIds": ["SC-01"], "status": "covered" }
+    ],
+    "scenarios": [
+      {
+        "scenarioId": "SC-01",
+        "testId": "TEST-AUTH-002-01",
+        "title": "Submit kosong",
+        "coversAcIds": ["AC-01"],
+        "role": "user",
+        "specFile": "tests/login.spec.ts",
+        "executionStatus": "passed",
+        "coverageState": {
+          "design": "planned",
+          "automation": "automated",
+          "execution": "passed",
+          "verification": "verified-pass"
+        },
+        "linkageType": "exact-test-id",
+        "evidence": { "tracePath": "artifacts/test-results/.../trace.zip" }
+      }
+    ],
     "metrics": {
-      "plannedScenarioCoverage": 100,
-      "automationCoverage": 100,
-      "executionCoverage": 100,
-      "verifiedAcceptanceCoverage": 100,
-      "manualCoverage": 0,
-      "blockedCoverage": 0
+      "totalAcs": 4,
+      "coveredAcs": 4,
+      "uncoveredAcs": 0,
+      "totalScenarios": 4,
+      "passingScenarios": 4,
+      "failingScenarios": 0,
+      "healedScenarios": 0,
+      "skippedScenarios": 0,
+      "manualScenarios": 0,
+      "blockedScenarios": 0
     },
-    "scenarios": [...]
-  }
+    "coverageState": {
+      "design": "planned",
+      "automation": "automated",
+      "execution": "passed",
+      "verification": "verified-pass"
+    },
+    "generatedAt": "2026-08-22T12:00:00.000Z"
+  },
+  "message": "Traceability graph generated for REQ-AUTH-002: 4/4 ACs covered, 4 scenarios mapped."
 }
 ```
+
+> Field metrics mengikuti `TraceabilityContractV1.metrics` (source of truth: `tools/mcp/src/contracts/traceability-contract.ts`): `totalAcs`, `coveredAcs`, `uncoveredAcs`, `totalScenarios`, `passingScenarios`, `failingScenarios`, `healedScenarios`, `skippedScenarios`, `manualScenarios`, `blockedScenarios`. Tidak ada field `plannedScenarioCoverage`/`automationCoverage`/`verifiedAcceptanceCoverage` dll. Skenario memakai `coversAcIds`, `specFile`, dan `coverageState` (4 dimensi: design/automation/execution/verification).
+
+---
+
+## Tool: `generate_page_object`
+
+Generates a TypeScript POM scaffold from a selector catalog JSON entry. Never overwrites existing files unless `force: true`. Returns the scaffold with grouped locators, `TODO` markers for business methods, and warnings for fragile selectors.
+
+> Stability: `experimental` — profile `generator` / `author` / `all`.
+
+### Input
+
+```json
+{
+  "featureName": "login",
+  "pageName": "login-form",
+  "className": "LoginForm",
+  "outputPath": "tests/pages/LoginForm.ts",
+  "force": false
+}
+```
+
+`featureName` dan `pageName` **required**. `className` default: PascalCase dari `pageName`. `outputPath` default: `tests/pages/<ClassName>.ts`.
+
+### Output
+
+```json
+{
+  "status": "created",
+  "path": "tests/pages/LoginForm.ts",
+  "elementCount": 12,
+  "fragileCount": 0,
+  "warnings": ["High element count (60). Consider splitting into multiple POMs."],
+  "message": "✅ POM scaffold created at tests/pages/LoginForm.ts. Review TODOs and register in tests/fixtures.ts."
+}
+```
+
+Jika file sudah ada dan `force` tidak di-set, `status` menjadi `skipped`. Error codes: `INVALID_INPUT` (param wajib), `CATALOG_NOT_FOUND` (jalankan `snapshot_page` dulu), `CATALOG_READ_ERROR`, `INVALID_PATH`.
 
 ---
 
@@ -891,9 +1018,12 @@ Archives pipeline run artifacts (summary, dashboard, state, traces) to `artifact
 ```json
 {
   "runId": "run-2026-08-21-001",
-  "reportPath": "artifacts/reports/pipeline-report-run-2026-08-21-001.md"
+  "reportPath": "reports/pipeline-report-run-2026-08-21-001.md",
+  "jsonReportPath": "reports/pipeline-report-run-2026-08-21-001.json"
 }
 ```
+
+`runId` dan `reportPath` **required**; `jsonReportPath` opsional. `runId` disanitasi (hanya alfanumerik, hyphen, underscore).
 
 ---
 

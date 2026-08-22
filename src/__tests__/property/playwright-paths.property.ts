@@ -62,16 +62,16 @@ runCase('default JSON path is artifacts/test-results/results.json', () => {
   });
 });
 
-runCase('adapter config maps to erpku-results.json', () => {
+runCase('adapter config maps to adapter results default', () => {
   withEnv(
     {
-      PLAYWRIGHT_CONFIG: 'examples/erpku/playwright.config.ts',
+      PLAYWRIGHT_CONFIG: 'packages/my-adapter/playwright.config.ts',
       PLAYWRIGHT_RESULTS_JSON: undefined,
       PLAYWRIGHT_ADAPTER_CONFIG: undefined,
       PLAYWRIGHT_ADAPTER_RESULTS_JSON: undefined,
     },
     () => {
-      assert.equal(getJsonResultsPath(), 'artifacts/test-results/erpku-results.json');
+      assert.equal(getJsonResultsPath(), 'artifacts/test-results/results.json');
     },
   );
 });
@@ -79,7 +79,7 @@ runCase('adapter config maps to erpku-results.json', () => {
 runCase('PLAYWRIGHT_RESULTS_JSON override wins over config mapping', () => {
   withEnv(
     {
-      PLAYWRIGHT_CONFIG: 'examples/erpku/playwright.config.ts',
+      PLAYWRIGHT_CONFIG: 'packages/my-adapter/playwright.config.ts',
       PLAYWRIGHT_RESULTS_JSON: 'custom/output.json',
     },
     () => {
@@ -91,18 +91,18 @@ runCase('PLAYWRIGHT_RESULTS_JSON override wins over config mapping', () => {
 runCase('config path normalizes backslashes', () => {
   withEnv(
     {
-      PLAYWRIGHT_CONFIG: 'examples\\erpku\\playwright.config.ts',
+      PLAYWRIGHT_CONFIG: 'custom\\adapter\\playwright.config.ts',
       PLAYWRIGHT_RESULTS_JSON: undefined,
     },
     () => {
-      assert.equal(getPlaywrightConfigPath(), 'examples/erpku/playwright.config.ts');
+      assert.equal(getPlaywrightConfigPath(), 'custom/adapter/playwright.config.ts');
     },
   );
 });
 
-runCase('default adapter test root is examples/erpku/tests', () => {
+runCase('default adapter test root is a sentinel root (no bundled adapter)', () => {
   withEnv({ PLAYWRIGHT_ADAPTER_TEST_ROOT: undefined }, () => {
-    assert.equal(getAdapterTestRoot(), 'examples/erpku/tests');
+    assert.equal(getAdapterTestRoot(), 'adapter-tests');
   });
 });
 
@@ -115,7 +115,7 @@ runCase('PLAYWRIGHT_ADAPTER_TEST_ROOT override is normalized', () => {
 runCase('isUnderAllowedTestRoot accepts adapter override path', () => {
   withEnv({ PLAYWRIGHT_ADAPTER_TEST_ROOT: 'packages/my-adapter/tests' }, () => {
     assert.equal(isUnderAllowedTestRoot('packages/my-adapter/tests/ui/smoke.spec.ts'), true);
-    assert.equal(isUnderAllowedTestRoot('examples/erpku/tests/ui/smoke.spec.ts'), false);
+    assert.equal(isUnderAllowedTestRoot('tests/ui/smoke.spec.ts'), true);
   });
 });
 
@@ -140,21 +140,27 @@ runCase('PLAYWRIGHT_TEST_ROOT override still gates primary root', () => {
 });
 
 runCase('isAdapterSpecPath uses adapter root', () => {
-  withEnv({ PLAYWRIGHT_ADAPTER_TEST_ROOT: undefined }, () => {
-    assert.equal(isAdapterSpecPath('examples/erpku/tests/ui/auth/login.spec.ts'), true);
+  withEnv({ PLAYWRIGHT_ADAPTER_TEST_ROOT: 'packages/my-adapter/tests' }, () => {
+    assert.equal(isAdapterSpecPath('packages/my-adapter/tests/ui/auth/login.spec.ts'), true);
     assert.equal(isAdapterSpecPath('tests/seed.spec.ts'), false);
   });
 });
 
-runCase('getAdapterConfigPath defaults to erpku adapter config', () => {
-  withEnv({ PLAYWRIGHT_ADAPTER_CONFIG: undefined }, () => {
-    assert.equal(getAdapterConfigPath(), 'examples/erpku/playwright.config.ts');
+runCase('isAdapterSpecPath false by default (no bundled adapter)', () => {
+  withEnv({ PLAYWRIGHT_ADAPTER_TEST_ROOT: undefined }, () => {
+    assert.equal(isAdapterSpecPath('tests/ui/auth/login.spec.ts'), false);
   });
 });
 
-runCase('getAdapterFixtureImport defaults to @erpku path', () => {
+runCase('getAdapterConfigPath defaults to core config', () => {
+  withEnv({ PLAYWRIGHT_ADAPTER_CONFIG: undefined }, () => {
+    assert.equal(getAdapterConfigPath(), 'playwright.config.ts');
+  });
+});
+
+runCase('getAdapterFixtureImport defaults to tests/fixtures', () => {
   withEnv({ PLAYWRIGHT_ADAPTER_FIXTURE_IMPORT: undefined }, () => {
-    assert.equal(getAdapterFixtureImport(), '@erpku/fixtures/base.fixture');
+    assert.equal(getAdapterFixtureImport(), 'tests/fixtures');
   });
 });
 

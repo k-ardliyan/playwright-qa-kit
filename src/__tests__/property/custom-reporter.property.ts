@@ -64,7 +64,7 @@ function makeSyntheticTest(
   index: number,
   annotations?: Array<{ type: string; description: string }>,
 ): TestCase {
-  const file = path.join(process.cwd(), 'example/erpku/tests/ui/smoke/smoke.spec.ts');
+  const file = path.join(process.cwd(), 'tests/ui/smoke/smoke.spec.ts');
   return {
     title: `TC-SMOKE-${String(index + 1).padStart(3, '0')}: synthetic-${index}`,
     titlePath: () => ['Property Suite', `synthetic-${index}`],

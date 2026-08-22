@@ -64,7 +64,8 @@ Content preview (simplified):
 Run setup if missing:
 
 ```bash
-npx playwright auth.setup --env=local --role=user
+npm run auth:setup
+# atau scoped per role: npx playwright test tests/auth.setup.ts --project=setup --workers=1
 ```
 
 ---

@@ -3,7 +3,7 @@
     {
       "name": "playwright",
       "command": "npx",
-      "args": ["tsx", "scripts/playwright-mcp-launch.ts"]
+      "args": ["tsx", "tools/scripts/playwright-mcp-launch.ts"]
     },
     {
       "name": "playwright-test",

@@ -191,9 +191,11 @@ function runConfigMappedJsonPriority(): void {
   const repoRoot = findRepoRoot(__dirname);
   const resultsDir = path.join(repoRoot, 'test-results');
   const stalePath = path.join(resultsDir, 'results.json');
-  const adapterPath = path.join(resultsDir, 'erpku-results.json');
+  const adapterPath = path.join(resultsDir, 'adapter-results.json');
   const previousConfig = process.env.PLAYWRIGHT_CONFIG;
   const previousResultsJson = process.env.PLAYWRIGHT_RESULTS_JSON;
+  const previousAdapterConfig = process.env.PLAYWRIGHT_ADAPTER_CONFIG;
+  const previousAdapterResultsJson = process.env.PLAYWRIGHT_ADAPTER_RESULTS_JSON;
 
   fs.mkdirSync(resultsDir, { recursive: true });
 
@@ -211,8 +213,8 @@ function runConfigMappedJsonPriority(): void {
     failures: [
       {
         testTitle: 'adapter profile failure',
-        filePath: 'example/erpku/tests/ui/smoke/smoke.spec.ts',
-        errorMessage: 'from erpku-results.json',
+        filePath: 'tests/ui/smoke/smoke.spec.ts',
+        errorMessage: 'from adapter-results.json',
         duration: 2,
       },
     ],
@@ -221,7 +223,9 @@ function runConfigMappedJsonPriority(): void {
   fs.writeFileSync(stalePath, JSON.stringify(stalePayload, null, 2), 'utf8');
   fs.writeFileSync(adapterPath, JSON.stringify(adapterPayload, null, 2), 'utf8');
 
-  process.env.PLAYWRIGHT_CONFIG = 'examples/erpku/playwright.config.ts';
+  process.env.PLAYWRIGHT_CONFIG = 'packages/my-adapter/playwright.config.ts';
+  process.env.PLAYWRIGHT_ADAPTER_CONFIG = 'packages/my-adapter/playwright.config.ts';
+  process.env.PLAYWRIGHT_ADAPTER_RESULTS_JSON = 'test-results/adapter-results.json';
   delete process.env.PLAYWRIGHT_RESULTS_JSON;
 
   try {
@@ -230,7 +234,7 @@ function runConfigMappedJsonPriority(): void {
     assert.equal(output.failures.length, 1);
     assert.equal(output.failures[0].testTitle, 'adapter profile failure');
     assert.ok(
-      output.sourceFile?.replace(/\\/g, '/').endsWith('erpku-results.json'),
+      output.sourceFile?.replace(/\\/g, '/').endsWith('adapter-results.json'),
       `expected adapter JSON, got ${output.sourceFile}`,
     );
   } finally {
@@ -244,12 +248,22 @@ function runConfigMappedJsonPriority(): void {
     } else {
       process.env.PLAYWRIGHT_RESULTS_JSON = previousResultsJson;
     }
+    if (previousAdapterConfig === undefined) {
+      delete process.env.PLAYWRIGHT_ADAPTER_CONFIG;
+    } else {
+      process.env.PLAYWRIGHT_ADAPTER_CONFIG = previousAdapterConfig;
+    }
+    if (previousAdapterResultsJson === undefined) {
+      delete process.env.PLAYWRIGHT_ADAPTER_RESULTS_JSON;
+    } else {
+      process.env.PLAYWRIGHT_ADAPTER_RESULTS_JSON = previousAdapterResultsJson;
+    }
     fs.rmSync(stalePath, { force: true });
     fs.rmSync(adapterPath, { force: true });
   }
 
   console.log(
-    '✓ Config-mapped JSON priority: adapter profile picks erpku-results.json over stale results.json',
+    '✓ Config-mapped JSON priority: adapter profile picks adapter JSON over stale results.json',
   );
 }
 

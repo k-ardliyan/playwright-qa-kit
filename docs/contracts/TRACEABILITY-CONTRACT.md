@@ -1,6 +1,7 @@
 # Traceability Contract (`qa.traceability/v1`)
 
 > Canonical specification for `TraceabilityContractV1` produced by `trace_requirement`.
+> Source of truth: `tools/mcp/src/contracts/traceability-contract.ts`.
 
 ## Schema Version
 
@@ -9,6 +10,33 @@
 ## Structure
 
 ```ts
+export type ExecutionStatus =
+  | 'passed' | 'failed' | 'timedOut' | 'skipped' | 'interrupted'
+  | 'not-generated' | 'not-executed' | 'manual' | 'blocked';
+
+export type FailureRootCause =
+  | 'app' | 'test' | 'requirement' | 'env' | 'ai_generation' | 'unknown';
+
+export interface CoverageStateBreakdown {
+  design: 'planned' | 'unplanned';
+  automation:
+    | 'automated' | 'manual' | 'mixed' | 'unautomated'
+    | 'generated' | 'not-generated' | 'blocked';
+  execution:
+    | 'executed' | 'not-executed' | 'passed' | 'failed' | 'skipped' | 'timed-out';
+  verification:
+    | 'unverified' | 'verified-pass' | 'verified-fail'
+    | 'manual-verification-required' | 'passed' | 'failed' | 'healed';
+}
+
+export interface TraceabilityEvidence {
+  tracePath?: string;
+  screenshotPath?: string;
+  videoPath?: string;
+  errorContextPath?: string;
+  reportPath?: string;
+}
+
 export interface TraceabilityAcNode {
   acId: string;
   description: string;
@@ -25,8 +53,13 @@ export interface TraceabilityScenarioNode {
   authContext?: string;
   specFile?: string;
   executionStatus: ExecutionStatus;
+  coverageState?: CoverageStateBreakdown;
+  linkageType?: 'exact-test-id' | 'exact-scenario-id' | 'requirement-id' | 'heuristic-fallback';
+  heuristicDiagnostic?: { reason: string; confidence: number };
   failureSource?: FailureRootCause;
   errorMessage?: string;
+  evidence?: TraceabilityEvidence;
+  lastRunAt?: string;
 }
 
 export interface TraceabilityContractV1 {
@@ -50,11 +83,17 @@ export interface TraceabilityContractV1 {
     totalScenarios: number;
     passingScenarios: number;
     failingScenarios: number;
+    /** Scenarios that failed initially but were successfully healed in the same pipeline run. */
+    healedScenarios: number;
     skippedScenarios: number;
     manualScenarios: number;
     blockedScenarios: number;
   };
 
+  coverageState?: CoverageStateBreakdown;
+  diagnostics?: Diagnostic[];
   generatedAt: string;
 }
 ```
+
+> Catatan: `ExecutionStatus`, `FailureRootCause`, `CoverageStateBreakdown`, `TraceabilityEvidence`, `linkageType`, `heuristicDiagnostic`, `evidence`, `lastRunAt`, `coverageState` level kontrak, dan `healedScenarios`/`diagnostics` adalah bagian dari kontrak aktual — pastikan konsumen membaca versi terkini dari `tools/mcp/src/contracts/traceability-contract.ts`.

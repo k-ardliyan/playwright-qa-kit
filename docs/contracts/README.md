@@ -15,6 +15,7 @@ This directory documents the versioned, canonical contracts used by the Playwrig
 ## Related Documentation
 
 - [`DIAGNOSTICS.md`](DIAGNOSTICS.md) — Comprehensive catalog of diagnostic error, warning, and info codes.
-- [`REQUIREMENT-CONTRACT.md`](REQUIREMENT-CONTRACT.md) — Detailed fields of `RequirementContractV1`.
+- [`src/contracts/requirement-contract.ts`](../../src/contracts/requirement-contract.ts) — Source of truth untuk field `RequirementContractV1` (file `REQUIREMENT-CONTRACT.md` terpisah belum dibuat).
 - [`TEST-PLAN-CONTRACT.md`](TEST-PLAN-CONTRACT.md) — Detailed fields of `TestPlanContractV1`.
 - [`TRACEABILITY-CONTRACT.md`](TRACEABILITY-CONTRACT.md) — Detailed structure of `TraceabilityContractV1`.
+- [`TRACEABILITY-MODEL.md`](TRACEABILITY-MODEL.md) — Konsep closed-loop traceability + coverage 4-dimensi (merge `docs/TRACEABILITY.md` + `COVERAGE-MODEL.md`).

@@ -311,7 +311,7 @@ jobs:
         env:
           CI: 'true'
         run: |
-          npx playwright test -c playwright.cross-browser.config.ts \
+          npx playwright test -c config/playwright/cross-browser.ts \
             --grep-invert @demo
 
       - name: Upload cross-browser results

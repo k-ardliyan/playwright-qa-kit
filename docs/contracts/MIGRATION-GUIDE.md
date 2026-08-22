@@ -95,8 +95,8 @@ Always validate planned scenarios against the compiled requirement before genera
 
 Diagnostics will return specific codes:
 - `PLAN_AC_UNCOVERED`: Warns if an AC is not mapped to any scenario.
-- `EPHEMERAL_LOCATOR_LEAK`: Errors if ephemeral refs (e.g. `tw-1234`, `ref: 12`) leaked into the plan.
-- `ROLE_MISMATCH`: Errors if a scenario runs as a role not permitted by requirement access matrix.
+- `PLAN_EPHEMERAL_REF_DETECTED`: Errors if ephemeral refs (e.g. `tw-1234`, `ref: 12`) leaked into the plan.
+- `PLAN_ROLE_DRIFT`: Errors if a scenario runs as a role not permitted by requirement access matrix.
 
 ---
 

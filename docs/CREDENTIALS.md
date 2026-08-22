@@ -88,7 +88,7 @@ npm run setup:wizard
 ```
 
 Phase 1: pilih **APP_ENV**, lalu **BASE_URL untuk env itu**.  
-Phase 2: kredensial ke file env yang sama. Nilai di `environments/{APP_ENV}.env` dienkripsi — **itu normal**.
+Phase 2: kredensial ke file env yang sama. Nilai di `config/environments/{APP_ENV}.env` bisa dienkripsi via `npm run env:edit` (re-encrypt) — **itu normal**.
 
 ---
 

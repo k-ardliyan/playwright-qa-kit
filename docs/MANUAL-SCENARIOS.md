@@ -27,6 +27,8 @@ Skenario yang ditandai `(@manual)` di judul `### SC-XX: ...` berarti tidak bisa 
 
 Jika tidak diberi tag, skenario dianggap `(@success)` secara default.
 
+> Catatan: parser requirement mengembalikan `scenarioType: 'general'` untuk skenario tanpa tag tipe — bukan `'success'` (lihat `parse-requirement-scenarios.ts`).
+
 ---
 
 ## Kapan Pakai `(@manual)`?

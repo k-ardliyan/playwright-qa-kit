@@ -69,17 +69,19 @@ npm run setup:wizard
 
 ```bash
 # Staging environment
-APP_ENV=staging npx playwright auth.setup
+APP_ENV=staging npm run auth:setup
 
 # Production environment (headed mode required for OTP)
-APP_ENV=production HEADLESS=false npx playwright auth.setup
+APP_ENV=production HEADLESS=false npm run auth:setup
 ```
+
+> Perintah di atas adalah `npm run auth:setup` (package.json: `npx playwright test tests/auth.setup.ts --project=setup --workers=1`). CLI `npx playwright auth.setup` bukan perintah yang valid.
 
 #### Option C: Headless with OTP via stdin
 
 ```bash
 # Only for internal trusted environments
-AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.setup
+AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npm run auth:setup
 # Then enter OTP when prompted in terminal
 ```
 
@@ -91,8 +93,8 @@ AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.
 
 | Error Pattern                         | Root Cause              | Solution                                    |
 | ------------------------------------- | ----------------------- | ------------------------------------------- |
-| `FileNotFound: .auth/local/user.json` | No auth setup run       | Run `npx playwright auth.setup --env=local` |
-| `ECONNREFUSED localhost:3000`         | Backend not running     | Start backend: `npm run dev:backend`        |
+| `FileNotFound: .auth/local/user.json` | No auth setup run       | Run `npm run auth:setup`                       |
+| `ECONNREFUSED localhost:3000`         | Backend not running     | Start backend app (lihat docs project masing-masing) |
 | `NET::ERR_CERT_COMMON_NAME_INVALID`   | Self-signed cert (rare) | Add `--ignore-https-errors` in config       |
 
 ### Staging Environment
@@ -119,7 +121,7 @@ AUTH_CHALLENGE_MODE=otp-stdin HEADLESS=true APP_ENV=staging npx playwright auth.
 
 ## 🛠️ Environment Configuration
 
-### `.env.local` (Local Development)
+### `config/environments/local.env` (Local Development)
 
 ```bash
 APP_ENV=local
@@ -130,7 +132,7 @@ SLOW_MO=100     # Slow motion for debugging
 AUTH_CHALLENGE_TIMEOUT_MS=120000
 ```
 
-### `.env.staging` (Staging)
+### `config/environments/staging.env` (Staging)
 
 ```bash
 APP_ENV=staging
@@ -141,7 +143,7 @@ SLOW_MO=0
 AUTH_CHALLENGE_TIMEOUT_MS=180000  # Longer for OTP delays
 ```
 
-### `.env.production` (Production)
+### `config/environments/production.env` (Production)
 
 ```bash
 APP_ENV=production
@@ -150,10 +152,11 @@ AUTH_CHALLENGE_MODE=auto  # Auto-detect CAPTCHA/OTP
 HEADLESS=true
 SLOW_MO=0
 AUTH_CHALLENGE_TIMEOUT_MS=120000
-RATE_LIMIT_ENABLED=true
 ```
 
-**Note:** Never commit `.env.*` files to Git. They are in `.gitignore`.
+> File env dibaca dari `config/environments/{APP_ENV}.env` (fallback legacy: `environments/{APP_ENV}.env` — lihat `src/utils/env-loader.ts`). File bernama `.env.local` / `.env.staging` di root **tidak dibaca** loader. Template: `config/environments/local.env.example`.
+
+**Note:** File `config/environments/*.env` dan `environments/*.env` sudah di-gitignore (pattern `config/environments/*.env`). File `.env.*` di root **tidak** di-gitignore — jangan buat file di root.
 
 ---
 
@@ -309,32 +312,22 @@ node -e "console.log(require('./.auth/$APP_ENV/user.json').cookies.map(c => `${c
 
 ### Debug Mode Enablement
 
-Add to `playwright.config.ts` temporarily:
+Gunakan env vars yang dikenali framework (lihat `config/playwright/base.ts`):
 
-```typescript
-export default defineConfig({
-  // ...
-  use: {
-    // Slower motion for debugging
-    slowMo: process.env.DEBUG_SLOWMO ? 500 : 0,
+```bash
+# Slower motion (di-load dari SLOW_MO oleh buildPlaywrightSharedDefaults)
+SLOW_MO=500 HEADLESS=false npm run test:smoke
 
-    // Record video for failures
-    recordVideo: process.env.DEBUG_VIDEO ? 'on-failure' : undefined,
-
-    // Keep browser open after failure
-    _option_browserClose: 'never',
-  },
-
-  // Override for debug runs
-  config:
-    process.env.DEBUG_MODE === 'true'
-      ? {
-          timeout: 120000,
-          retries: 0,
-        }
-      : {},
-});
+# Record video on failure — set di konfigurasi project/use, bukan env otomatis
 ```
+
+Untuk debugging satu test dengan video + trace:
+
+```bash
+npx playwright test tests/login.spec.ts --project=local --headed --trace on --video on
+```
+
+> Catatan: `DEBUG_MODE`, `DEBUG_VIDEO`, `DEBUG_SLOWMO`, dan field `_option_browserClose` / `config:` di `defineConfig` **tidak dikenali** framework/Playwright — jangan dipakai. Slow-mo memakai env `SLOW_MO`, headless memakai `HEADLESS` (default true, baca `config/playwright/base.ts`).
 
 Usage:
 
@@ -348,70 +341,29 @@ DEBUG_MODE=true DEBUG_VIDEO=1 APP_ENV=staging npx playwright test
 
 ### Automated Checks
 
-Create `scripts/check-env-health.ts`:
+Gunakan tool yang sudah tersedia di framework — tidak perlu membuat file baru:
 
-```typescript
-/**
- * Validates environment readiness before test execution
- */
-import { readFileSync } from 'fs';
-import { existsSync } from 'path';
+```bash
+# Verifikasi env + MCP + auth + base URL dalam satu pre-flight
+npm run health:check
 
-interface EnvHealthCheck {
-  ok: boolean;
-  errors: string[];
-  warnings: string[];
-}
+# Status environment aktif + file env + role credentials
+npm run env:status
 
-export function checkEnvHealth(): EnvHealthCheck {
-  const env = process.env.APP_ENV || 'local';
-  const result: EnvHealthCheck = { ok: true, errors: [], warnings: [] };
-
-  // Check BASE_URL reachability
-  try {
-    const response = fetch(process.env.BASE_URL || '');
-    if (!response.ok) {
-      result.errors.push(`BASE_URL ${process.env.BASE_URL} returned ${response.status}`);
-      result.ok = false;
-    }
-  } catch (err) {
-    result.errors.push(`Cannot reach BASE_URL: ${(err as Error).message}`);
-    result.ok = false;
-  }
-
-  // Check auth state files
-  const authDir = `.auth/${env}/`;
-  if (!existsSync(authDir)) {
-    result.warnings.push(`No auth state found in ${authDir}`);
-  } else {
-    const roles = ['user', 'super-admin', 'finance', 'hrd', 'admin'];
-    const missingRoles = roles.filter((role) => !existsSync(`${authDir}${role}.json`));
-    if (missingRoles.length > 0) {
-      result.warnings.push(`Missing auth states for: ${missingRoles.join(', ')}`);
-    }
-  }
-
-  return result;
-}
+# Verifikasi setup lokal
+npm run setup:check
 ```
 
-Call at test start:
+Contoh kode untuk memvalidasi kesiapan environment sebelum test (pakai helper loader yang sudah ada):
 
 ```typescript
-import { checkEnvHealth } from '../scripts/check-env-health';
+import { loadEnvironment } from '@/utils/env-loader';
 
-test.describe.configure({ mode: 'parallel' });
-
-test.beforeAll(() => {
-  const health = checkEnvHealth();
-  if (!health.ok) {
-    throw new Error(`Environment health check failed:\n${health.errors.join('\n')}`);
-  }
-  if (health.warnings.length > 0) {
-    console.warn('Environment warnings:', health.warnings.join('\n'));
-  }
-});
+// Memuat config/environments/{APP_ENV}.env + validasi key yang dibutuhkan
+loadEnvironment();
 ```
+
+> Catatan: `scripts/check-env-health.ts` tidak ada di framework — file itu contoh aspirasional. Gunakan `npm run health:check` (tools/scripts/health-check-cli.ts) dan `npm run env:status` (tools/scripts/env-status.ts).
 
 ---
 

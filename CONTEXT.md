@@ -27,11 +27,10 @@
 
 ## Scope
 
-- **Path A — Template core** — Write requirement → AI pipeline → generated specs in `tests/`. Recommended starting point.
-- **Path B — ERPKU Reference Adapter** — Smoke run + walkthrough existing specs under `examples/erpku/tests/`. Generator does not write to adapter folder.
-- **Generator verification** — How the Generator confirms selectors before writing code: CLI attach (preferred) or MCP browser tools (fallback). Not the same as Path A/B.
-- **Framework Scope** — Generic, multi-project. The Playwright QA Kit is a reusable toolkit that works across different web applications. Application-specific code (auth flows, POMs, env configs) lives in each project's instance. ERPKU exists only as a sample/example implementation under `examples/erpku/`.
-- **Reference Adapter** — Runnable example under `examples/erpku/` demonstrating fork patterns (POMs, auth setup, adapter env overlay). Not part of template core.
+- **Scope (Path A — Template core)** — Write requirement → AI pipeline → generated specs in `tests/`. Recommended starting point.
+- **Generator verification** — How the Generator confirms selectors before writing code: CLI attach (preferred) or MCP browser tools (fallback).
+- **Framework Scope** — Generic, multi-project. The Playwright QA Kit is a reusable toolkit that works across different web applications. Application-specific code (auth flows, POMs, env configs) lives in each project's instance (fork).
+- **Reference Adapter** — Not bundled. Forks can define their own adapter via `PLAYWRIGHT_ADAPTER_*` envs (see `CUSTOM-MCP.md`).
 - **Deployment Model** — Template Fork. This repository acts as a core template. Each QA project forks or duplicates this repository into its own separate Git repository to maintain absolute isolation of tests, credentials, and custom page objects. Upstream updates (core logic, prompts, MCP config) are pulled and merged manually from the core template repository registered as a Git `upstream` remote.
 
 ## Configuration & Security

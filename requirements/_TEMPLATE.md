@@ -23,7 +23,7 @@
 | `Auth state`        | ✅ Ya        | `unauthenticated` / `authenticated`          | Butuh login atau tidak.                                                   |
 | `Halaman awal`      | ✅ Ya        | `/login`                                     | Path URL halaman pembuka scenario.                                        |
 | `Module`            | ✅ **Wajib** | `invoice` / `auth` / `account`               | Modul aplikasi yang ditest. Dipakai untuk grouping laporan dan coverage.  |
-| `Feature`           | ✅ **Wajib** | `login` / `buat-invoice` / `approve-invoice` | Fitur spesifik dalam modul.                                               |
+| `Feature`           | ⚪ Disarankan | `login` / `buat-invoice` / `approve-invoice` | Fitur spesifik dalam modul. Validator hanya memberi warning jika kosong (`metadata_feature_recommended`). |
 | `Role scope`        | ⚪ Opsional  | `super-admin, finance`                       | Role bisnis yang terlibat. Isi jika fitur multi-role.                     |
 | `Default role`      | ⚪ Opsional  | `finance`                                    | Role default untuk single-role authenticated.                             |
 | `Risk level`        | ⚪ Opsional  | `high` / `medium` / `low`                    | Dampak jika fitur ini gagal di produksi. Dipakai Healer untuk prioritasi. |
@@ -86,7 +86,7 @@
 
 - **Test ID:** `TC-INV-001`
 - **Covers:** `AC-01`, `AC-02`
-- **Actor:** `finance`
+- **Role:** `finance`
 - **Prioritas skenario:** `high`
 - **Layer terdampak:** `FE` `BE`
 
@@ -116,7 +116,7 @@
 
 - **Test ID:** `TC-INV-002`
 - **Covers:** `AC-03`
-- **Actor:** `hrd`
+- **Role:** `hrd`
 - **Prioritas skenario:** `medium`
 - **Layer terdampak:** `FE` `BE`
 
@@ -168,7 +168,7 @@
 - [ ] Setiap item di `## Kriteria Penerimaan` memiliki format `- **AC-XX:** [deskripsi]`
 - [ ] Setiap skenario memiliki `- **Test ID:** \`TC-XXX-NNN\``
 - [ ] Setiap skenario memiliki `- **Covers:** \`AC-XX\`` yang merujuk ke AC yang sah
-- [ ] Skenario multi-role memiliki `- **Actor:** \`role-name\``
+- [ ] Skenario multi-role memiliki `- **Role:** \`role-name\`` (parser requirement membaca `Role:`, bukan `Actor:`)
 - [ ] Input data menggunakan prefix provenance (`seed:`, `credential:`, `fixture:`, `literal:`)
 - [ ] Skenario non-otomatis ditandai `(@manual)` dengan alasan di Hasil yang Diharapkan
 - [ ] File tervalidasi: `npm run validate:requirement -- requirements/nama-fitur.md`

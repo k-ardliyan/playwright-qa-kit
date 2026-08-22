@@ -25,7 +25,7 @@ Checklist:
 3. Use the new tag in generated/manual tests where relevant.
 4. Update docs that mention supported tags (README or agent guidance).
 
-Example:
+Example (salin dari enum aktual — `src/utils/configuration.ts`):
 
 ```ts
 export enum TAGS {
@@ -34,7 +34,12 @@ export enum TAGS {
   API = '@api',
   UI = '@ui',
   E2E = '@e2e',
-  SECURITY = '@security',
+  AUTH = '@auth',
+  LOGIN = '@login',
+  SEED = '@seed',
+  DEMO = '@demo',
+  HEALER = '@healer',
+  FLAKY = '@flaky',
 }
 ```
 
@@ -122,14 +127,13 @@ When upgrading `@playwright/test`:
    **Codex (primary):**
 
    ```bash
-   # Bash
-   ./scripts/sync-init-agents.sh
-
-   # Windows PowerShell
-   ./scripts/sync-init-agents.ps1
+   # Tidak ada script wrapper — lakukan manual:
+   mkdir -p .tmp/init-agents-codex
+   cd .tmp/init-agents-codex
+   npx playwright init-agents --loop=codex
    ```
 
-   Or manually:
+   Atau manual:
 
    ```bash
    mkdir -p .tmp/init-agents-codex
@@ -149,14 +153,13 @@ When upgrading `@playwright/test`:
    - `.github/agents/planner.agent.md`
    - `.github/agents/generator.agent.md`
    - `.github/agents/healer.agent.md`
-   - `.github/agents/orchestrator.agent.md` (stub → root `AGENTS.md`)
    - root `AGENTS.md` (Orchestrator canonical — merge selectively, do not replace)
 4. Merge useful upstream changes only:
    - new MCP tool names or browser interaction patterns,
    - seed-run / live-verify / run-until-pass workflow hints,
    - spec output structure improvements.
 5. Preserve framework-specific content:
-   - root [`AGENTS.md`](AGENTS.md) (Orchestrator canonical) and [`.github/agents/orchestrator.agent.md`](.github/agents/orchestrator.agent.md) (stub pointer), [`.github/AGENTS.md`](.github/AGENTS.md) governance,
+   - root [`AGENTS.md`](AGENTS.md) (Orchestrator canonical) and [`.github/AGENTS.md`](.github/AGENTS.md) governance,
    - `playwright-qa` tools (`validate_requirement`, `parse_requirement_scenarios`, etc.),
    - `requirements/` → `specs/` → `tests/` paths and Indonesian QA template,
    - hybrid `playwright-cli` + MCP live verification in Generator.
@@ -221,10 +224,9 @@ Generated tests (Generator output) **must** include:
 // seed: tests/seed.spec.ts
 ```
 
-Legacy manual specs are exempt via `TRACEABILITY_EXEMPT` in `tools/mcp/src/tools/validate-generated-tests.ts`:
+Legacy manual specs are exempt via `TRACEABILITY_EXEMPT_PREFIXES_STATIC` / `TRACEABILITY_EXEMPT_FILES` in `tools/mcp/src/tools/validate-generated-tests.ts`:
 
 - `tests/seed.spec.ts`
 - `tests/demo/healer-test.spec.ts`
-- `examples/erpku/tests/` (reference adapter — not Generator output)
 
 Do not add new paths without maintainer review. Prefer `@legacy` tag automation in future.

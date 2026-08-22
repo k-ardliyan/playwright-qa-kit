@@ -2,7 +2,7 @@
 
 > **Document Status:** Authoritative Integration Contract  
 > **Target Milestone:** Prompt Studio v1 (Post Core Freeze v1)  
-> **Reference:** `PLAYWRIGHT-QA-KIT-CORE-FREEZE-RC-PROMPT-STUDIO-PREP.md`
+> **Reference:** `docs/architecture/DECISIONS.md` D-13 (Core Freeze v1) — dokumen persiapan `PLAYWRIGHT-QA-KIT-CORE-FREEZE-RC-PROMPT-STUDIO-PREP.md` tidak ada di repo (artefak perencanaan yang tidak di-commit).
 
 ---
 

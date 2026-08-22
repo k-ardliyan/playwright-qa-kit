@@ -118,14 +118,14 @@ npm run setup:wizard
 
 Wizard memandu kamu langkah demi langkah:
 
-1. ✅ Konfigurasi URL aplikasi dan kredensial test
-2. ✅ Install semua dependency dan browser
-3. ✅ Build MCP server untuk Hermes Agent
-4. ✅ Verifikasi koneksi Hermes + MCP
-5. ✅ Setup autentikasi session (`auth.setup.ts`)
-6. ✅ Enkripsi kredensial otomatis
+1. ✅ Deteksi konfigurasi env yang sudah ada
+2. ✅ Pilih APP_ENV (local/staging/…)
+3. ✅ Konfigurasi BASE_URL + verifikasi reachable
+4. ✅ Isi kredensial per role (EMAIL/USERNAME/PHONE + PASSWORD)
+5. ✅ Pilih AUTH_CHALLENGE_MODE
+6. ✅ Tulis `config/environments/{APP_ENV}.env` + validasi + ringkasan
 
-Hasil: file `requirements/login.md` siap untuk website kamu.
+Hasil: file env aktif siap dipakai. **Wizard tidak** menginstall browser/MCP server, tidak menjalankan auth setup, dan tidak membuat `requirements/login.md` — langkah-langkah itu dijalankan terpisah (lihat Quick Start & Commands di bawah).
 
 </details>
 
@@ -139,7 +139,7 @@ cp config/environments/local.env.example config/environments/local.env   # isi B
 npm run setup:check && npm run health:check
 ```
 
-> 🔐 **Credential security** — Nilai `local.env` auto-encrypt ke `encrypted:BA+84DB/...` setelah wizard atau `setup:check` dijalankan. Kunci dekripsi di `~/.dotenvx-keys/playwright-qa-kit/`.
+> 🔐 **Credential security** — Nilai `config/environments/local.env` bisa dienkripsi ke `encrypted:BA+84DB/...` via `npm run env:edit` (re-encrypt) atau `npx @dotenvx/dotenvx encrypt -f config/environments/local.env`. Kunci dekripsi di `~/.dotenvx-keys/playwright-qa-kit/`.
 
 ```bash
 npm run env:edit              # ganti password / role / OTP mode
@@ -163,12 +163,12 @@ npm run qa:run -- requirements/login.md
 
 # 3) Dashboard terbuka otomatis
 npm run qa:run -- requirements/login.md --open-dashboard
-#    atau preview: npx tsx scripts/preview-dashboard.ts
+#    atau serve dashboard: npm run dashboard:serve
 ```
 
 | File                            | Peran                                                    |
 | ------------------------------- | -------------------------------------------------------- |
-| `requirements/login.md`         | 🎯 **Setup awal** — di-generate wizard, per website kamu |
+| `requirements/login.md`         | 🎯 **Setup awal** — buat dari `_TEMPLATE.md` (tidak di-generate otomatis) |
 | `requirements/auth/sample-*.md` | 📚 **Latihan format** — bukan target app                 |
 | `requirements/_TEMPLATE.md`     | 📝 Template untuk fitur baru                             |
 
@@ -280,8 +280,9 @@ Panduan lengkap: [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)
 | `npm run setup:check`    | Verifikasi setup lokal                 |
 | `npm run health:check`   | Pre-flight pipeline (env + MCP + auth) |
 | `npm run env:edit`       | Edit creds / OTP mode                  |
-| `npm run snapshot:page`  | Snapshot selector catalog              |
-| `npm run discover:pages` | Crawl halaman app                      |
+| `npm run mcp:config`     | Generate MCP config semua platform     |
+
+> Snapshot selector catalog & crawl halaman adalah tool MCP: `snapshot_page` / `discover_pages` (playwright-qa).
 
 ### 🧪 Test & Quality
 
@@ -289,19 +290,12 @@ Panduan lengkap: [docs/MANUAL-SCENARIOS.md](docs/MANUAL-SCENARIOS.md)
 | ------------------------- | ------------------------- |
 | `npm test`                | Jalankan semua test       |
 | `npm run test:smoke`      | Smoke test saja           |
-| `npm run test:headed`     | Browser visible (debug)   |
 | `npm run test:quality`    | Gate lengkap sebelum push |
 | `npm run test:unit`       | Unit tests                |
 | `npm run test:property`   | Property tests            |
+| `npm run test:contract`   | Golden contract CI        |
 | `npm run manual:check`    | List scenario `(@manual)` |
-| `npm run validate:agents` | Validasi tool registry    |
-
-<details>
-<summary>📊 <b>50 npm scripts lengkap</b></summary>
-
-Lihat [docs/CHEATSHEET.md](docs/CHEATSHEET.md) untuk cheat sheet A4 printable.
-
-</details>
+| `npm run mcp:check`       | Cek kompatibilitas MCP    |
 
 ---
 
@@ -317,7 +311,7 @@ playwright-qa-kit/
 ├─ tools/               ← Maintainer tooling, scripts, validators & MCP server
 ├─ config/              ← Environment credentials & Playwright configs
 ├─ docs/                ← Operational & architectural documentation
-└─ examples/            ← Reference implementations (ERPku adapter)
+└─ (tidak ada)          ← Adapter contoh dihapus 2026-08-22; fork menyediakan adapter sendiri via `PLAYWRIGHT_ADAPTER_*` env
 ```
 
 > 📚 Detail lengkap → [docs/architecture/DIRECTORY-MAP.md](docs/architecture/DIRECTORY-MAP.md) · [DECISIONS.md](docs/architecture/DECISIONS.md) · [LESSONS-LEARNED.md](docs/architecture/LESSONS-LEARNED.md)
@@ -334,7 +328,7 @@ playwright-qa-kit/
 
 ```bash
 npm run mcp:build          # build custom QA server
-npm run mcp:config         # generate config semua platform
+npm run mcp:config         # generate config semua platform (claude/cursor/kiro)
 ```
 
 > 21 tool lengkap → [CUSTOM-MCP.md](CUSTOM-MCP.md)
@@ -355,7 +349,7 @@ Tambahkan metadata role di requirement:
 
 Generator otomatis membuat file test terpisah per role (`<feature>-<role>.spec.ts`) dengan storage state sesuai dari `.auth/{APP_ENV}/`.
 
-> 🔐 Multi-role auth + OTP/CAPTCHA → [AUTH-CONTEXT-CONVENTION.md](docs/AUTH-CONT-CONVENTION.md) · [CREDENTIALS.md](docs/CREDENTIALS.md)
+> 🔐 Multi-role auth + OTP/CAPTCHA → [AUTH-CONTEXT-CONVENTION.md](docs/AUTH-CONTEXT-CONVENTION.md) · [CREDENTIALS.md](docs/CREDENTIALS.md)
 
 ---
 

@@ -66,6 +66,22 @@ export interface PlanScenarioV1 {
 }
 ```
 
+### Supporting Types
+
+```ts
+export interface CoverageGap {
+  scenarioId?: string;
+  acceptanceCriterionId?: string;
+  reason: string;
+}
+
+export interface CatalogEvidence {
+  page: string;
+  catalogPath?: string;
+  catalogHash?: string;
+}
+```
+
 ### Invariants & Rules
 
 1. **No Ephemeral Browser Refs:** Element refs such as `ref:tw-123` or `handle:...` must never appear in actions or locator intent.

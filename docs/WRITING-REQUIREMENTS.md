@@ -33,11 +33,11 @@ Untuk QA pemula: **mulai dari Path A**. POM adalah optimasi, bukan keharusan.
 - [ ] Judul `# REQ-XXX: ...` ada di baris pertama
 - [ ] Section `## Metadata` terisi (Tags, Prioritas, Auth state, Halaman awal, Module, Feature)
 - [ ] **`- **Module:** <nama-modul>`** diisi — wajib untuk machine contract & report grouping
-- [ ] **`- **Feature:** <nama-fitur>`** diisi — wajib untuk pemetaan spesifik
+- [ ] **`- **Feature:** <nama-fitur>`** diisi — disarankan untuk pemetaan spesifik (validator hanya warning jika kosong)
 - [ ] Setiap item di `## Kriteria Penerimaan` memiliki ID eksplisit: `- **AC-01:** [Deskripsi]`
 - [ ] Setiap skenario memiliki `- **Test ID:** \`TC-MODUL-NNN\``
 - [ ] Setiap skenario memiliki `- **Covers:** \`AC-01\`, \`AC-02\``
-- [ ] Skenario multi-role memiliki `- **Actor:** \`role-name\``
+- [ ] Skenario multi-role memiliki `- **Role:** \`role-name\`` (parser requirement membaca `Role:`, bukan `Actor:`)
 - [ ] Input Data menggunakan format provenance eksplisit (`seed:...`, `credential:...`, `fixture:...`, `literal:...`)
 - [ ] Hasil bersifat observable (URL, teks, status badge — bukan "berjalan baik")
 - [ ] Skenario non-otomatis ditandai `(@manual)` di judul dengan alasan di Hasil yang Diharapkan
@@ -73,6 +73,8 @@ Capability tags (opsional, digabung di judul SC):
 Upload **bukan** `@manual`. PDF **teks** = `@file-content`; PDF **layout** visual = `@manual`. Lihat [MANUAL-SCENARIOS.md](MANUAL-SCENARIOS.md) dan recipes file di `docs/recipes/`. Live network payload/response = `@network-assert` (bukan `@manual`, bukan overload `@network` mock) — lihat [NETWORK-ASSERT.md](recipes/NETWORK-ASSERT.md).
 
 Jika tidak diberi tag tipe, skenario dianggap `(@success)` secara default.
+
+> Catatan: parser requirement (`parse-requirement-scenarios.ts`) mengembalikan `scenarioType: 'general'` untuk skenario tanpa tag tipe — bukan `'success'`. `general` diperlakukan sebagai alur sukses biasa dengan role credential `user`.
 
 ---
 

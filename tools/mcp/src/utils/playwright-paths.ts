@@ -4,10 +4,12 @@ const DEFAULT_TEST_ROOT = 'tests';
 const DEFAULT_CONFIG_PATH = 'playwright.config.ts';
 const DEFAULT_JSON_RESULTS = 'artifacts/test-results/results.json';
 
-const DEFAULT_ADAPTER_TEST_ROOT = 'examples/erpku/tests';
-const DEFAULT_ADAPTER_CONFIG_PATH = 'examples/erpku/playwright.config.ts';
-const DEFAULT_ADAPTER_FIXTURE_IMPORT = '@erpku/fixtures/base.fixture';
-const DEFAULT_ADAPTER_RESULTS_JSON = 'artifacts/test-results/erpku-results.json';
+// Reference adapter defaults — sentinel root that never matches real specs.
+// No adapter is bundled anymore; PLAYWRIGHT_ADAPTER_* envs opt into one.
+const DEFAULT_ADAPTER_TEST_ROOT = 'adapter-tests';
+const DEFAULT_ADAPTER_CONFIG_PATH = 'playwright.config.ts';
+const DEFAULT_ADAPTER_FIXTURE_IMPORT = 'tests/fixtures';
+const DEFAULT_ADAPTER_RESULTS_JSON = DEFAULT_JSON_RESULTS;
 
 function normalizeEnvPath(raw: string, trimTrailingSlash = false): string {
   let normalized = raw.replace(/\\/g, '/');

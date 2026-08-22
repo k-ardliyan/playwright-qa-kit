@@ -41,6 +41,8 @@
     "sync:file-core": "tsx tools/scripts/sync-file-content-core.ts",
     "mcp:check": "tsx tools/scripts/mcp-compat-check.ts",
     "mcp:build": "npm run install:mcp-server && npm run sync:file-core && npx tsc src/utils/app-env.ts src/utils/env-loader.ts src/utils/logger.ts --outDir src/utils --module commonjs --target es2020 --esModuleInterop --declaration --skipLibCheck --types node && cd tools/mcp && npm run build",
+    "mcp:config": "tsx tools/scripts/mcp-config.ts",
+    "manifest:generate": "tsx -e \"import { writeManifest } from './src/agents/integration/manifest'; writeManifest();\"",
     "mcp:typecheck": "npm run install:mcp-server && npx tsc -p tools/mcp/tsconfig.json --noEmit",
     "xss:scan": "xss-scan",
     "quality:check-code": "npm run format:check && npm run lint && npm run typecheck && npm run mcp:typecheck && npm run xss:scan",
@@ -51,6 +53,7 @@
     "setup:wizard": "tsx src/setup/index.ts",
     "setup:check": "tsx src/setup/index.ts --check",
     "auth:setup": "npx playwright test tests/auth.setup.ts --project=setup --workers=1",
+    "auth:setup:headed": "npx playwright test tests/auth.setup.ts --project=setup --workers=1 --headed",
     "env:edit": "tsx tools/scripts/env-edit.ts",
     "env:status": "tsx tools/scripts/env-status.ts",
     "env:use": "tsx tools/scripts/env-use.ts",
@@ -95,8 +98,5 @@
   },
   "engines": {
     "node": ">=20.19.0"
-  },
-  "dependencies": {
-    "image-size": "^2.0.2"
   }
 }

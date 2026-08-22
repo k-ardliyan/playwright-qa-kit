@@ -6,7 +6,7 @@ Folder ini untuk **file requirement fitur** yang dibaca Planner / pipeline Herme
 
 | File                                   | Arti                                                                                                              |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `login.md`                             | **REAL** — di-generate `setup:wizard` Phase 7 dari BASE_URL + path + roles **website kamu**. Setup awal pipeline. |
+| `login.md`                             | **REAL** — requirement setup awal website kamu. **Tidak di-generate otomatis** — salin dari `_TEMPLATE.md` lalu isi. |
 | `sample-*.md`                          | **SAMPLE format** — latihan / referensi. Bukan target app kamu.                                                   |
 | `_TEMPLATE.md`                         | Template kosong untuk fitur baru.                                                                                 |
 | `_GOOD_EXAMPLE.md` / `_BAD_EXAMPLE.md` | Referensi gaya penulisan.                                                                                         |
@@ -17,11 +17,12 @@ Locator **berbeda per website**. Pipeline setup awal wajib:
 2. Plan → Generate (Path A: inline locator dari catalog)
 3. Execute → Heal → Report
 
-## Cara pakai (setup awal setelah wizard)
+## Cara pakai (setup awal)
 
 ```bash
-# sudah dibuat wizard:
-# requirements/login.md
+# buat requirement dari template (wizard tidak membuat file ini):
+cp _TEMPLATE.md login.md
+# isi: judul, Metadata (module/feature/tags), Kriteria Penerimaan, Skenario Uji
 
 npm run qa:run -- requirements/login.md
 # paste prompt Hermes (termasuk snapshot_page per site)

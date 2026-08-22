@@ -10,7 +10,7 @@
 
 **Gejala:** Wizard langsung keluar di Phase 0.
 
-**Root cause:** Framework butuh Node.js >= 20.19.0 karena dependency `playwright 1.61+` dan TypeScript 6.x.
+**Root cause:** Framework butuh Node.js >= 20.19.0 (lihat `engines` di package.json; TypeScript ^5.9.3).
 
 **Fix:**
 
@@ -67,7 +67,7 @@ sudo npx playwright install --with-deps chromium
 
 **Gejala:** Error dari esbuild/tsx saat menjalankan `npm run setup:wizard`.
 
-**Root cause:** File `scripts/setup-wizard.ts` corrupt (ada karakter atau line ending yang salah).
+**Root cause:** Error esbuild/tsx saat kompilasi `tools/scripts/setup-wizard.ts` atau `src/setup/index.ts` (karakter/line ending corrupt), atau konflik versi Node/tsx lokal.
 
 **Fix:**
 
@@ -94,12 +94,12 @@ npm run setup:wizard 2>&1 | head -20
 1. **Opsi A** — Minta kunci dari anggota tim yang punya akses (share `.env.keys` via 1Password/Vault yang aman). Simpan ke `~/.dotenvx-keys/playwright-qa-kit/.env.keys`
 2. **Opsi B** — Buat ulang dari nol:
    ```bash
-   rm environments/local.env
-   cp environments/local.env.example environments/local.env
+   rm config/environments/local.env
+   cp config/environments/local.env.example config/environments/local.env
    # Isi BASE_URL + kredensial (boleh lewat editor — masih plaintext)
    npm run env:edit          # buka menu → Simpan & encrypt
    # fallback manual:
-   npx @dotenvx/dotenvx encrypt -f environments/local.env
+   npx @dotenvx/dotenvx encrypt -f config/environments/local.env
    ```
 
 Panduan lengkap: [CREDENTIALS.md](CREDENTIALS.md).
@@ -235,8 +235,8 @@ npx playwright install --with-deps chromium
 # Jalankan test dulu (meskipun demo)
 npm run test:demo
 
-# Atau regenerate preview shell tanpa full e2e
-npx tsx scripts/preview-dashboard.ts
+# Atau serve dashboard dari test-summary.json terakhir tanpa full e2e
+npm run dashboard:serve
 
 # Buka dashboard (Ctrl+F5 setelah regenerate)
 start reports/custom-dashboard.html
@@ -255,7 +255,7 @@ Anatomy / cara baca: [REPORT-GUIDE.md](REPORT-GUIDE.md).
 
 **Fix:**
 
-1. Cek manual di browser: buka `BASE_URL` (lihat di `environments/local.env`)
+1. Cek manual di browser: buka `BASE_URL` (lihat di `config/environments/local.env`)
 2. Jika down → tunggu aplikasi up lagi
 3. Jika salah URL → edit:
    ```bash
